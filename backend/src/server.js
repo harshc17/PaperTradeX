@@ -45,33 +45,26 @@ const isAllowedOrigin = (origin) => {
     return false;
 };
 
-const corsOptions = {
-    origin(origin, callback) {
-        if (isAllowedOrigin(origin)) {
-            return callback(null, true);
-        }
-        return callback(new Error(`Not allowed by CORS: ${origin}`));
-    },
-    methods: ['GET', 'POST', 'DELETE', 'PUT', 'PATCH', 'OPTIONS'],
-    credentials: true,
-};
-
 const app = express();
+app.set('trust proxy', 1);
+
 const server = http.createServer(app);
 const io = new Server(server, { 
     cors: { 
-        origin: (origin, callback) => {
-            if (isAllowedOrigin(origin)) callback(null, true);
-            else callback(new Error('Not allowed by CORS'));
-        },
+        origin: '*',
         methods: ['GET', 'POST', 'OPTIONS'],
         credentials: true
     } 
 });
 
-app.use(helmet());
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+app.use(helmet({ crossOriginResourcePolicy: false }));
+app.use(cors({
+    origin: (origin, callback) => callback(null, true),
+    credentials: true,
+    methods: ['GET', 'POST', 'DELETE', 'PUT', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+}));
+app.options('*', cors());
 app.use(express.json({ limit: '1mb' }));
 
 const AUTH_RATE_LIMIT_MAX = parseInt(process.env.AUTH_RATE_LIMIT_MAX || '20', 10);
