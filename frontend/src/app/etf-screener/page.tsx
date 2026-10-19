@@ -6,16 +6,48 @@ import Header from '@/components/dashboard/Header';
 import { TrendingUp, TrendingDown, Search, Filter } from 'lucide-react';
 
 const ETFS = [
-    { symbol: 'NIFTYBEES.NS', name: 'Nippon India ETF Nifty BeES', category: 'Equity' },
-    { symbol: 'BANKBEES.NS', name: 'Nippon India ETF Bank BeES', category: 'Sectoral' },
-    { symbol: 'ITBEES.NS', name: 'Nippon India ETF IT BeES', category: 'Sectoral' },
-    { symbol: 'GOLDBEES.NS', name: 'Nippon India ETF Gold BeES', category: 'Commodity' },
-    { symbol: 'LIQUIDBEES.NS', name: 'Nippon India ETF Liquid BeES', category: 'Debt' },
-    { symbol: 'MON100.NS', name: 'Motilal Oswal Nasdaq 100 ETF', category: 'Global' },
-    { symbol: 'CPSEETF.NS', name: 'CPSE ETF', category: 'Thematic' },
-    { symbol: 'SETFNIF50.NS', name: 'SBI ETF Nifty 50', category: 'Equity' },
-    { symbol: 'ICICINIFTY.NS', name: 'ICICI Prudential Nifty ETF', category: 'Equity' },
+    // ── Broad Market & Index ──
+    { symbol: 'NIFTYBEES.NS', name: 'Nippon India Nifty 50 BeES ETF', category: 'Equity' },
+    { symbol: 'JUNIORBEES.NS', name: 'Nippon India Nifty Next 50 Junior BeES', category: 'Equity' },
+    { symbol: 'SETFNIF50.NS', name: 'SBI Nifty 50 ETF', category: 'Equity' },
+    { symbol: 'SETFNN50.NS', name: 'SBI Nifty Next 50 ETF', category: 'Equity' },
+    { symbol: 'ICICINIFTY.NS', name: 'ICICI Prudential Nifty 50 ETF', category: 'Equity' },
+    { symbol: 'HDFCNIFETF.NS', name: 'HDFC Nifty 50 ETF', category: 'Equity' },
+    { symbol: 'KOTAKNIFTY.NS', name: 'Kotak Nifty 50 ETF', category: 'Equity' },
+    { symbol: 'MID150BEES.NS', name: 'Nippon India Nifty Midcap 150 ETF', category: 'Equity' },
+    { symbol: 'HDFCSML250.NS', name: 'HDFC Nifty Smallcap 250 ETF', category: 'Equity' },
+
+    // ── Sectoral ──
+    { symbol: 'BANKBEES.NS', name: 'Nippon India Nifty Bank BeES ETF', category: 'Sectoral' },
+    { symbol: 'PSUBNKBEES.NS', name: 'Nippon India Nifty PSU Bank BeES ETF', category: 'Sectoral' },
+    { symbol: 'ITBEES.NS', name: 'Nippon India Nifty IT BeES ETF', category: 'Sectoral' },
+    { symbol: 'AUTOBEES.NS', name: 'Nippon India Nifty Auto BeES ETF', category: 'Sectoral' },
+    { symbol: 'PHARMABEES.NS', name: 'Nippon India Nifty Pharma BeES ETF', category: 'Sectoral' },
+    { symbol: 'CONSUMBEES.NS', name: 'Nippon India Nifty Consumption BeES ETF', category: 'Sectoral' },
+    { symbol: 'INFRABEES.NS', name: 'Nippon India Nifty Infra BeES ETF', category: 'Sectoral' },
     { symbol: 'KOTAKBKETF.NS', name: 'Kotak Banking ETF', category: 'Sectoral' },
+    { symbol: 'ICICIBANKP.NS', name: 'ICICI Prudential Nifty Bank ETF', category: 'Sectoral' },
+    { symbol: 'ICICITECH.NS', name: 'ICICI Prudential Technology ETF', category: 'Sectoral' },
+
+    // ── Commodities ──
+    { symbol: 'GOLDBEES.NS', name: 'Nippon India Gold BeES ETF', category: 'Commodity' },
+    { symbol: 'SILVERBEES.NS', name: 'Nippon India Silver BeES ETF', category: 'Commodity' },
+    { symbol: 'SETFGOLD.NS', name: 'SBI Gold ETF', category: 'Commodity' },
+    { symbol: 'HDFCMFGETF.NS', name: 'HDFC Gold ETF', category: 'Commodity' },
+
+    // ── Thematic ──
+    { symbol: 'CPSEETF.NS', name: 'CPSE ETF (PSU Index)', category: 'Thematic' },
+    { symbol: 'BHARAT22.NS', name: 'ICICI Prudential Bharat 22 ETF', category: 'Thematic' },
+
+    // ── Global ──
+    { symbol: 'MON100.NS', name: 'Motilal Oswal Nasdaq 100 ETF', category: 'Global' },
+    { symbol: 'MAFANG.NS', name: 'Mirae Asset NYSE FANG+ ETF', category: 'Global' },
+    { symbol: 'MASPTOP50.NS', name: 'Mirae Asset S&P 500 Top 50 ETF', category: 'Global' },
+    { symbol: 'HNGSNGBEES.NS', name: 'Nippon India Hang Seng BeES ETF', category: 'Global' },
+
+    // ── Debt & Cash ──
+    { symbol: 'LIQUIDBEES.NS', name: 'Nippon India Liquid BeES ETF', category: 'Debt' },
+    { symbol: 'LIQUIDCASE.NS', name: 'Zerodha Nifty 1D Rate Liquid ETF', category: 'Debt' },
 ];
 
 type QuoteData = { symbol: string; price: number; change: number; dayChange: number };
@@ -125,13 +157,13 @@ export default function EtfScreenerPage() {
     const fmt = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     return (
-        <div className="min-h-screen bg-gray-50 font-sans">
+        <div className="min-h-screen bg-transparent font-sans page-fade-in">
             <Header />
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
                     <div>
-                        <h1 className="text-[26px] font-semibold text-[#3b4252]">ETF Screener</h1>
+                        <h1 className="text-[26px] font-semibold text-[#3b4252] font-heading">ETF Screener</h1>
                         <p className="text-gray-500 text-sm mt-1">Discover and track top performing Exchange Traded Funds</p>
                     </div>
 

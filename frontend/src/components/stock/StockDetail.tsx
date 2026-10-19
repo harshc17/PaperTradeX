@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { io, Socket } from 'socket.io-client';
 import { Bell, Bookmark, Link2, TrendingDown, TrendingUp } from 'lucide-react';
+import { getSocket } from '@/lib/socket';
+import { API_URL } from '@/lib/config';
+import { usePortfolio } from '@/context/PortfolioContext';
 
 type StockData = {
     symbol: string;
@@ -29,19 +31,6 @@ type StockData = {
     profile?: any;
 };
 
-/* ─── Singleton socket ───────────────────────────────────────────────────────── */
-let socket: Socket | null = null;
-function getSocket(): Socket {
-    if (!socket) {
-        socket = io('http://localhost:3001', {
-            transports: ['websocket', 'polling'],
-            reconnection: true,
-            timeout: 10000,
-        });
-    }
-    return socket;
-}
-
 function timeAgo(ts: number): string {
     const secs = Math.floor((Date.now() - ts) / 1000);
     if (secs < 5)  return 'just now';
@@ -52,6 +41,7 @@ function timeAgo(ts: number): string {
 /* ─── Component ──────────────────────────────────────────────────────────────── */
 export default function StockDetail({ symbol }: { symbol: string }) {
     const router = useRouter();
+    const { marketStatus, marketOpen } = usePortfolio();
     const [stockData, setStockData]   = useState<StockData | null>(null);
     const [loading, setLoading]       = useState(true);
     const [livePrice, setLivePrice]   = useState<number | null>(null);
@@ -65,7 +55,7 @@ export default function StockDetail({ symbol }: { symbol: string }) {
 
     /* ─── HTTP fetch on mount ───────────────────────────────────────────────── */
     useEffect(() => {
-        fetch(`http://localhost:3001/api/stock/${encodeURIComponent(symbol)}`)
+        fetch(`${API_URL}/api/stock/${encodeURIComponent(symbol)}`)
             .then(r => r.ok ? r.json() : null)
             .then(data => {
                 if (data) {
@@ -76,16 +66,6 @@ export default function StockDetail({ symbol }: { symbol: string }) {
             .catch(console.error)
             .finally(() => setLoading(false));
     }, [symbol]);
-
-    const [marketOpen, setMarketOpen] = useState(true);
-
-    // Check if market is closed so we can ignore stale websocket ticks
-    useEffect(() => {
-        fetch('http://localhost:3001/api/market-status')
-            .then(r => r.json())
-            .then(d => setMarketOpen(d.isOpen))
-            .catch(() => {});
-    }, []);
 
     /* ─── WebSocket real-time updates ──────────────────────────────────────── */
     useEffect(() => {
@@ -140,7 +120,8 @@ export default function StockDetail({ symbol }: { symbol: string }) {
             if (!marketOpen) return; // Do not poll when market is closed (keeps price frozen to chart price)
             if (isLive) return; // WebSocket is working — skip
             try {
-                const r = await fetch(`http://localhost:3001/api/stock/${encodeURIComponent(bare)}/realtime`);
+                const fetchSym = symbol.toUpperCase().endsWith('.BO') ? symbol : bare;
+                const r = await fetch(`${API_URL}/api/stock/${encodeURIComponent(fetchSym)}/realtime`);
                 if (!r.ok) return;
                 const data = await r.json();
                 if (typeof data?.price === 'number') {
@@ -183,13 +164,13 @@ export default function StockDetail({ symbol }: { symbol: string }) {
     /* ─── Loading skeleton ─────────────────────────────────────────────────── */
     if (loading) {
         return (
-            <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm space-y-4">
+            <div className="terminal-card p-6 shadow-soft space-y-4">
                 <div className="animate-pulse space-y-4">
-                    <div className="h-5 w-48 bg-gray-100 rounded-lg" />
-                    <div className="h-10 w-36 bg-gray-100 rounded-lg" />
+                    <div className="h-5 w-48 shimmer rounded-lg" />
+                    <div className="h-10 w-36 shimmer rounded-lg" />
                     <div className="grid grid-cols-4 gap-4 pt-4">
                         {[...Array(8)].map((_, i) => (
-                            <div key={i} className="h-12 bg-gray-100 rounded-lg" />
+                            <div key={i} className="h-12 shimmer rounded-lg" />
                         ))}
                     </div>
                 </div>
@@ -199,8 +180,8 @@ export default function StockDetail({ symbol }: { symbol: string }) {
 
     if (!stockData) {
         return (
-            <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm text-center py-12">
-                <p className="text-red-500 font-medium">Failed to load stock data. Please try again.</p>
+            <div className="terminal-card p-6 shadow-soft text-center py-12">
+                <p className="text-down font-medium">Failed to load stock data. Please try again.</p>
             </div>
         );
     }
@@ -220,7 +201,7 @@ export default function StockDetail({ symbol }: { symbol: string }) {
     const isUp = change >= 0;
 
     const isNegative = change < 0;
-    const changeClass = isNegative ? 'text-[#eb5b3c]' : 'text-[#00b386]';
+    const changeClass = isNegative ? 'text-down' : 'text-up';
     const prettySymbol = stockData.symbol.replace('.NS', '');
 
     const addToWatchlistAndOpen = () => {
@@ -248,15 +229,15 @@ export default function StockDetail({ symbol }: { symbol: string }) {
         <div className="bg-transparent">
             <div className="flex items-start justify-between gap-4">
                 <div>
-                    <div className="text-[20px] text-gray-500 leading-6 mb-1 tracking-tight">
+                    <div className="text-[20px] text-ink-muted leading-6 mb-1 tracking-tight">
                         {prettySymbol} · {stockData.exchange}
                     </div>
-                    <h1 className="text-[24px] sm:text-[26px] font-semibold text-[#31354a] leading-[1.15] mb-2.5">
+                    <h1 className="text-[24px] sm:text-[26px] font-semibold text-ink-heading leading-[1.15] mb-2.5">
                         {stockData.shortName}
                     </h1>
 
                     <div className={`flex items-baseline gap-2 transition-colors duration-300 ${
-                        flash === 'up' ? 'text-[#00b386]' : flash === 'down' ? 'text-[#eb5b3c]' : 'text-[#31354a]'
+                        flash === 'up' ? 'text-up' : flash === 'down' ? 'text-down' : 'text-ink-heading'
                     }`}>
                         <span className="text-[24px] sm:text-[26px] font-semibold tabular-nums tracking-tight">
                             ₹{currentPrice.toLocaleString('en-IN', {
@@ -268,17 +249,26 @@ export default function StockDetail({ symbol }: { symbol: string }) {
                             {isUp ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
                             {change.toFixed(2)} ({Math.abs(changePercent).toFixed(2)}%)
                         </span>
-                        <span className="text-sm sm:text-base text-gray-400 font-normal">1D</span>
+                        <span className="text-sm sm:text-base text-ink-faint font-normal">1D</span>
                     </div>
 
-                    <p className="text-xs text-gray-400 mt-2">Updated {timeAgo(lastUpdateTs)} · {isLive ? 'Live' : 'Delayed'}</p>
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                        <p className="text-xs text-ink-faint">
+                            Updated {timeAgo(lastUpdateTs)} · {marketOpen ? (isLive ? 'Live NSE Feed' : 'Delayed') : 'Market Closed (LTP)'}
+                        </p>
+                        {!marketOpen && marketStatus && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-surface-2 border border-white/10 text-ink-muted">
+                                {marketStatus.sessionName} · Opens {marketStatus.nextOpenFormatted}
+                            </span>
+                        )}
+                    </div>
                 </div>
 
                 <div className="hidden sm:flex items-center gap-3 pt-1">
-                    <button className="w-12 h-12 rounded-full border border-gray-200 bg-white grid place-items-center text-gray-500 hover:text-gray-700">
+                    <button className="w-12 h-12 rounded-full border border-white/10 bg-surface grid place-items-center text-ink-muted hover:text-primary">
                         <Link2 className="w-5 h-5" />
                     </button>
-                    <button className="w-12 h-12 rounded-full border border-gray-200 bg-white grid place-items-center text-gray-500 hover:text-gray-700">
+                    <button className="w-12 h-12 rounded-full border border-white/10 bg-surface grid place-items-center text-ink-muted hover:text-primary">
                         <Bell className="w-5 h-5" />
                     </button>
                     <button
@@ -287,8 +277,8 @@ export default function StockDetail({ symbol }: { symbol: string }) {
                         title={inWatchlist ? 'Open watchlist' : 'Add to watchlist'}
                         className={`w-12 h-12 rounded-full border grid place-items-center transition-all duration-200 ${
                             inWatchlist
-                                ? 'border-[#00b386] bg-[#00b386]/10 text-[#00b386] shadow-sm'
-                                : 'border-gray-200 bg-white text-gray-500 hover:text-[#00b386] hover:border-[#00b386]/40 hover:bg-[#00b386]/5'
+                                ? 'border-up bg-up/10 text-up shadow-sm'
+                                : 'border-white/10 bg-surface text-ink-muted hover:text-up hover:border-up/40 hover:bg-up/5'
                         }`}
                     >
                         <Bookmark className={`w-5 h-5 ${inWatchlist ? 'fill-current' : ''}`} />

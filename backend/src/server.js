@@ -1,32 +1,95 @@
 require('dotenv').config();
+const crypto = require('crypto');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const validator = require('validator');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 const MarketDataService = require('./services/MarketData');
 const TradeEngine = require('./services/TradeEngine');
-const { connectDB, User, Order, WeeklyChallenge, WeeklyChallengeTrade, seedAdmin } = require('./models');
+const { connectDB, User, Order, TransactionHistory, WeeklyChallenge, WeeklyChallengeTrade, seedAdmin } = require('./models');
 const NSEClient = require('./services/NSEClient');
 const HistoricalClient = require('./services/HistoricalClient');
 const AIService = require('./services/AIService');
+const Mailer = require('./services/Mailer');
+
+// ── Security config (from env) ───────────────────────────────────────────────
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    console.error('[FATAL] JWT_SECRET is not set. Refusing to start. Add it to backend/.env');
+    process.exit(1);
+}
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
+const BCRYPT_ROUNDS = 12;
+const FRONTEND_URL = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
+
+// Allowlisted CORS origins (comma-separated in CORS_ORIGIN, defaults to the local frontend).
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:3000')
+    .split(',')
+    .map(o => o.trim().replace(/\/$/, ''))
+    .filter(Boolean);
+
+const corsOptions = {
+    origin(origin, callback) {
+        // Allow non-browser clients (no Origin header) and allowlisted origins.
+        if (!origin || ALLOWED_ORIGINS.includes(origin.replace(/\/$/, ''))) {
+            return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
+    },
+    methods: ['GET', 'POST', 'DELETE', 'PUT', 'PATCH'],
+    credentials: true,
+};
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
+const io = new Server(server, { cors: { origin: ALLOWED_ORIGINS, methods: ['GET', 'POST'] } });
 
-app.use(cors());
-app.use(express.json());
+app.use(helmet());
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '1mb' }));
 
-const JWT_SECRET = 'papertradex_secret_key_123'; // In prod, use env var
+const AUTH_RATE_LIMIT_MAX = parseInt(process.env.AUTH_RATE_LIMIT_MAX || '20', 10);
+const API_RATE_LIMIT_MAX = parseInt(process.env.API_RATE_LIMIT_MAX || '5000', 10);
+
+// ── Rate limiters ─────────────────────────────────────────────────────────────
+// Strict limiter for authentication endpoints (brute-force / abuse protection).
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: AUTH_RATE_LIMIT_MAX,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many attempts. Please try again later.' },
+});
+// Looser global limiter for the rest of the API.
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: API_RATE_LIMIT_MAX,
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+app.use('/api', apiLimiter);
+
+// ── Password policy ───────────────────────────────────────────────────────────
+function validatePassword(password) {
+    if (typeof password !== 'string' || password.length < 8) {
+        return 'Password must be at least 8 characters';
+    }
+    if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+        return 'Password must contain at least one letter and one number';
+    }
+    return null;
+}
 
 const marketDataService = new MarketDataService(io);
 marketDataService.startPolling();
-
-// Temporary override: allow orders outside market hours.
-// Set to false when you want strict market-hours enforcement again.
-const TEMP_ALLOW_AFTER_HOURS_TRADING = true;
 
 // ── Connect to MongoDB + seed admin ─────────────────────────────────────────
 (async () => {
@@ -44,34 +107,156 @@ app.get('/', (req, res) => res.send('PaperTradeX Backend Running'));
 
 // --- AUTH ROUTES ---
 
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', authLimiter, async (req, res) => {
     const { name, phone, email, password } = req.body;
     try {
         if (!email || !password || !name) return res.status(400).json({ error: 'Missing fields' });
-        const exists = await User.findOne({ email: email.toLowerCase() });
+        if (!validator.isEmail(String(email))) return res.status(400).json({ error: 'Invalid email address' });
+
+        const pwdError = validatePassword(password);
+        if (pwdError) return res.status(400).json({ error: pwdError });
+
+        const normalizedEmail = String(email).toLowerCase().trim();
+        const exists = await User.findOne({ email: normalizedEmail });
         if (exists) return res.status(409).json({ error: 'Email already registered' });
 
-        const password_hash = await bcrypt.hash(password, 10);
-        const user = await User.create({ name, phone, email, password_hash });
+        const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+        const user = await User.create({
+            name: String(name).trim(),
+            phone: phone ? String(phone).trim() : '',
+            email: normalizedEmail,
+            password_hash,
+            authProvider: 'local',
+        });
 
-        const token = jwt.sign({ id: user._id.toString(), role: user.role }, JWT_SECRET, { expiresIn: '24h' });
-        res.json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
+        const token = jwt.sign({ id: user._id.toString(), role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+        res.json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, role: user.role, balance: user.balance } });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
 
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', authLimiter, async (req, res) => {
     const { email, password } = req.body;
     try {
-        const user = await User.findOne({ email: email?.toLowerCase() });
-        if (!user) return res.status(401).json({ error: 'User not found' });
+        const user = await User.findOne({ email: email?.toLowerCase().trim() });
+        // Generic message for both cases to avoid user enumeration.
+        if (!user || !user.password_hash) {
+            return res.status(401).json({ error: 'Invalid email or password' });
+        }
 
-        const match = await bcrypt.compare(password, user.password_hash);
-        if (!match) return res.status(401).json({ error: 'Invalid password' });
+        const match = await bcrypt.compare(password || '', user.password_hash);
+        if (!match) return res.status(401).json({ error: 'Invalid email or password' });
 
-        const token = jwt.sign({ id: user._id.toString(), role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+        const token = jwt.sign({ id: user._id.toString(), role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
         res.json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, role: user.role, balance: user.balance } });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- Google Sign-In ---
+app.post('/api/auth/google', authLimiter, async (req, res) => {
+    const { credential } = req.body;
+    try {
+        if (!googleClient) {
+            return res.status(503).json({ error: 'Google login is not configured on the server' });
+        }
+        if (!credential) return res.status(400).json({ error: 'Missing Google credential' });
+
+        const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: GOOGLE_CLIENT_ID });
+        const payload = ticket.getPayload();
+        if (!payload?.email || !payload.email_verified) {
+            return res.status(401).json({ error: 'Google account email not verified' });
+        }
+
+        const email = payload.email.toLowerCase().trim();
+        const googleId = payload.sub;
+
+        let user = await User.findOne({ googleId });
+        if (!user) {
+            // Link to an existing local account with the same email, if any.
+            user = await User.findOne({ email });
+            if (user) {
+                user.googleId = googleId;
+                if (user.authProvider !== 'local') user.authProvider = 'google';
+                await user.save();
+            } else {
+                user = await User.create({
+                    name: payload.name || email.split('@')[0],
+                    email,
+                    googleId,
+                    authProvider: 'google',
+                    password_hash: null,
+                });
+            }
+        }
+
+        const token = jwt.sign({ id: user._id.toString(), role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+        res.json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, role: user.role, balance: user.balance } });
+    } catch (e) {
+        console.error('[Google Auth] Error:', e.message);
+        res.status(401).json({ error: 'Google authentication failed' });
+    }
+});
+
+// --- Forgot / Reset password ---
+app.post('/api/forgot-password', authLimiter, async (req, res) => {
+    const { email } = req.body;
+    // Always respond the same way to avoid leaking which emails are registered.
+    const genericResponse = { success: true, message: 'If that email is registered, a reset link has been sent.' };
+    try {
+        if (!email || !validator.isEmail(String(email))) return res.json(genericResponse);
+
+        const normalizedEmail = String(email).toLowerCase().trim();
+        const user = await User.findOne({ email: normalizedEmail });
+
+        // Only local/linked accounts (with a password) can reset a password.
+        if (user && user.password_hash) {
+            const rawToken = crypto.randomBytes(32).toString('hex');
+            const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+            user.resetPasswordToken = tokenHash;
+            user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+            await user.save();
+
+            const resetLink = `${FRONTEND_URL}/reset-password?token=${rawToken}&email=${encodeURIComponent(normalizedEmail)}`;
+            await Mailer.sendResetEmail(normalizedEmail, resetLink);
+        }
+
+        res.json(genericResponse);
+    } catch (e) {
+        console.error('[Forgot Password] Error:', e.message);
+        // Still return the generic response to avoid leaking state.
+        res.json(genericResponse);
+    }
+});
+
+app.post('/api/reset-password', authLimiter, async (req, res) => {
+    const { email, token, password } = req.body;
+    try {
+        if (!email || !token || !password) return res.status(400).json({ error: 'Missing fields' });
+
+        const pwdError = validatePassword(password);
+        if (pwdError) return res.status(400).json({ error: pwdError });
+
+        const normalizedEmail = String(email).toLowerCase().trim();
+        const tokenHash = crypto.createHash('sha256').update(String(token)).digest('hex');
+
+        const user = await User.findOne({
+            email: normalizedEmail,
+            resetPasswordToken: tokenHash,
+            resetPasswordExpires: { $gt: new Date() },
+        });
+        if (!user) return res.status(400).json({ error: 'Invalid or expired reset link' });
+
+        user.password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+        user.resetPasswordToken = null;
+        user.resetPasswordExpires = null;
+        // A Google-only user who sets a password becomes usable locally too.
+        if (!user.authProvider) user.authProvider = 'local';
+        await user.save();
+
+        res.json({ success: true, message: 'Password has been reset. You can now log in.' });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -89,113 +274,162 @@ const authenticateToken = (req, res, next) => {
     if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
     jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (!err) {
-            req.user = user;
-            return next();
+        if (err) {
+            return res.status(403).json({ error: 'Session expired. Please login again.' });
         }
-
-        // Allow a short grace window for recently expired but otherwise valid tokens.
-        // This prevents random 403s in long-lived browser sessions in local/dev usage.
-        if (err.name === 'TokenExpiredError') {
-            try {
-                const decoded = jwt.verify(token, JWT_SECRET, { ignoreExpiration: true });
-                const nowSec = Math.floor(Date.now() / 1000);
-                const graceSec = 7 * 24 * 60 * 60; // 7 days
-                if (decoded?.exp && (nowSec - decoded.exp) <= graceSec) {
-                    req.user = { id: decoded.id, role: decoded.role };
-                    return next();
-                }
-            } catch (_) {
-                // fall through to 403
-            }
-        }
-
-        return res.status(403).json({ error: 'Session expired. Please login again.' });
+        req.user = user;
+        return next();
     });
 }
 
 // Comprehensive local search index with full Yahoo-compatible symbols
 const LOCAL_STOCK_INDEX = [
-    // Nifty 50 Blue Chips
+    // ── Nifty 50 Blue Chips (Current Constituents) ──
     { symbol: 'RELIANCE.NS', shortname: 'Reliance Industries', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'TCS.NS', shortname: 'Tata Consultancy Services', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'HDFCBANK.NS', shortname: 'HDFC Bank', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'INFY.NS', shortname: 'Infosys', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'ICICIBANK.NS', shortname: 'ICICI Bank', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'SBIN.NS', shortname: 'State Bank of India', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'HINDUNILVR.NS', shortname: 'Hindustan Unilever', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'BAJFINANCE.NS', shortname: 'Bajaj Finance', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'KOTAKBANK.NS', shortname: 'Kotak Mahindra Bank', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'BHARTIARTL.NS', shortname: 'Bharti Airtel', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'ITC.NS', shortname: 'ITC Limited', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'LT.NS', shortname: 'Larsen & Toubro', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'AXISBANK.NS', shortname: 'Axis Bank', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'ASIANPAINT.NS', shortname: 'Asian Paints', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'BAJFINANCE.NS', shortname: 'Bajaj Finance', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'HINDUNILVR.NS', shortname: 'Hindustan Unilever', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'MARUTI.NS', shortname: 'Maruti Suzuki', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'SUNPHARMA.NS', shortname: 'Sun Pharmaceutical', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'TATAMOTORS.NS', shortname: 'Tata Motors', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'WIPRO.NS', shortname: 'Wipro', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'AXISBANK.NS', shortname: 'Axis Bank', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'KOTAKBANK.NS', shortname: 'Kotak Mahindra Bank', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'TITAN.NS', shortname: 'Titan Company', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'ULTRACEMCO.NS', shortname: 'UltraTech Cement', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'ITC.NS', shortname: 'ITC Limited', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'NESTLEIND.NS', shortname: 'Nestle India', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'NTPC.NS', shortname: 'NTPC', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'TATAMOTORS.NS', shortname: 'Tata Motors', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'NTPC.NS', shortname: 'NTPC Limited', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'POWERGRID.NS', shortname: 'Power Grid Corporation', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'ONGC.NS', shortname: 'Oil and Natural Gas Corporation', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'BHARTIARTL.NS', shortname: 'Bharti Airtel', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'M&M.NS', shortname: 'Mahindra & Mahindra', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'TECHM.NS', shortname: 'Tech Mahindra', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'ONGC.NS', shortname: 'Oil and Natural Gas Corporation', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'TRENT.NS', shortname: 'Trent Limited', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'BEL.NS', shortname: 'Bharat Electronics', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'SHRIRAMFIN.NS', shortname: 'Shriram Finance', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'COALINDIA.NS', shortname: 'Coal India', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'TATASTEEL.NS', shortname: 'Tata Steel', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'ADANIENT.NS', shortname: 'Adani Enterprises', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'ADANIPORTS.NS', shortname: 'Adani Ports & SEZ', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'JSWSTEEL.NS', shortname: 'JSW Steel', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'HCLTECH.NS', shortname: 'HCL Technologies', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'DIVISLAB.NS', shortname: "Divi's Laboratories", quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'DRREDDY.NS', shortname: "Dr. Reddy's Laboratories", quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'CIPLA.NS', shortname: 'Cipla', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'EICHERMOT.NS', shortname: 'Eicher Motors', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'BAJAJ-AUTO.NS', shortname: 'Bajaj Auto', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'BAJAJFINSV.NS', shortname: 'Bajaj Finserv', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'GRASIM.NS', shortname: 'Grasim Industries', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'TITAN.NS', shortname: 'Titan Company', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'HDFC.NS', shortname: 'HDFC', quoteType: 'EQUITY', exchange: 'NSE' },
-    // Mid Caps / Popular
-    { symbol: 'ZOMATO.NS', shortname: 'Zomato', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'PAYTM.NS', shortname: 'One 97 Communications (Paytm)', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'NYKAA.NS', shortname: 'FSN E-Commerce Ventures (Nykaa)', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'POLICYBZR.NS', shortname: 'PB Fintech (PolicyBazaar)', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'ADANIENT.NS', shortname: 'Adani Enterprises', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'ADANIPOWER.NS', shortname: 'Adani Power', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'ADANIPORTS.NS', shortname: 'Adani Ports', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'TECHM.NS', shortname: 'Tech Mahindra', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'ASIANPAINT.NS', shortname: 'Asian Paints', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'NESTLEIND.NS', shortname: 'Nestle India', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'CIPLA.NS', shortname: 'Cipla', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'DRREDDY.NS', shortname: "Dr. Reddy's Laboratories", quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'EICHERMOT.NS', shortname: 'Eicher Motors', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'WIPRO.NS', shortname: 'Wipro', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'APOLLOHOSP.NS', shortname: 'Apollo Hospitals', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'TATACONSUM.NS', shortname: 'Tata Consumer Products', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'BRITANNIA.NS', shortname: 'Britannia Industries', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'SBILIFE.NS', shortname: 'SBI Life Insurance', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'HDFCLIFE.NS', shortname: 'HDFC Life Insurance', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'HINDALCO.NS', shortname: 'Hindalco Industries', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'BPCL.NS', shortname: 'Bharat Petroleum', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'DIVISLAB.NS', shortname: "Divi's Laboratories", quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'INDUSINDBK.NS', shortname: 'IndusInd Bank', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'BANKBARODA.NS', shortname: 'Bank of Baroda', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'CANBK.NS', shortname: 'Canara Bank', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'PNB.NS', shortname: 'Punjab National Bank', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'IRFC.NS', shortname: 'Indian Railway Finance Corporation', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'LTIM.NS', shortname: 'LTIMindtree', quoteType: 'EQUITY', exchange: 'NSE' },
+
+    // ── High-Volume Mid Caps, Large Caps & New-Age Leaders ──
+    { symbol: 'JIOFIN.NS', shortname: 'Jio Financial Services', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'ZOMATO.NS', shortname: 'Zomato', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'HAL.NS', shortname: 'Hindustan Aeronautics', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'BEL.NS', shortname: 'Bharat Electronics', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'VEDL.NS', shortname: 'Vedanta', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'IRFC.NS', shortname: 'Indian Railway Finance Corporation', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'IRCTC.NS', shortname: 'Indian Railway Catering & Tourism', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'TATAPOWER.NS', shortname: 'Tata Power', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'BHEL.NS', shortname: 'Bharat Heavy Electricals', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'COALINDIA.NS', shortname: 'Coal India', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'RECLTD.NS', shortname: 'REC Limited', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'PFC.NS', shortname: 'Power Finance Corporation', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'VEDL.NS', shortname: 'Vedanta', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'HINDALCO.NS', shortname: 'Hindalco Industries', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'JSWSTEEL.NS', shortname: 'JSW Steel', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'HDFCAMC.NS', shortname: 'HDFC Asset Management', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'BANKBARODA.NS', shortname: 'Bank of Baroda', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'PNB.NS', shortname: 'Punjab National Bank', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'CANBK.NS', shortname: 'Canara Bank', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'IOC.NS', shortname: 'Indian Oil Corporation', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'GAIL.NS', shortname: 'GAIL India', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'DLF.NS', shortname: 'DLF Limited', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'PIDILITIND.NS', shortname: 'Pidilite Industries', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'HAVELLS.NS', shortname: 'Havells India', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'VOLTAS.NS', shortname: 'Voltas', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'TATAPOWER.NS', shortname: 'Tata Power', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'MRF.NS', shortname: 'MRF', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'HEROMOTOCO.NS', shortname: 'Hero MotoCorp', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'BAJAJ-AUTO.NS', shortname: 'Bajaj Auto', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'APOLLOHOSP.NS', shortname: 'Apollo Hospitals', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'SIEMENS.NS', shortname: 'Siemens India', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'ABB.NS', shortname: 'ABB India', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'POLYCAB.NS', shortname: 'Polycab India', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'DIXON.NS', shortname: 'Dixon Technologies', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'PERSISTENT.NS', shortname: 'Persistent Systems', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'COFORGE.NS', shortname: 'Coforge', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'TATAELXSI.NS', shortname: 'Tata Elxsi', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'PAYTM.NS', shortname: 'One 97 Communications (Paytm)', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'NYKAA.NS', shortname: 'FSN E-Commerce Ventures (Nykaa)', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'POLICYBZR.NS', shortname: 'PB Fintech (PolicyBazaar)', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'SWIGGY.NS', shortname: 'Swiggy', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'MAXHEALTH.NS', shortname: 'Max Healthcare', quoteType: 'EQUITY', exchange: 'NSE' },
     { symbol: 'FORTIS.NS', shortname: 'Fortis Healthcare', quoteType: 'EQUITY', exchange: 'NSE' },
-    { symbol: 'IRCTC.NS', shortname: 'Indian Railway Catering & Tourism', quoteType: 'EQUITY', exchange: 'NSE' },
-    // ETFs
+    { symbol: 'LUPIN.NS', shortname: 'Lupin', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'AUROPHARMA.NS', shortname: 'Aurobindo Pharma', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'ADANIPOWER.NS', shortname: 'Adani Power', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'ADANIGREEN.NS', shortname: 'Adani Green Energy', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'SUZLON.NS', shortname: 'Suzlon Energy', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'RVNL.NS', shortname: 'Rail Vikas Nigam Limited', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'MAZDOCK.NS', shortname: 'Mazagon Dock Shipbuilders', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'COCHINSHIP.NS', shortname: 'Cochin Shipyard', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'BDL.NS', shortname: 'Bharat Dynamics', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'DMART.NS', shortname: 'Avenue Supermarts (DMart)', quoteType: 'EQUITY', exchange: 'NSE' },
+    { symbol: 'MRF.NS', shortname: 'MRF', quoteType: 'EQUITY', exchange: 'NSE' },
+
+    // ── ETFs (All Major Categories) ──
     { symbol: 'NIFTYBEES.NS', shortname: 'Nippon India Nifty BeES ETF', quoteType: 'ETF', exchange: 'NSE' },
     { symbol: 'JUNIORBEES.NS', shortname: 'Nippon India Junior BeES ETF', quoteType: 'ETF', exchange: 'NSE' },
-    { symbol: 'GOLDBEES.NS', shortname: 'Nippon India Gold BeES ETF', quoteType: 'ETF', exchange: 'NSE' },
     { symbol: 'BANKBEES.NS', shortname: 'Nippon India Bank BeES ETF', quoteType: 'ETF', exchange: 'NSE' },
-    // Indices
+    { symbol: 'PSUBNKBEES.NS', shortname: 'Nippon India PSU Bank BeES ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'ITBEES.NS', shortname: 'Nippon India IT BeES ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'AUTOBEES.NS', shortname: 'Nippon India Auto BeES ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'PHARMABEES.NS', shortname: 'Nippon India Pharma BeES ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'CONSUMBEES.NS', shortname: 'Nippon India Consumption BeES ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'INFRABEES.NS', shortname: 'Nippon India Infra BeES ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'GOLDBEES.NS', shortname: 'Nippon India Gold BeES ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'SILVERBEES.NS', shortname: 'Nippon India Silver BeES ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'CPSEETF.NS', shortname: 'CPSE ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'BHARAT22.NS', shortname: 'ICICI Prudential Bharat 22 ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'SETFNIF50.NS', shortname: 'SBI Nifty 50 ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'SETFNN50.NS', shortname: 'SBI Nifty Next 50 ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'SETFBANK.NS', shortname: 'SBI Nifty Bank ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'SETFGOLD.NS', shortname: 'SBI Gold ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'ICICINIFTY.NS', shortname: 'ICICI Prudential Nifty 50 ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'ICICIBANKP.NS', shortname: 'ICICI Prudential Nifty Bank ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'ICICITECH.NS', shortname: 'ICICI Prudential Technology ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'HDFCNIFETF.NS', shortname: 'HDFC Nifty 50 ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'HDFCBANKET.NS', shortname: 'HDFC Nifty Bank ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'HDFCMFGETF.NS', shortname: 'HDFC Gold ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'KOTAKBKETF.NS', shortname: 'Kotak Banking ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'KOTAKNIFTY.NS', shortname: 'Kotak Nifty 50 ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'MID150BEES.NS', shortname: 'Nippon India Nifty Midcap 150 ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'HDFCSML250.NS', shortname: 'HDFC Nifty Smallcap 250 ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'MON100.NS', shortname: 'Motilal Oswal Nasdaq 100 ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'MAFANG.NS', shortname: 'Mirae Asset NYSE FANG+ ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'MASPTOP50.NS', shortname: 'Mirae Asset S&P 500 Top 50 ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'HNGSNGBEES.NS', shortname: 'Nippon India Hang Seng BeES ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'LIQUIDBEES.NS', shortname: 'Nippon India Liquid BeES ETF', quoteType: 'ETF', exchange: 'NSE' },
+    { symbol: 'LIQUIDCASE.NS', shortname: 'Zerodha Nifty 1D Rate Liquid ETF', quoteType: 'ETF', exchange: 'NSE' },
+
+    // ── Indices ──
     { symbol: '^NSEI', shortname: 'NIFTY 50', quoteType: 'INDEX', exchange: 'NSE' },
     { symbol: '^BSESN', shortname: 'SENSEX', quoteType: 'INDEX', exchange: 'BSE' },
     { symbol: '^NSEBANK', shortname: 'BANK NIFTY', quoteType: 'INDEX', exchange: 'NSE' },
     { symbol: '^NSMIDCP100', shortname: 'NIFTY MIDCAP 100', quoteType: 'INDEX', exchange: 'NSE' },
+    { symbol: '^CNXIT', shortname: 'NIFTY IT', quoteType: 'INDEX', exchange: 'NSE' },
+    { symbol: '^CNXFIN', shortname: 'FINNIFTY', quoteType: 'INDEX', exchange: 'NSE' },
+
+    // ── BSE Listed Stocks ──
+    { symbol: 'NSE.BO', shortname: 'National Stock Exchange of India', quoteType: 'EQUITY', exchange: 'BSE' },
+    { symbol: 'BSE.BO', shortname: 'BSE Limited', quoteType: 'EQUITY', exchange: 'BSE' },
+    { symbol: 'CDSL.BO', shortname: 'Central Depository Services', quoteType: 'EQUITY', exchange: 'BSE' },
+    { symbol: 'MCX.BO', shortname: 'Multi Commodity Exchange', quoteType: 'EQUITY', exchange: 'BSE' },
 ];
 
 const STOCK_META = new Map(
@@ -209,11 +443,11 @@ function getSymbolMeta(symbol) {
 function shouldPreferYahoo(symbol) {
     const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
     const meta = getSymbolMeta(bare);
-    return bare.startsWith('^') || meta?.quoteType === 'ETF';
+    return bare.startsWith('^') || meta?.quoteType === 'ETF' || symbol.toUpperCase().endsWith('.BO') || meta?.exchange === 'BSE';
 }
 
 app.get('/api/market-status', (req, res) => {
-    res.json({ isOpen: NSEClient.constructor.isMarketHours() });
+    res.json(NSEClient.getMarketStatus());
 });
 
 const SEARCH_CACHE = {};
@@ -229,15 +463,18 @@ app.get('/api/search', async (req, res) => {
 
     // 1. Always search local index first (instant, no API call)
     const localResults = LOCAL_STOCK_INDEX.filter(item =>
-        item.symbol.toLowerCase().replace('.ns', '').includes(q) ||
+        item.symbol.toLowerCase().replace(/\.(ns|bo)$/i, '').includes(q) ||
         item.shortname.toLowerCase().includes(q)
     );
 
     // 2. If we need more results, ask Yahoo Finance (covers all Indian stocks/ETFs)
     if (localResults.length < 5) {
         try {
-            const yhResults = await HistoricalClient.search(q);
-            
+            // Wrap with 800ms timeout so slow Yahoo never blocks the API response
+            const yhResults = await Promise.race([
+                HistoricalClient.search(q),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 800)),
+            ]);
             yhResults.forEach(y => {
                 // Prioritize Indian exchanges
                 const isIndian = y.exchange === 'NSI' || y.exchange === 'BSE' || (y.symbol && (y.symbol.endsWith('.NS') || y.symbol.endsWith('.BO')));
@@ -251,7 +488,7 @@ app.get('/api/search', async (req, res) => {
                 }
             });
         } catch (e) {
-            console.error('[Search] Yahoo fallback failed:', e.message);
+            if (e.message !== 'timeout') console.error('[Search] Yahoo fallback failed:', e.message);
         }
     }
 
@@ -348,15 +585,21 @@ async function getClosedMarketPrice(symbol, fallbackPrice = null) {
         return frozen;
     }
 
-    const cached = marketDataService.cache[bare] || marketDataService.cache[bare + '.NS'];
+    let cached = marketDataService.cache[bare] || marketDataService.cache[bare + '.NS'];
     let price = null;
+    let change = cached?.change ?? 0;
+    let dayChange = cached?.dayChange ?? 0;
+    let prevClose = cached?.prevClose ?? null;
     let source = 'cache';
 
     try {
-        const chartPrice = await HistoricalClient.latestPrice(bare);
-        if (typeof chartPrice === 'number' && chartPrice > 0) {
-            price = chartPrice;
+        const yData = await HistoricalClient.quoteDetail(bare);
+        if (yData && typeof yData.regularMarketPrice === 'number' && yData.regularMarketPrice > 0) {
+            price = yData.regularMarketPrice;
             source = 'close';
+            change = yData.regularMarketChange ?? 0;
+            dayChange = yData.regularMarketChangePercent ?? 0;
+            prevClose = yData.regularMarketPreviousClose ?? (price - change);
         }
     } catch {
         // Use the last known in-memory price if chart data is unavailable.
@@ -370,13 +613,23 @@ async function getClosedMarketPrice(symbol, fallbackPrice = null) {
     if (!(price > 0) && typeof cached?.price === 'number' && cached.price > 0) {
         price = cached.price;
         source = 'cache';
+        change = cached.change ?? change;
+        dayChange = cached.dayChange ?? dayChange;
+        prevClose = cached.prevClose ?? prevClose;
     }
 
     if (!(price > 0)) return null;
 
+    if (!prevClose && price) {
+        prevClose = price - change;
+    }
+
     const entry = {
         dateKey,
         price,
+        change,
+        dayChange,
+        prevClose,
         source,
         timestamp: new Date(),
     };
@@ -386,9 +639,10 @@ async function getClosedMarketPrice(symbol, fallbackPrice = null) {
         symbol: bare,
         shortname: cached?.shortname || bare,
         price,
-        prevPrice: cached?.prevPrice ?? price,
-        change: cached?.change ?? 0,
-        dayChange: cached?.dayChange ?? 0,
+        prevPrice: prevClose,
+        prevClose,
+        change,
+        dayChange,
         timestamp: entry.timestamp,
         isClosedMarketPrice: true,
     };
@@ -398,7 +652,7 @@ async function getClosedMarketPrice(symbol, fallbackPrice = null) {
     return entry;
 }
 
-async function resolveChallengePrice(symbol) {
+async function resolveStockPrice(symbol) {
     const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
     const marketOpen = NSEClient.constructor.isMarketHours();
     const cached = marketDataService.cache[bare] || marketDataService.cache[bare + '.NS'];
@@ -431,6 +685,7 @@ async function resolveChallengePrice(symbol) {
 
     throw new Error(`Price not available for ${bare}`);
 }
+const resolveChallengePrice = resolveStockPrice;
 
 async function loadCurrentChallenge(userId) {
     const challenge = await WeeklyChallenge.findOne({
@@ -475,7 +730,9 @@ async function computeChallengeSnapshot(challengeDoc) {
 
     const positionsValue = positionDetails.reduce((acc, p) => acc + p.currentValue, 0);
     const equity = parseFloat((challenge.cashBalance + positionsValue).toFixed(2));
-    const progressPercent = parseFloat(((equity / challenge.targetBalance) * 100).toFixed(2));
+    const targetProfit = Math.max(1, challenge.targetBalance - challenge.initialBalance);
+    const currentProfit = Math.max(0, equity - challenge.initialBalance);
+    const progressPercent = parseFloat(Math.min((currentProfit / targetProfit) * 100, 100).toFixed(2));
     const targetRemaining = parseFloat(Math.max(challenge.targetBalance - equity, 0).toFixed(2));
 
     return {
@@ -498,15 +755,20 @@ async function computeChallengeSnapshot(challengeDoc) {
 app.get('/api/stock/:symbol', async (req, res) => {
     const { symbol } = req.params;
     try {
-        const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
+        // Preserve full exchange suffix (e.g. NSE.BO must NOT be forced to NSE.NS)
+        const rawUpper = symbol.toUpperCase();
+        const bare = rawUpper.replace(/\.(NS|BO)$/i, '');
+        const isBo = rawUpper.endsWith('.BO');
         const yahooPreferred = shouldPreferYahoo(bare);
 
-        if (STOCK_CACHE[bare] && Date.now() - STOCK_CACHE[bare].timestamp < STOCK_CACHE_TTL) {
-            return res.json(STOCK_CACHE[bare].data);
+        // Cache key includes exchange suffix to avoid NSE.NS vs NSE.BO collision
+        const cacheKey = rawUpper;
+        if (STOCK_CACHE[cacheKey] && Date.now() - STOCK_CACHE[cacheKey].timestamp < STOCK_CACHE_TTL) {
+            return res.json(STOCK_CACHE[cacheKey].data);
         }
 
-        // ── 1. Try NSE (preferred — rich data when market is open) ──
-        if (!yahooPreferred && !recentlyFailedNse(bare)) {
+        // ── 1. Try NSE (preferred — rich data when market is open, .NS only) ──
+        if (!yahooPreferred && !isBo && !recentlyFailedNse(bare)) {
             try {
                 const nsData = await NSEClient.equityQuote(bare);
                 if (nsData?.priceInfo?.lastPrice) {
@@ -561,7 +823,7 @@ app.get('/api/stock/:symbol', async (req, res) => {
                     profile:                    null,
                     dataSource:                 'nse',
                 };
-                STOCK_CACHE[bare] = { timestamp: Date.now(), data };
+                STOCK_CACHE[cacheKey] = { timestamp: Date.now(), data };
                 return res.json(data);
             }
             } catch {
@@ -569,13 +831,13 @@ app.get('/api/stock/:symbol', async (req, res) => {
             }
         }
 
-        // ── 2. Yahoo Finance fallback (works when market is closed) ──
-        if (!yahooPreferred && !recentlyFailedNse(bare)) {
+        // ── 2. Yahoo Finance fallback (always used for .BO stocks) ──
+        if (!yahooPreferred && !isBo && !recentlyFailedNse(bare)) {
             console.log(`[Stock] NSE unavailable for ${bare}, using Yahoo Finance fallback`);
         }
-        markNseFailure(bare);
-        const yhSymbol = bare + '.NS';
-        const yData = await HistoricalClient.quoteDetail(bare);
+        if (!isBo) markNseFailure(bare);
+        // Pass rawUpper so .BO symbols stay .BO (not forced to .NS by HistoricalClient)
+        const yData = await HistoricalClient.quoteDetail(rawUpper);
 
         if (!yData) {
             return res.status(404).json({ error: 'Stock not found' });
@@ -587,12 +849,15 @@ app.get('/api/stock/:symbol', async (req, res) => {
         
         let currentPrice = yData.regularMarketPrice ?? 0;
         if (!NSEClient.constructor.isMarketHours()) {
-            const closedPrice = await getClosedMarketPrice(bare, currentPrice);
+            const closedPrice = await getClosedMarketPrice(rawUpper, currentPrice);
             if (closedPrice) currentPrice = closedPrice.price;
         }
 
+        // Resolve exchange: .BO = BSE, otherwise NSE
+        const resolvedExchange = isBo ? 'BSE' : (yData.exchange === 'BSE' ? 'BSE' : 'NSE');
+
         const data = {
-            symbol:                     yhSymbol,
+            symbol:                     yData.symbol || rawUpper,
             shortName:                  yData.shortName || yData.longName || bare,
             regularMarketPrice:         currentPrice,
             regularMarketChange:        yData.regularMarketChange        ?? 0,
@@ -615,12 +880,12 @@ app.get('/api/stock/:symbol', async (req, res) => {
             sector:                     yData.sector     ?? null,
             indices:                    [],
             currency:                   yData.currency   ?? 'INR',
-            exchange:                   'NSE',
+            exchange:                   resolvedExchange,
             quoteType:                  yData.quoteType  ?? 'EQUITY',
             profile:                    null,
             dataSource:                 'yahoo',
         };
-        STOCK_CACHE[bare] = { timestamp: Date.now(), data };
+        STOCK_CACHE[cacheKey] = { timestamp: Date.now(), data };
         return res.json(data);
     } catch (error) {
         console.error('[Stock] Detail error:', error.message);
@@ -840,21 +1105,28 @@ app.get('/api/indices', async (req, res) => {
 app.get('/api/stock/:symbol/realtime', async (req, res) => {
     const { symbol } = req.params;
     try {
-        const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
+        // Preserve .BO suffix — do NOT force NSE.BO to NSE.NS
+        const rawUpper = symbol.toUpperCase();
+        const bare = rawUpper.replace(/\.(NS|BO)$/i, '');
+        const isBo = rawUpper.endsWith('.BO');
         const yahooPreferred = shouldPreferYahoo(bare);
         const marketOpen = NSEClient.constructor.isMarketHours();
-        const cached = marketDataService.cache[bare] || marketDataService.cache[bare + '.NS'];
+        const cached = marketDataService.cache[bare] || marketDataService.cache[rawUpper] || marketDataService.cache[bare + '.NS'];
 
         if (!marketOpen) {
-            const closedPrice = await getClosedMarketPrice(bare, cached?.price ?? null);
-            const frozenCache = marketDataService.cache[bare] || marketDataService.cache[bare + '.NS'] || cached;
+            const closedPrice = await getClosedMarketPrice(rawUpper, cached?.price ?? null);
+            const frozenCache = cached;
 
             if (closedPrice) {
+                const change = closedPrice.change ?? frozenCache?.change ?? 0;
+                const dayChange = closedPrice.dayChange ?? frozenCache?.dayChange ?? 0;
+                const prevClose = closedPrice.prevClose ?? frozenCache?.prevClose ?? (closedPrice.price - change);
                 return res.json({
-                    symbol:    bare,
+                    symbol:    rawUpper,
                     price:     closedPrice.price,
-                    change:    frozenCache?.change    ?? 0,
-                    dayChange: frozenCache?.dayChange ?? 0,
+                    change,
+                    dayChange,
+                    prevClose,
                     timestamp: closedPrice.timestamp,
                     source:    `closed-market-${closedPrice.source}`,
                     marketOpen: false,
@@ -871,48 +1143,62 @@ app.get('/api/stock/:symbol/realtime', async (req, res) => {
             return res.json({
                 symbol:    bare,
                 price:     cached.price,
-                change:    cached.change,
-                dayChange: cached.dayChange,
+                change:    cached.change ?? 0,
+                dayChange: cached.dayChange ?? 0,
+                prevClose: cached.prevClose ?? (cached.price - (cached.change ?? 0)),
                 timestamp: cached.timestamp,
                 source:    'cache',
             });
         }
 
-        // 2. Try fresh NSE fetch (works during market hours)
-        if (!yahooPreferred && !recentlyFailedNse(bare)) {
+        // 2. Try fresh NSE fetch (works during market hours, .NS only)
+        if (!yahooPreferred && !isBo && !recentlyFailedNse(bare)) {
             try {
                 const ns = await NSEClient.equityQuote(bare);
                 if (ns?.priceInfo?.lastPrice) {
-                const pi = ns.priceInfo;
-                marketDataService.subscribe(bare);
-                return res.json({
-                    symbol:    bare,
-                    price:     pi.lastPrice,
-                    change:    pi.change    ?? 0,
-                    dayChange: pi.pChange   ?? 0,
-                    timestamp: new Date(),
-                    source:    'nse',
-                });
-            }
+                    const pi = ns.priceInfo;
+                    marketDataService.subscribe(bare);
+                    const price = pi.lastPrice;
+                    const change = pi.change ?? 0;
+                    const dayChange = pi.pChange ?? 0;
+                    const prevClose = pi.previousClose ?? (price - change);
+                    const cacheEntry = {
+                        symbol:    bare,
+                        price,
+                        change,
+                        dayChange,
+                        prevClose,
+                        timestamp: new Date(),
+                        source:    'nse',
+                    };
+                    marketDataService.cache[bare] = cacheEntry;
+                    return res.json(cacheEntry);
+                }
             } catch {
                 markNseFailure(bare);
             }
         }
 
-        // 3. Yahoo Finance fallback — get latest close from chart data
+        // 3. Yahoo Finance fallback — pass rawUpper so .BO stays .BO
         try {
-            const price = await HistoricalClient.latestPrice(bare);
-            if (price) {
-                // Also cache this value
-                const entry = cached || {};
-                return res.json({
-                    symbol:    bare,
-                    price:     price,
-                    change:    entry.change    ?? 0,
-                    dayChange: entry.dayChange ?? 0,
+            const yData = await HistoricalClient.quoteDetail(rawUpper);
+            if (yData && typeof yData.regularMarketPrice === 'number' && yData.regularMarketPrice > 0) {
+                const price = yData.regularMarketPrice;
+                const change = yData.regularMarketChange ?? 0;
+                const dayChange = yData.regularMarketChangePercent ?? 0;
+                const prevClose = yData.regularMarketPreviousClose ?? (price - change);
+                const cacheEntry = {
+                    symbol:    rawUpper,
+                    price,
+                    change,
+                    dayChange,
+                    prevClose,
                     timestamp: new Date(),
                     source:    'yahoo',
-                });
+                };
+                marketDataService.cache[bare] = cacheEntry;
+                marketDataService.cache[rawUpper] = cacheEntry;
+                return res.json(cacheEntry);
             }
         } catch { /* Yahoo also failed */ }
 
@@ -1001,6 +1287,7 @@ app.get('/api/portfolio', authenticateToken, async (req, res) => {
         const userId = req.user.id;
         const portfolio = await TradeEngine.getPortfolio(userId);
         const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ error: 'User not found' });
         res.json({ balance: user.balance, holdings: portfolio });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -1062,6 +1349,10 @@ app.post('/api/challenge/trade', authenticateToken, async (req, res) => {
     try {
         const userId = req.user.id;
         const { symbol, type, quantity } = req.body;
+
+        if (!NSEClient.constructor.isMarketHours()) {
+            return res.status(409).json({ error: 'Market is closed. Buying and selling are disabled.' });
+        }
 
         const challenge = await loadCurrentChallenge(userId);
         if (!challenge) {
@@ -1171,13 +1462,24 @@ app.get('/api/challenge/trades', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/trade', authenticateToken, async (req, res) => {
-    const { symbol, type, quantity, price, orderType = 'MARKET', limitPrice } = req.body;
+    const { symbol, type, quantity, price: clientPrice, orderType = 'MARKET', limitPrice } = req.body;
     const userId = req.user.id;
     try {
-        if (!TEMP_ALLOW_AFTER_HOURS_TRADING && !NSEClient.constructor.isMarketHours()) {
-            return res.status(403).json({ error: 'Market is closed. Buying and selling are disabled.' });
+        let effectivePrice = clientPrice;
+        try {
+            const resolved = await resolveStockPrice(symbol);
+            if (resolved?.price > 0) {
+                effectivePrice = resolved.price;
+            }
+        } catch {
+            // fallback to clientPrice if server lookup failed
         }
-        const result = await TradeEngine.executeTrade(userId, type, symbol, quantity, price, orderType, limitPrice, false);
+
+        if (!effectivePrice || effectivePrice <= 0) {
+            return res.status(400).json({ error: `Price not available for ${symbol}` });
+        }
+
+        const result = await TradeEngine.executeTrade(userId, type, symbol, quantity, effectivePrice, orderType, limitPrice, false);
         res.json(result);
     } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -1188,7 +1490,7 @@ app.get('/api/orders', authenticateToken, async (req, res) => {
         // All orders (MARKET + LIMIT, all statuses) sorted newest first
         const orders = await Order.find({ user: userId }).sort({ createdAt: -1 });
         const mapped = orders.map(o => ({
-            id:          o.orderId,
+            id:          o.orderId || (o._id ? o._id.toString() : ''),
             symbol:      o.symbol,
             side:        o.side,
             quantity:    o.quantity,
@@ -1213,6 +1515,25 @@ app.delete('/api/orders/:id', authenticateToken, async (req, res) => {
     }
 });
 
+app.get('/api/transactions', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const txns = await TransactionHistory.find({ user: userId }).sort({ createdAt: -1 });
+        const mapped = txns.map(t => ({
+            id:          t._id ? t._id.toString() : '',
+            symbol:      t.symbol,
+            type:        t.type,
+            quantity:    t.quantity,
+            price:       t.price,
+            totalAmount: t.totalAmount,
+            createdAt:   t.createdAt,
+        }));
+        res.json({ transactions: mapped });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 
 io.on('connection', (socket) => {
     // Subscribe: mark symbol as priority + send cached value immediately
@@ -1232,3 +1553,5 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+
+

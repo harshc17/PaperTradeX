@@ -1,14 +1,14 @@
 'use client';
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { getSocket } from '@/lib/socket';
-
-const API = 'http://localhost:3001';
+import { API_URL as API } from '@/lib/config';
+import { useAuth } from './AuthContext';
 
 function normalizeSymbol(symbol: string) {
     return symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
 }
 
-interface PortfolioItem {
+export interface PortfolioItem {
     symbol: string;
     quantity: number;
     averagePrice: number;
@@ -16,6 +16,9 @@ interface PortfolioItem {
     currentValue?: number;
     pnl?: number;
     pnlPercent?: number;
+    dayChange?: number;
+    dayPnl?: number;
+    dayPnlPercent?: number;
 }
 
 interface Order {
@@ -31,9 +34,38 @@ interface Order {
     totalAmount?: number;
 }
 
+export interface Transaction {
+    id: string;
+    symbol: string;
+    type: 'BUY' | 'SELL';
+    quantity: number;
+    price: number;
+    totalAmount: number;
+    createdAt: string;
+}
+
+export interface MarketStatusInfo {
+    isOpen: boolean;
+    session: 'REGULAR' | 'PRE_MARKET' | 'POST_MARKET' | 'CLOSED';
+    sessionName: string;
+    isWeekend: boolean;
+    isHoliday: boolean;
+    holidayName: string | null;
+    currentTimeIST: string;
+    nextOpenTime: string;
+    nextOpenFormatted: string;
+    closeTime: string | null;
+    secondsUntilOpen: number;
+    secondsUntilClose: number;
+    countdown: string;
+    statusMessage: string;
+    exchange: string;
+}
+
 interface PortfolioContextType {
     holdings: PortfolioItem[];
     orders: Order[];
+    transactions: Transaction[];
     totalInvested: number;
     currentValue: number;
     totalReturns: number;
@@ -42,8 +74,12 @@ interface PortfolioContextType {
     todayReturnsPercent: number;
     livePrices: Record<string, number>;
     liveChanges: Record<string, number>;
+    marketOpen: boolean | null;
+    marketStatus: MarketStatusInfo | null;
+    refreshMarketStatus: () => Promise<void>;
     refreshPortfolio: () => Promise<void>;
     refreshOrders: () => Promise<void>;
+    refreshTransactions: () => Promise<void>;
     executeTrade: (
         symbol: string,
         type: 'BUY' | 'SELL',
@@ -67,10 +103,12 @@ function clearAuthState() {
 export function PortfolioProvider({ children }: { children: ReactNode }) {
     const [holdings, setHoldings] = useState<PortfolioItem[]>([]);
     const [orders, setOrders] = useState<Order[]>([]);
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [livePrices, setLivePrices] = useState<Record<string, number>>({});
     const [liveChanges, setLiveChanges] = useState<Record<string, number>>({});
     const [livePreviousClose, setLivePreviousClose] = useState<Record<string, number>>({});
     const [marketOpen, setMarketOpen] = useState<boolean | null>(null);
+    const [marketStatus, setMarketStatus] = useState<MarketStatusInfo | null>(null);
     const closedSnapshotKey = useRef('');
 
     const getToken = () => localStorage.getItem('ptx_token') || localStorage.getItem('token') || '';
@@ -119,6 +157,24 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         } catch (e) { /* silent */ }
     }, []);
 
+    const refreshTransactions = useCallback(async () => {
+        const token = getToken();
+        if (!token) return;
+        try {
+            const res = await fetch(`${API}/api/transactions`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.status === 401 || res.status === 403) {
+                clearAuthState();
+                return;
+            }
+            if (res.ok) {
+                const data = await res.json();
+                setTransactions(data.transactions || []);
+            }
+        } catch (e) { /* silent */ }
+    }, []);
+
     const executeTrade = async (
         symbol: string,
         type: 'BUY' | 'SELL',
@@ -143,15 +199,14 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         // Refresh portfolio after trade
         await refreshPortfolio();
         await refreshOrders();
+        await refreshTransactions();
         return data;
     };
 
     const cancelOrder = async (orderId: string) => {
         const token = getToken();
         if (!token) throw new Error('Not authenticated');
-        // Strip the 'L-' prefix to get the numeric ID
-        const numericId = orderId.replace(/^L-/, '');
-        const res = await fetch(`${API}/api/orders/${numericId}`, {
+        const res = await fetch(`${API}/api/orders/${encodeURIComponent(orderId)}`, {
             method: 'DELETE',
             headers: { Authorization: `Bearer ${token}` },
         });
@@ -262,30 +317,38 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         };
     }, [marketOpen]);
 
-    useEffect(() => {
-        refreshPortfolio();
-        refreshOrders();
-    }, [refreshPortfolio, refreshOrders]);
+    // Use Auth context to trigger a refresh when user logs in
+    const authContext = useAuth();
+    const user = authContext?.user;
 
     useEffect(() => {
-        const refreshMarketStatus = async () => {
-            try {
-                const r = await fetch(`${API}/api/market-status`);
-                if (!r.ok) return;
-                const d = await r.json();
-                if (typeof d?.isOpen === 'boolean') setMarketOpen(d.isOpen);
-            } catch {
-                // silent
-            }
-        };
+        if (user) {
+            refreshPortfolio();
+            refreshOrders();
+            refreshTransactions();
+        }
+    }, [refreshPortfolio, refreshOrders, refreshTransactions, user]);
 
+    const refreshMarketStatus = useCallback(async () => {
+        try {
+            const r = await fetch(`${API}/api/market-status`);
+            if (!r.ok) return;
+            const d = await r.json();
+            setMarketStatus(d);
+            if (typeof d?.isOpen === 'boolean') setMarketOpen(d.isOpen);
+        } catch {
+            // silent
+        }
+    }, []);
+
+    useEffect(() => {
         refreshMarketStatus();
-        const marketTimer = setInterval(refreshMarketStatus, 60000);
+        const marketTimer = setInterval(refreshMarketStatus, 30000);
 
         return () => {
             clearInterval(marketTimer);
         };
-    }, []);
+    }, [refreshMarketStatus]);
 
     // Fallback: refresh held-symbol prices periodically via REST in case socket ticks are missed.
     useEffect(() => {
@@ -301,7 +364,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
                     const r = await fetch(`${API}/api/stock/${encodeURIComponent(sym)}/realtime`);
                     if (!r.ok) return null;
                     const d = await r.json();
-                    return typeof d?.price === 'number' ? { symbol: sym, price: d.price, change: d.change } : null;
+                    return typeof d?.price === 'number'
+                        ? { symbol: sym, price: d.price, change: d.change, dayChange: d.dayChange, prevClose: d.prevClose }
+                        : null;
                 })
             );
 
@@ -309,16 +374,34 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
 
             const updates: Record<string, number> = {};
             const changeUpdates: Record<string, number> = {};
+            const prevCloseUpdates: Record<string, number> = {};
             
             responses.forEach((res) => {
                 if (res.status !== 'fulfilled' || !res.value) return;
                 
-                updates[res.value.symbol] = res.value.price;
-                updates[normalizeSymbol(res.value.symbol)] = res.value.price;
+                const d = res.value;
+                const sym = d.symbol;
+                const normSym = normalizeSymbol(sym);
+
+                updates[sym] = d.price;
+                updates[normSym] = d.price;
                 
-                if (res.value.change !== undefined) {
-                    changeUpdates[res.value.symbol] = res.value.change;
-                    changeUpdates[normalizeSymbol(res.value.symbol)] = res.value.change;
+                if (typeof d.change === 'number') {
+                    changeUpdates[sym] = d.change;
+                    changeUpdates[normSym] = d.change;
+                }
+
+                const prevClose = typeof d.prevClose === 'number' && d.prevClose > 0
+                    ? d.prevClose
+                    : typeof d.change === 'number' && Number.isFinite(d.change)
+                        ? d.price - d.change
+                        : typeof d.dayChange === 'number' && Number.isFinite(d.dayChange) && d.dayChange !== 0
+                            ? d.price / (1 + (d.dayChange / 100))
+                            : null;
+
+                if (typeof prevClose === 'number' && Number.isFinite(prevClose) && prevClose > 0) {
+                    prevCloseUpdates[sym] = prevClose;
+                    prevCloseUpdates[normSym] = prevClose;
                 }
             });
 
@@ -327,6 +410,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
             }
             if (Object.keys(changeUpdates).length > 0) {
                 setLiveChanges(prev => ({ ...prev, ...changeUpdates }));
+            }
+            if (Object.keys(prevCloseUpdates).length > 0) {
+                setLivePreviousClose(prev => ({ ...prev, ...prevCloseUpdates }));
             }
         };
 
@@ -366,7 +452,31 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         const invested = h.quantity * h.averagePrice;
         const pnl = currentValue - invested;
         const pnlPercent = invested > 0 ? (pnl / invested) * 100 : 0;
-        return { ...h, symbol: normalizedSymbol, currentPrice: ltp, currentValue, pnl, pnlPercent };
+
+        const prevClose = livePreviousClose[h.symbol] ?? livePreviousClose[normalizedSymbol];
+        const change = liveChanges[h.symbol] ?? liveChanges[normalizedSymbol];
+        const dayChange = typeof change === 'number' && Number.isFinite(change)
+            ? change
+            : (typeof prevClose === 'number' && prevClose > 0 ? (ltp - prevClose) : 0);
+        const dayPnl = h.quantity * dayChange;
+        const yesterdayHoldingValue = typeof prevClose === 'number' && prevClose > 0
+            ? (h.quantity * prevClose)
+            : (currentValue - dayPnl);
+        const dayPnlPercent = yesterdayHoldingValue > 0
+            ? (dayPnl / yesterdayHoldingValue) * 100
+            : (invested > 0 ? (dayPnl / invested) * 100 : 0);
+
+        return {
+            ...h,
+            symbol: normalizedSymbol,
+            currentPrice: ltp,
+            currentValue,
+            pnl,
+            pnlPercent,
+            dayChange,
+            dayPnl,
+            dayPnlPercent,
+        };
     });
 
     const totalInvested = enrichedHoldings.reduce((a, h) => a + h.quantity * h.averagePrice, 0);
@@ -378,18 +488,30 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     const todayReturns = enrichedHoldings.reduce((a, h) => {
         const currentPrice = h.currentPrice ?? h.averagePrice;
         const prevClose = livePreviousClose[h.symbol] ?? livePreviousClose[normalizeSymbol(h.symbol)];
-        if (!(prevClose > 0)) return a;
-        return a + (h.quantity * (currentPrice - prevClose));
+        const change = liveChanges[h.symbol] ?? liveChanges[normalizeSymbol(h.symbol)];
+
+        if (typeof change === 'number' && Number.isFinite(change)) {
+            return a + (h.quantity * change);
+        }
+        if (typeof prevClose === 'number' && prevClose > 0) {
+            return a + (h.quantity * (currentPrice - prevClose));
+        }
+        return a;
     }, 0);
     // Baseline for today's % return is the value of the portfolio at yesterday's close
     // Yesterday's Value = Current Value - Today's Return
     const yesterdayValue = currentValue - todayReturns;
-    const todayReturnsPercent = yesterdayValue > 0 ? (todayReturns / yesterdayValue) * 100 : 0;
+    const todayReturnsPercent = yesterdayValue > 0
+        ? (todayReturns / yesterdayValue) * 100
+        : totalInvested > 0
+            ? (todayReturns / totalInvested) * 100
+            : 0;
 
     return (
         <PortfolioContext.Provider value={{
             holdings: enrichedHoldings,
             orders,
+            transactions,
             totalInvested,
             currentValue,
             totalReturns,
@@ -398,8 +520,12 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
             todayReturnsPercent,
             livePrices,
             liveChanges,
+            marketOpen,
+            marketStatus,
+            refreshMarketStatus,
             refreshPortfolio,
             refreshOrders,
+            refreshTransactions,
             executeTrade,
             cancelOrder,
         }}>

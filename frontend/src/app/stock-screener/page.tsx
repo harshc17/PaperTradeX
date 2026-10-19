@@ -6,21 +6,105 @@ import Header from '@/components/dashboard/Header';
 import { TrendingUp, TrendingDown, Search, Filter } from 'lucide-react';
 
 const STOCKS = [
-    { symbol: 'RELIANCE.NS', name: 'Reliance Industries', category: 'Energy' },
-    { symbol: 'TCS.NS', name: 'Tata Consultancy Services', category: 'Technology' },
+    // ── Banking & Financial Services ──
     { symbol: 'HDFCBANK.NS', name: 'HDFC Bank', category: 'Banking' },
-    { symbol: 'INFY.NS', name: 'Infosys', category: 'Technology' },
     { symbol: 'ICICIBANK.NS', name: 'ICICI Bank', category: 'Banking' },
     { symbol: 'SBIN.NS', name: 'State Bank of India', category: 'Banking' },
-    { symbol: 'ITC.NS', name: 'ITC', category: 'FMCG' },
-    { symbol: 'BHARTIARTL.NS', name: 'Bharti Airtel', category: 'Telecom' },
-    { symbol: 'LT.NS', name: 'Larsen & Toubro', category: 'Infrastructure' },
-    { symbol: 'HINDUNILVR.NS', name: 'Hindustan Unilever', category: 'FMCG' },
     { symbol: 'AXISBANK.NS', name: 'Axis Bank', category: 'Banking' },
+    { symbol: 'KOTAKBANK.NS', name: 'Kotak Mahindra Bank', category: 'Banking' },
+    { symbol: 'BANKBARODA.NS', name: 'Bank of Baroda', category: 'Banking' },
+    { symbol: 'PNB.NS', name: 'Punjab National Bank', category: 'Banking' },
     { symbol: 'BAJFINANCE.NS', name: 'Bajaj Finance', category: 'Finance' },
+    { symbol: 'BAJAJFINSV.NS', name: 'Bajaj Finserv', category: 'Finance' },
+    { symbol: 'SHRIRAMFIN.NS', name: 'Shriram Finance', category: 'Finance' },
+    { symbol: 'JIOFIN.NS', name: 'Jio Financial Services', category: 'Finance' },
+    { symbol: 'SBILIFE.NS', name: 'SBI Life Insurance', category: 'Finance' },
+    { symbol: 'HDFCLIFE.NS', name: 'HDFC Life Insurance', category: 'Finance' },
+
+    // ── Information Technology ──
+    { symbol: 'TCS.NS', name: 'Tata Consultancy Services', category: 'Technology' },
+    { symbol: 'INFY.NS', name: 'Infosys', category: 'Technology' },
+    { symbol: 'HCLTECH.NS', name: 'HCL Technologies', category: 'Technology' },
+    { symbol: 'WIPRO.NS', name: 'Wipro', category: 'Technology' },
+    { symbol: 'TECHM.NS', name: 'Tech Mahindra', category: 'Technology' },
+    { symbol: 'LTIM.NS', name: 'LTIMindtree', category: 'Technology' },
+    { symbol: 'PERSISTENT.NS', name: 'Persistent Systems', category: 'Technology' },
+    { symbol: 'COFORGE.NS', name: 'Coforge', category: 'Technology' },
+    { symbol: 'TATAELXSI.NS', name: 'Tata Elxsi', category: 'Technology' },
+
+    // ── Energy & Utilities ──
+    { symbol: 'RELIANCE.NS', name: 'Reliance Industries', category: 'Energy' },
+    { symbol: 'NTPC.NS', name: 'NTPC Limited', category: 'Energy' },
+    { symbol: 'POWERGRID.NS', name: 'Power Grid Corporation', category: 'Energy' },
+    { symbol: 'ONGC.NS', name: 'Oil & Natural Gas Corp', category: 'Energy' },
+    { symbol: 'COALINDIA.NS', name: 'Coal India', category: 'Energy' },
+    { symbol: 'BPCL.NS', name: 'Bharat Petroleum', category: 'Energy' },
+    { symbol: 'IOC.NS', name: 'Indian Oil Corporation', category: 'Energy' },
+    { symbol: 'TATAPOWER.NS', name: 'Tata Power', category: 'Energy' },
+    { symbol: 'ADANIGREEN.NS', name: 'Adani Green Energy', category: 'Energy' },
+    { symbol: 'SUZLON.NS', name: 'Suzlon Energy', category: 'Energy' },
+
+    // ── Automobile & Components ──
     { symbol: 'MARUTI.NS', name: 'Maruti Suzuki', category: 'Automobile' },
     { symbol: 'TATAMOTORS.NS', name: 'Tata Motors', category: 'Automobile' },
+    { symbol: 'M&M.NS', name: 'Mahindra & Mahindra', category: 'Automobile' },
+    { symbol: 'BAJAJ-AUTO.NS', name: 'Bajaj Auto', category: 'Automobile' },
+    { symbol: 'EICHERMOT.NS', name: 'Eicher Motors', category: 'Automobile' },
+    { symbol: 'HEROMOTOCO.NS', name: 'Hero MotoCorp', category: 'Automobile' },
+    { symbol: 'MRF.NS', name: 'MRF Limited', category: 'Automobile' },
+
+    // ── Healthcare & Pharma ──
     { symbol: 'SUNPHARMA.NS', name: 'Sun Pharma', category: 'Pharma' },
+    { symbol: 'CIPLA.NS', name: 'Cipla', category: 'Pharma' },
+    { symbol: 'DRREDDY.NS', name: "Dr. Reddy's Laboratories", category: 'Pharma' },
+    { symbol: 'DIVISLAB.NS', name: "Divi's Laboratories", category: 'Pharma' },
+    { symbol: 'APOLLOHOSP.NS', name: 'Apollo Hospitals', category: 'Pharma' },
+    { symbol: 'MAXHEALTH.NS', name: 'Max Healthcare', category: 'Pharma' },
+    { symbol: 'LUPIN.NS', name: 'Lupin', category: 'Pharma' },
+
+    // ── Consumer, Retail & FMCG ──
+    { symbol: 'ITC.NS', name: 'ITC Limited', category: 'FMCG' },
+    { symbol: 'HINDUNILVR.NS', name: 'Hindustan Unilever', category: 'FMCG' },
+    { symbol: 'NESTLEIND.NS', name: 'Nestle India', category: 'FMCG' },
+    { symbol: 'TATACONSUM.NS', name: 'Tata Consumer Products', category: 'FMCG' },
+    { symbol: 'BRITANNIA.NS', name: 'Britannia Industries', category: 'FMCG' },
+    { symbol: 'TITAN.NS', name: 'Titan Company', category: 'Consumer' },
+    { symbol: 'TRENT.NS', name: 'Trent Limited (Westside/Zudio)', category: 'Consumer' },
+    { symbol: 'ASIANPAINT.NS', name: 'Asian Paints', category: 'Consumer' },
+    { symbol: 'PIDILITIND.NS', name: 'Pidilite Industries', category: 'Consumer' },
+    { symbol: 'HAVELLS.NS', name: 'Havells India', category: 'Consumer' },
+    { symbol: 'DMART.NS', name: 'Avenue Supermarts (DMart)', category: 'Consumer' },
+
+    // ── Metals & Mining ──
+    { symbol: 'TATASTEEL.NS', name: 'Tata Steel', category: 'Metals' },
+    { symbol: 'JSWSTEEL.NS', name: 'JSW Steel', category: 'Metals' },
+    { symbol: 'HINDALCO.NS', name: 'Hindalco Industries', category: 'Metals' },
+    { symbol: 'VEDL.NS', name: 'Vedanta', category: 'Metals' },
+
+    // ── Infrastructure, Defence & Capital Goods ──
+    { symbol: 'LT.NS', name: 'Larsen & Toubro', category: 'Infrastructure' },
+    { symbol: 'ADANIENT.NS', name: 'Adani Enterprises', category: 'Infrastructure' },
+    { symbol: 'ADANIPORTS.NS', name: 'Adani Ports & SEZ', category: 'Infrastructure' },
+    { symbol: 'ULTRACEMCO.NS', name: 'UltraTech Cement', category: 'Infrastructure' },
+    { symbol: 'HAL.NS', name: 'Hindustan Aeronautics', category: 'Defence' },
+    { symbol: 'BEL.NS', name: 'Bharat Electronics', category: 'Defence' },
+    { symbol: 'BHEL.NS', name: 'Bharat Heavy Electricals', category: 'Capital Goods' },
+    { symbol: 'SIEMENS.NS', name: 'Siemens India', category: 'Capital Goods' },
+    { symbol: 'POLYCAB.NS', name: 'Polycab India', category: 'Capital Goods' },
+    { symbol: 'DIXON.NS', name: 'Dixon Technologies', category: 'Manufacturing' },
+    { symbol: 'DLF.NS', name: 'DLF Limited', category: 'Real Estate' },
+    { symbol: 'RVNL.NS', name: 'Rail Vikas Nigam Limited', category: 'Railways' },
+    { symbol: 'IRFC.NS', name: 'Indian Railway Finance Corp', category: 'Railways' },
+    { symbol: 'IRCTC.NS', name: 'IRCTC', category: 'Railways' },
+    { symbol: 'MAZDOCK.NS', name: 'Mazagon Dock Shipbuilders', category: 'Defence' },
+
+    // ── Telecom, Media & New-Age ──
+    { symbol: 'BHARTIARTL.NS', name: 'Bharti Airtel', category: 'Telecom' },
+    { symbol: 'ZOMATO.NS', name: 'Zomato', category: 'New-Age' },
+    { symbol: 'SWIGGY.NS', name: 'Swiggy', category: 'New-Age' },
+    { symbol: 'PAYTM.NS', name: 'One 97 Communications (Paytm)', category: 'New-Age' },
+    { symbol: 'NYKAA.NS', name: 'FSN E-Commerce (Nykaa)', category: 'New-Age' },
+    { symbol: 'POLICYBZR.NS', name: 'PB Fintech (PolicyBazaar)', category: 'New-Age' },
 ];
 
 type QuoteData = { symbol: string; price: number; change: number; dayChange: number };
@@ -130,13 +214,13 @@ export default function StockScreenerPage() {
     const fmt = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     return (
-        <div className="min-h-screen bg-gray-50 font-sans">
+        <div className="min-h-screen bg-transparent font-sans page-fade-in">
             <Header />
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
                     <div>
-                        <h1 className="text-[26px] font-semibold text-[#3b4252]">Stock Screener</h1>
+                        <h1 className="text-[26px] font-semibold text-[#3b4252] font-heading">Stock Screener</h1>
                         <p className="text-gray-500 text-sm mt-1">Analyze and discover all equities in the Indian market</p>
                     </div>
 

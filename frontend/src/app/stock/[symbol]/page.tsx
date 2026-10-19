@@ -10,7 +10,7 @@ import TradingPanel from '@/components/stock/TradingPanel';
 import AINewsPanel from '@/components/stock/AINewsPanel';
 
 const StockChart = dynamic(() => import('@/components/stock/StockChart'), {
-    loading: () => <div className="h-[390px] rounded-2xl bg-white border border-gray-100 animate-pulse" />,
+    loading: () => <div className="h-[390px] rounded-[14px] bg-surface border border-white/10 shimmer" />,
 });
 
 export default function StockPage() {
@@ -26,7 +26,7 @@ export default function StockPage() {
     if (loading || !user) return null;
 
     return (
-        <div className="min-h-screen bg-[#f6f7f9] font-sans">
+        <div className="min-h-screen bg-transparent font-sans page-fade-in">
             <Header />
             <main className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-7">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">

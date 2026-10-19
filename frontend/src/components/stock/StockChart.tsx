@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { io, Socket } from 'socket.io-client';
+import { getSocket } from '@/lib/socket';
+import { API_URL } from '@/lib/config';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -91,19 +92,6 @@ function formatVol(v: number): string {
     return String(v);
 }
 
-/* ─── Singleton Socket ───────────────────────────────────────────────────────── */
-let _socket: Socket | null = null;
-function getSocket(): Socket {
-    if (!_socket) {
-        _socket = io('http://localhost:3001', {
-            transports: ['websocket', 'polling'],
-            reconnection: true,
-            timeout: 10000,
-        });
-    }
-    return _socket;
-}
-
 /* ─── Component ──────────────────────────────────────────────────────────────── */
 export default function StockChart({ symbol }: { symbol: string }) {
     const [history, setHistory] = useState<HistoryPoint[]>([]);
@@ -128,7 +116,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
         setPrevClose(null);
 
         fetch(
-            `http://localhost:3001/api/stock/${encodeURIComponent(symbol)}/history?period=${period.value}`
+            `${API_URL}/api/stock/${encodeURIComponent(symbol)}/history?period=${period.value}`
         )
             .then(r => r.ok ? r.json() : Promise.reject('bad response'))
             .then(data => {
@@ -379,23 +367,23 @@ export default function StockChart({ symbol }: { symbol: string }) {
             <div className="relative h-[390px]">
                 {loading ? (
                     <div className="h-full flex flex-col items-center justify-center gap-3">
-                        <div className="w-8 h-8 border-2 border-[#00b386] border-t-transparent rounded-full animate-spin" />
-                        <p className="text-xs text-gray-400">Loading chart...</p>
+                        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        <p className="text-xs text-ink-muted">Loading chart...</p>
                     </div>
                 ) : error ? (
                     <div className="h-full flex flex-col items-center justify-center gap-2">
-                        <WifiOff className="w-8 h-8 text-gray-300" />
-                        <p className="text-sm text-gray-400">Failed to load chart data</p>
+                        <WifiOff className="w-8 h-8 text-ink-faint" />
+                        <p className="text-sm text-ink-muted">Failed to load chart data</p>
                         <button
                             onClick={() => fetchHistory(activePeriod)}
-                            className="text-xs text-[#00b386] hover:underline font-medium"
+                            className="text-xs text-primary hover:underline font-medium"
                         >
                             Retry
                         </button>
                     </div>
                 ) : displayHistory.length === 0 ? (
                     <div className="h-full flex items-center justify-center">
-                        <p className="text-sm text-gray-400">No data for this period</p>
+                        <p className="text-sm text-ink-muted">No data for this period</p>
                     </div>
                 ) : (
                     <>
@@ -418,8 +406,8 @@ export default function StockChart({ symbol }: { symbol: string }) {
                         onClick={() => setActivePeriod(p)}
                         className={`h-9 min-w-[48px] px-3.5 rounded-full border text-xs sm:text-sm font-medium transition-all ${
                             activePeriod.value === p.value
-                                ? 'bg-white border-[#4a4f63] text-[#31354a]'
-                                : 'bg-white/70 border-gray-200 text-gray-500 hover:text-gray-700'
+                                ? 'bg-surface-3 border-primary/40 text-primary'
+                                : 'bg-surface-2 border-white/10 text-ink-muted hover:text-ink hover:border-white/20'
                         }`}
                     >
                         {p.label}
@@ -429,7 +417,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
                 <button
                     onClick={() => fetchHistory(activePeriod)}
                     disabled={loading}
-                    className="h-9 w-9 rounded-full border border-gray-200 bg-white grid place-items-center text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                    className="h-9 w-9 rounded-full border border-white/10 bg-surface-2 grid place-items-center text-ink-muted hover:text-primary hover:border-white/20 disabled:opacity-50"
                     title="Refresh chart"
                 >
                     <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -437,7 +425,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
             </div>
 
             {hoverPt && (
-                <div className="mt-2 text-[11px] text-gray-500 flex items-center gap-2.5 flex-wrap">
+                <div className="mt-2 text-[11px] text-ink-muted flex items-center gap-2.5 flex-wrap">
                     <span>O {formatINR(hoverPt.open ?? hoverPt.close)}</span>
                     <span>H {formatINR(hoverPt.high ?? hoverPt.close)}</span>
                     <span>L {formatINR(hoverPt.low ?? hoverPt.close)}</span>
@@ -446,7 +434,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
                 </div>
             )}
 
-            <div className="mt-1 text-[10px] text-gray-400">
+            <div className="mt-1 text-[10px] text-ink-faint">
                 {isLive ? 'Live updates on' : 'Live updates delayed'} · {displayHistory.length} points · {activePeriod.value === '1d' ? 'NSE intraday' : 'Yahoo OHLCV'}
             </div>
         </div>

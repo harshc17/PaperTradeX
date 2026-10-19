@@ -1,6 +1,6 @@
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { io } from 'socket.io-client';
+import { getSocket } from '@/lib/socket';
 
 export interface Holding {
     symbol: string;
@@ -54,17 +54,19 @@ export function HoldingsProvider({ children }: { children: ReactNode }) {
         { name: 'SBIN.NS', price: 'Loading...', change: '0 (0%)', isPositive: false },
     ]);
 
-    // Socket.io Connection
+    // Socket.io Connection (shared singleton — see lib/socket)
     useEffect(() => {
-        const socket = io('http://localhost:3001');
+        const socket = getSocket();
 
-        socket.on('connect', () => {
-            console.log('Connected to Market Data Server');
-            // Subscribe to all symbols we care about
-            ['TCS.NS', 'INFY.NS', 'HDFCBANK.NS', 'ICICIBANK.NS', 'SBIN.NS', '^NSEI', '^BSESN'].forEach(sym => socket.emit('subscribe', sym));
-        });
+        const subscribe = () =>
+            ['TCS.NS', 'INFY.NS', 'HDFCBANK.NS', 'ICICIBANK.NS', 'SBIN.NS', '^NSEI', '^BSESN']
+                .forEach(sym => socket.emit('subscribe', sym));
 
-        socket.on('market_update', (data: any) => {
+        // Subscribe now (socket may already be connected) and again on any reconnect.
+        if (socket.connected) subscribe();
+        socket.on('connect', subscribe);
+
+        const onMarketUpdate = (data: any) => {
             // Data format: { SYMBOL: { symbol, price, change, dayChange, timestamp } }
 
             const priceUpdates: Record<string, number> = {};
@@ -134,10 +136,15 @@ export function HoldingsProvider({ children }: { children: ReactNode }) {
                 });
                 return hasChanges ? newWatchlist : prev;
             });
-        });
+        };
 
+        socket.on('market_update', onMarketUpdate);
+
+        // Only detach our own listeners — never disconnect the shared socket,
+        // other consumers rely on it.
         return () => {
-            socket.disconnect();
+            socket.off('connect', subscribe);
+            socket.off('market_update', onMarketUpdate);
         };
     }, []);
 

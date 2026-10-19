@@ -24,8 +24,8 @@ export default function HoldingsStats() {
                     <div className="flex justify-between items-center">
                         <p className="text-gray-600 dark:text-gray-400">1D returns</p>
                         <p className={`text-lg font-semibold flex items-center gap-2 ${dayReturns >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                            {dayReturns >= 0 ? '+' : ''}₹{fmt(Math.abs(dayReturns))} 
-                            <span className="text-sm">({dayReturnsPercent >= 0 ? '+' : ''}{fmt(dayReturnsPercent)}%)</span>
+                            {dayReturns >= 0 ? '+' : '-'}₹{fmt(Math.abs(dayReturns))} 
+                            <span className="text-sm">({dayReturnsPercent >= 0 ? '+' : '-'}{fmt(Math.abs(dayReturnsPercent))}%)</span>
                         </p>
                     </div>
 
@@ -33,8 +33,8 @@ export default function HoldingsStats() {
                     <div className="flex justify-between items-center">
                         <p className="text-gray-600 dark:text-gray-400">Total returns</p>
                         <p className={`text-lg font-semibold flex items-center gap-2 ${totalReturns >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                            {totalReturns >= 0 ? '+' : ''}₹{fmt(Math.abs(totalReturns))} 
-                            <span className="text-sm">({totalReturnsPercent > 0 ? '+' : ''}{fmt(totalReturnsPercent)}%)</span>
+                            {totalReturns >= 0 ? '+' : '-'}₹{fmt(Math.abs(totalReturns))} 
+                            <span className="text-sm">({totalReturnsPercent >= 0 ? '+' : '-'}{fmt(Math.abs(totalReturnsPercent))}%)</span>
                         </p>
                     </div>
 

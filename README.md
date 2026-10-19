@@ -89,6 +89,10 @@ Edit `backend/.env`:
 ```bash
 MONGODB_URI=mongodb://localhost:27017/papertradex
 
+# Required — generate with:
+#   node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+JWT_SECRET=your_generated_secret_here
+
 # Optional — enable AI features
 GROQ_API_KEY=
 OPENROUTER_API_KEY=
@@ -129,14 +133,60 @@ cd frontend && npm run dev
 
 ## Environment variables
 
-Copy `backend/.env.example` → `backend/.env`. **Do not commit** real keys.
+Copy `backend/.env.example` → `backend/.env`. **Do not commit real keys.**
+
+### Backend (`backend/.env`)
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `MONGODB_URI` | Yes* | MongoDB connection string (*defaults to local if omitted) |
-| `GROQ_API_KEY` | No | Primary AI provider (fast free tier) |
+| `JWT_SECRET` | **Yes** | Long random string — generate with `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"` |
+| `JWT_EXPIRES_IN` | No | Token lifetime, default `24h` |
+| `CORS_ORIGIN` | No | Comma-separated allowed origins, default `http://localhost:3000` |
+| `FRONTEND_URL` | No | Used in password-reset links, default `http://localhost:3000` |
+| `ADMIN_EMAIL` | No | Admin account email, default `admin@papertradex.com` |
+| `ADMIN_PASSWORD` | No | Admin password — leave blank to skip seeding |
+| `GOOGLE_CLIENT_ID` | No | Google OAuth Client ID (see setup below) |
+| `SMTP_HOST` | No | SMTP server host — leave blank to log reset links to console |
+| `SMTP_PORT` | No | SMTP port, default `587` |
+| `SMTP_USER` | No | SMTP username |
+| `SMTP_PASS` | No | SMTP password |
+| `SMTP_FROM` | No | From address for reset emails |
+| `GROQ_API_KEY` | No | Primary AI provider |
 | `OPENROUTER_API_KEY` | No | Fallback AI provider |
 | `GEMINI_API_KEY` | No | Google Gemini for AI features |
+
+### Frontend (`frontend/.env.local`)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_API_URL` | No | Backend URL, default `http://localhost:3001` |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | No | Same Google Client ID as backend — enables the Google login button |
+
+---
+
+## Google login setup
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) → create or select a project.
+2. **APIs & Services → OAuth consent screen** → External → fill in app name + support email → add your email as a test user.
+3. **Credentials → Create Credentials → OAuth client ID** → Application type: **Web application**.
+4. Under **Authorized JavaScript origins** add `http://localhost:3000` (and your production URL when deploying).
+5. Copy the **Client ID**.
+6. Set it in both env files:
+   - `backend/.env` → `GOOGLE_CLIENT_ID=<your-client-id>`
+   - `frontend/.env.local` → `NEXT_PUBLIC_GOOGLE_CLIENT_ID=<your-client-id>`
+7. Restart both servers. The "Continue with Google" button will appear on the login page.
+
+---
+
+## ⚠️ Security notice — rotate your API keys
+
+If you previously committed `backend/.env` to git, the following keys are compromised and **must be regenerated**:
+
+- **Gemini API key** → [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) — delete the old key and create a new one.
+- **OpenRouter API key** → [openrouter.ai/keys](https://openrouter.ai/keys) — delete the old key and create a new one.
+
+After regenerating, update `backend/.env` with the new values. The `.env` file is git-ignored and will not be committed again.
 
 ---
 

@@ -1,7 +1,6 @@
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-
-const API = 'http://localhost:3001';
+import { API_URL as API } from '@/lib/config';
 
 interface User {
     id: number;
@@ -17,6 +16,7 @@ interface AuthContextType {
     balance: number;
     loading: boolean;
     login: (email: string, password: string) => Promise<void>;
+    loginWithGoogle: (credential: string) => Promise<void>;
     register: (name: string, email: string, password: string, phone: string) => Promise<void>;
     logout: () => void;
     refreshBalance: () => Promise<void>;
@@ -74,6 +74,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
+    const loginWithGoogle = async (credential: string) => {
+        const res = await fetch(`${API}/api/auth/google`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ credential }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Google login failed');
+        localStorage.setItem('ptx_token', data.token);
+        localStorage.setItem('ptx_user', JSON.stringify(data.user));
+        localStorage.setItem('token', data.token);
+        setToken(data.token);
+        setUser(data.user);
+        setBalance(data.user.balance ?? 0);
+    };
+
     const login = async (email: string, password: string) => {
         const res = await fetch(`${API}/api/login`, {
             method: 'POST',
@@ -118,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, balance, loading, login, register, logout, refreshBalance }}>
+        <AuthContext.Provider value={{ user, token, balance, loading, login, loginWithGoogle, register, logout, refreshBalance }}>
             {children}
         </AuthContext.Provider>
     );

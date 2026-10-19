@@ -28,12 +28,25 @@ const PERIOD_CONFIG = {
     'max': { lookbackDays: 9000, interval: '1mo' },
 };
 
-// Yahoo uses .NS suffix for NSE stocks
+// Yahoo uses .NS suffix for NSE stocks, .BO for BSE stocks.
+// Preserve existing exchange suffixes; only append .NS if bare.
 function toYahooSymbol(symbol) {
     if (symbol.startsWith('^')) return symbol; // indices unchanged
     const upper = symbol.toUpperCase();
-    if (upper.endsWith('.NS') || upper.endsWith('.BO')) return symbol;
-    return symbol + '.NS';
+    if (upper.endsWith('.NS') || upper.endsWith('.BO')) return upper;
+    return upper + '.NS'; // default to NSE for bare symbols
+}
+
+// Returns candidate symbols to try in order, with fallback to the other exchange.
+// e.g. 'NSE.BO' → ['NSE.BO', 'NSE.NS']
+// e.g. 'RELIANCE.NS' → ['RELIANCE.NS', 'RELIANCE.BO']
+// e.g. 'RELIANCE' → ['RELIANCE.NS', 'RELIANCE.BO']
+function getYahooCandidates(symbol) {
+    if (symbol.startsWith('^')) return [symbol];
+    const upper = symbol.toUpperCase();
+    if (upper.endsWith('.BO')) return [upper, upper.replace(/\.BO$/, '.NS')];
+    if (upper.endsWith('.NS')) return [upper, upper.replace(/\.NS$/, '.BO')];
+    return [upper + '.NS', upper + '.BO'];
 }
 
 module.exports = {
@@ -63,16 +76,29 @@ module.exports = {
      */
     async historical(symbol, period) {
         const cfg = PERIOD_CONFIG[period] || PERIOD_CONFIG['1mo'];
-        const yhSymbol = toYahooSymbol(symbol);
+        const candidates = getYahooCandidates(symbol);
         const now = new Date();
         const period1 = new Date(now - cfg.lookbackDays * 86400000);
 
+        // Try each candidate symbol (e.g. .BO first, then .NS fallback)
+        let result = null;
+        for (const yhSymbol of candidates) {
+            try {
+                const r = await yf.chart(yhSymbol, {
+                    period1,
+                    period2: now,
+                    interval: cfg.interval,
+                }, { validateResult: false });
+                const quotes = r?.quotes || [];
+                if (quotes.some(q => q?.close > 0)) {
+                    result = r;
+                    break;
+                }
+            } catch { /* try next */ }
+        }
+        if (!result) result = {};
         // chart() with validateResult:false works reliably for historical OHLCV
-        const result = await yf.chart(yhSymbol, {
-            period1,
-            period2: now,
-            interval: cfg.interval,
-        }, { validateResult: false });
+        // (result already fetched above)
 
         const raw = result?.quotes || [];
 
@@ -114,26 +140,26 @@ module.exports = {
      * Used for smoke-testing a symbol before displaying it.
      */
     async latestPrice(symbol) {
-        try {
-            const cfg = PERIOD_CONFIG['1d'];
-            const yhSymbol = toYahooSymbol(symbol);
-            const now = new Date();
-            const period1 = new Date(now - 3 * 86400000); // last 3 days
+        const candidates = getYahooCandidates(symbol);
+        const now = new Date();
+        const period1 = new Date(now - 3 * 86400000); // last 3 days
 
-            const result = await yf.chart(yhSymbol, {
-                period1,
-                period2: now,
-                interval: '2m',
-            }, { validateResult: false });
+        for (const yhSymbol of candidates) {
+            try {
+                const result = await yf.chart(yhSymbol, {
+                    period1,
+                    period2: now,
+                    interval: '2m',
+                }, { validateResult: false });
 
-            const raw = result?.quotes || [];
-            const valid = raw.filter(q => q?.close > 0);
-            if (valid.length === 0) return null;
-            const last = valid[valid.length - 1];
-            return last.close;
-        } catch {
-            return null;
+                const raw = result?.quotes || [];
+                const valid = raw.filter(q => q?.close > 0);
+                if (valid.length > 0) {
+                    return valid[valid.length - 1].close;
+                }
+            } catch { /* try next */ }
         }
+        return null;
     },
 
     /**
@@ -142,10 +168,22 @@ module.exports = {
      * @param {string} symbol  e.g. "HDFCBANK", "RELIANCE"
      */
     async quoteDetail(symbol) {
-        const yhSymbol = toYahooSymbol(symbol);
-        const data = await yf.quote(yhSymbol, {}, { validateResult: false });
-        if (!data) return null;
-        return data;
+        const candidates = getYahooCandidates(symbol);
+        for (const yhSymbol of candidates) {
+            try {
+                const data = await yf.quote(yhSymbol, {}, { validateResult: false });
+                if (data && (data.regularMarketPrice > 0 || data.regularMarketPreviousClose > 0)) {
+                    return data;
+                }
+            } catch (e) {
+                if (e.name === 'FailedYahooValidationError' && e.result) {
+                    const r = e.result;
+                    if (r && (r.regularMarketPrice > 0 || r.regularMarketPreviousClose > 0)) return r;
+                }
+                console.warn(`[Yahoo] quote failed for "${yhSymbol}": ${e.message}`);
+            }
+        }
+        return null;
     },
 
     /**

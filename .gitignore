@@ -37,3 +37,7 @@ Thumbs.db
 coverage/
 .turbo/
 *.local
+*.bak
+.claude/
+replace_colors.js
+_smoke_test.js

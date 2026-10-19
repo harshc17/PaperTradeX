@@ -118,9 +118,12 @@ class NSEClient {
             }
             // Session expired — refresh and retry once
             if (retries > 0 && (e.response?.status === 401 || e.response?.status === 403 || e.response?.status === 429)) {
-                console.warn('[NSE] Auth error, refreshing session...');
-                this._cookieTs = 0;
-                this._cookies  = '';
+                if (Date.now() - (this._lastAuthRefresh || 0) > 5000) {
+                    this._lastAuthRefresh = Date.now();
+                    console.warn('[NSE] Auth error, refreshing session...');
+                    this._cookieTs = 0;
+                    this._cookies  = '';
+                }
                 await this._initSession();
                 return this._get(path, retries - 1);
             }
@@ -163,42 +166,229 @@ class NSEClient {
         return this._get(`/api/chart-databyindex?index=${bare}EQ&indices=false`);
     }
 
+    /**
+     * Known NSE/BSE Trading Holidays (2025 - 2026).
+     */
+    static get HOLIDAYS() {
+        return {
+            // 2025
+            '2025-01-26': 'Republic Day',
+            '2025-02-26': 'Mahashivratri',
+            '2025-03-14': 'Holi',
+            '2025-03-31': 'Id-Ul-Fitr',
+            '2025-04-10': 'Mahavir Jayanti',
+            '2025-04-14': 'Dr. Baba Saheb Ambedkar Jayanti',
+            '2025-04-18': 'Good Friday',
+            '2025-05-01': 'Maharashtra Day',
+            '2025-08-15': 'Independence Day',
+            '2025-08-27': 'Ganesh Chaturthi',
+            '2025-10-02': 'Mahatma Gandhi Jayanti',
+            '2025-10-21': 'Diwali Laxmi Pujan',
+            '2025-11-05': 'Guru Nanak Jayanti',
+            '2025-12-25': 'Christmas',
+
+            // 2026
+            '2026-01-26': 'Republic Day',
+            '2026-02-17': 'Mahashivratri',
+            '2026-03-03': 'Holi',
+            '2026-03-20': 'Id-Ul-Fitr',
+            '2026-04-03': 'Good Friday',
+            '2026-04-14': 'Dr. Baba Saheb Ambedkar Jayanti',
+            '2026-05-01': 'Maharashtra Day',
+            '2026-05-28': 'Bakri Id / Eid ul-Adha',
+            '2026-08-15': 'Independence Day',
+            '2026-09-14': 'Ganesh Chaturthi',
+            '2026-10-02': 'Mahatma Gandhi Jayanti',
+            '2026-10-20': 'Dussehra',
+            '2026-11-08': 'Diwali Laxmi Pujan',
+            '2026-11-24': 'Guru Nanak Jayanti',
+            '2026-12-25': 'Christmas'
+        };
+    }
+
+    /** Helper to format remaining duration into human-readable text */
+    static _formatDuration(diffSeconds) {
+        const days = Math.floor(diffSeconds / 86400);
+        const hours = Math.floor((diffSeconds % 86400) / 3600);
+        const minutes = Math.floor((diffSeconds % 3600) / 60);
+        const seconds = diffSeconds % 60;
+
+        if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+        if (hours > 0) return `${hours}h ${minutes}m`;
+        if (minutes > 0) return `${minutes}m ${seconds}s`;
+        return `${seconds}s`;
+    }
+
+    /**
+     * Complete NSE/BSE Trading Schedule & Market Status.
+     * Computes session tracking (PRE_MARKET, REGULAR, POST_MARKET, CLOSED/AMO),
+     * countdown to next session or next market open, weekend & holiday detection.
+     */
+    static getMarketStatus(date = new Date()) {
+        const istFormatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+            weekday: 'short'
+        });
+
+        const parts = istFormatter.formatToParts(date);
+        const map = {};
+        for (const p of parts) map[p.type] = p.value;
+
+        const year = parseInt(map.year, 10);
+        const month = parseInt(map.month, 10);
+        const day = parseInt(map.day, 10);
+        const hour = parseInt(map.hour, 10);
+        const minute = parseInt(map.minute, 10);
+        const second = parseInt(map.second, 10);
+        const weekday = map.weekday;
+        const dateString = `${map.year}-${map.month}-${map.day}`;
+        const totalMin = hour * 60 + minute;
+
+        const holidays = NSEClient.HOLIDAYS;
+        const isWeekend = weekday === 'Sat' || weekday === 'Sun';
+        const holidayName = holidays[dateString] || null;
+        const isHoliday = !!holidayName;
+        const isTradingDayToday = !isWeekend && !isHoliday;
+
+        // Session classification (IST):
+        // Pre-Market:  09:00 - 09:15
+        // Regular:     09:15 - 15:30 (Continuous live trading)
+        // Post-Market: 15:30 - 16:00 (Closing run)
+        // Closed:      16:00 - 09:00 (After-Market Orders / Weekend / Holiday)
+        let session = 'CLOSED';
+        let sessionName = 'Market Closed';
+        let isOpen = false;
+
+        if (isTradingDayToday) {
+            if (totalMin >= 9 * 60 && totalMin < 9 * 60 + 15) {
+                session = 'PRE_MARKET';
+                sessionName = 'Pre-Market Session';
+                isOpen = false;
+            } else if (totalMin >= 9 * 60 + 15 && totalMin < 15 * 60 + 30) {
+                session = 'REGULAR';
+                sessionName = 'Regular Trading';
+                isOpen = true;
+            } else if (totalMin >= 15 * 60 + 30 && totalMin < 16 * 60) {
+                session = 'POST_MARKET';
+                sessionName = 'Post-Market Closing';
+                isOpen = false;
+            } else {
+                session = 'CLOSED';
+                sessionName = totalMin < 9 * 60 ? 'Pre-Open (AMO Active)' : 'After-Market (AMO Active)';
+                isOpen = false;
+            }
+        } else {
+            session = 'CLOSED';
+            sessionName = isWeekend ? 'Weekend Closed' : `Holiday (${holidayName})`;
+            isOpen = false;
+        }
+
+        const pad = (n) => String(n).padStart(2, '0');
+        const makeISTDate = (y, m, d, h = 9, min = 15, s = 0) =>
+            new Date(`${y}-${pad(m)}-${pad(d)}T${pad(h)}:${pad(min)}:${pad(s)}+05:30`);
+
+        let nextOpen = makeISTDate(year, month, day, 9, 15, 0);
+
+        if (!isTradingDayToday || date.getTime() >= nextOpen.getTime()) {
+            let nextCandidate = new Date(makeISTDate(year, month, day, 12, 0, 0).getTime() + 24 * 3600 * 1000);
+            while (true) {
+                const cParts = istFormatter.formatToParts(nextCandidate);
+                const cMap = {};
+                for (const p of cParts) cMap[p.type] = p.value;
+                const cY = parseInt(cMap.year, 10);
+                const cM = parseInt(cMap.month, 10);
+                const cD = parseInt(cMap.day, 10);
+                const cWeekday = cMap.weekday;
+                const cDateString = `${cMap.year}-${cMap.month}-${cMap.day}`;
+                const cIsWeekend = cWeekday === 'Sat' || cWeekday === 'Sun';
+                const cIsHoliday = !!holidays[cDateString];
+
+                if (!cIsWeekend && !cIsHoliday) {
+                    nextOpen = makeISTDate(cY, cM, cD, 9, 15, 0);
+                    break;
+                }
+                nextCandidate = new Date(nextCandidate.getTime() + 24 * 3600 * 1000);
+            }
+        }
+
+        const nowMs = date.getTime();
+        let regularCloseTime = null;
+        let countdown = '';
+
+        if (session === 'REGULAR') {
+            regularCloseTime = makeISTDate(year, month, day, 15, 30, 0);
+            const secondsRemaining = Math.max(0, Math.floor((regularCloseTime.getTime() - nowMs) / 1000));
+            countdown = NSEClient._formatDuration(secondsRemaining);
+        } else {
+            const secondsRemaining = Math.max(0, Math.floor((nextOpen.getTime() - nowMs) / 1000));
+            countdown = NSEClient._formatDuration(secondsRemaining);
+        }
+
+        const nextOpenFormatter = new Intl.DateTimeFormat('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+        const nextOpenFormatted = nextOpenFormatter.format(nextOpen);
+
+        let statusMessage = '';
+        if (session === 'REGULAR') {
+            statusMessage = `Live regular trading active • Closes in ${countdown} (03:30 PM IST)`;
+        } else if (session === 'PRE_MARKET') {
+            statusMessage = `Pre-market order discovery active • Opens in ${countdown} (09:15 AM IST)`;
+        } else if (session === 'POST_MARKET') {
+            statusMessage = `Post-market closing session active until 04:00 PM IST • Opens ${nextOpenFormatted} IST`;
+        } else if (isWeekend) {
+            statusMessage = `Weekend break • Regular market opens ${nextOpenFormatted} IST (${countdown})`;
+        } else if (isHoliday) {
+            statusMessage = `Closed for ${holidayName} • Regular market opens ${nextOpenFormatted} IST (${countdown})`;
+        } else {
+            statusMessage = `Market closed • Regular market opens ${nextOpenFormatted} IST (${countdown})`;
+        }
+
+        return {
+            isOpen,
+            session, // 'REGULAR' | 'PRE_MARKET' | 'POST_MARKET' | 'CLOSED'
+            sessionName,
+            isWeekend,
+            isHoliday,
+            holidayName,
+            currentTimeIST: `${map.year}-${map.month}-${map.day} ${map.hour}:${map.minute}:${map.second} IST`,
+            nextOpenTime: nextOpen.toISOString(),
+            nextOpenFormatted: `${nextOpenFormatted} IST`,
+            closeTime: regularCloseTime ? regularCloseTime.toISOString() : null,
+            secondsUntilOpen: Math.max(0, Math.floor((nextOpen.getTime() - nowMs) / 1000)),
+            secondsUntilClose: regularCloseTime ? Math.max(0, Math.floor((regularCloseTime.getTime() - nowMs) / 1000)) : 0,
+            countdown,
+            statusMessage,
+            exchange: 'NSE'
+        };
+    }
+
     /** Returns true if NSE market is likely open (Mon–Fri, 9:15–15:30 IST) */
     static isMarketHours() {
-        const now = new Date();
-        // Convert to IST
-        const ist = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-        
-        // 1. Weekend Check
-        const day = ist.getDay(); // 0=Sun, 6=Sat
-        if (day === 0 || day === 6) return false;
+        return NSEClient.getMarketStatus().isOpen;
+    }
 
-        // 2. Holiday Check (YYYY-MM-DD format)
-        const dateString = `${ist.getFullYear()}-${String(ist.getMonth() + 1).padStart(2, '0')}-${String(ist.getDate()).padStart(2, '0')}`;
-        const NSE_HOLIDAYS = [
-            // 2026 Known Trading Holidays
-            '2026-01-26', // Republic Day
-            '2026-03-20', // Id-ul-Fitr (Tentative)
-            '2026-04-03', // Good Friday
-            '2026-04-14', // Dr. Baba Saheb Ambedkar Jayanti
-            '2026-05-01', // Maharashtra Day
-            '2026-08-15', // Independence Day
-            '2026-10-02', // Mahatma Gandhi Jayanti
-            '2026-11-09', // Diwali
-            '2026-12-25', // Christmas
-            
-            // 2025 Known Trading Holidays
-            '2025-01-26', '2025-02-26', '2025-03-14', '2025-03-31', '2025-04-10', '2025-04-14', 
-            '2025-04-18', '2025-05-01', '2025-08-15', '2025-08-27', '2025-10-02', '2025-10-21', 
-            '2025-11-05', '2025-12-25'
-        ];
-        if (NSE_HOLIDAYS.includes(dateString)) return false;
+    /** Instance alias for getMarketStatus */
+    getMarketStatus(date) {
+        return NSEClient.getMarketStatus(date);
+    }
 
-        // 3. Time Check (9:15 to 15:30)
-        const h = ist.getHours();
-        const m = ist.getMinutes();
-        const totalMin = h * 60 + m;
-        return totalMin >= 9 * 60 + 15 && totalMin <= 15 * 60 + 30;
+    /** Instance alias for isMarketHours */
+    isMarketHours() {
+        return NSEClient.isMarketHours();
     }
 
     // ──────────────── Data Normalizer ────────────────

@@ -30,6 +30,7 @@ const NSE_ALL_INDICES_TIMEOUT = 2500;
 const EXTRA_STOCKS = [
     'ZOMATO', 'PAYTM', 'NYKAA', 'POLICYBZR',
     'IRFC', 'HAL', 'BEL', 'IRCTC', 'TATAPOWER',
+    'TRENT', 'SHRIRAMFIN', 'JIOFIN', 'SUZLON', 'RVNL',
 ];
 
 // Index names for the header ticker

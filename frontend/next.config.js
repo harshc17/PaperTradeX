@@ -4,6 +4,10 @@ const nextConfig = {
     turbopack: {
         root: __dirname,
     },
+    devIndicators: false,
+    experimental: {
+        optimizePackageImports: ['lucide-react', 'react-markdown'],
+    },
     images: {
         remotePatterns: [
             { protocol: 'https', hostname: 'assets.utils.com' },

@@ -21,7 +21,7 @@ export default function InvestmentCard() {
                     <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-500 dark:text-gray-400">Total returns</span>
                         <span className={`text-sm font-medium ${totalReturns >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                            {totalReturns >= 0 ? '+' : ''}₹{fmt(totalReturns)} ({fmt(totalReturnsPercent)}%)
+                            {totalReturns >= 0 ? '+' : '-'}₹{fmt(Math.abs(totalReturns))} ({totalReturnsPercent >= 0 ? '+' : '-'}{fmt(Math.abs(totalReturnsPercent))}%)
                         </span>
                     </div>
                 </div>
