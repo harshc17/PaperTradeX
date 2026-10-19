@@ -31,29 +31,47 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
 
 // Allowlisted CORS origins (comma-separated in CORS_ORIGIN, defaults to the local frontend).
-const ALLOWED_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:3000')
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGIN || '*')
     .split(',')
     .map(o => o.trim().replace(/\/$/, ''))
     .filter(Boolean);
 
+const isAllowedOrigin = (origin) => {
+    if (!origin) return true;
+    if (ALLOWED_ORIGINS.includes('*')) return true;
+    const cleanOrigin = origin.replace(/\/$/, '');
+    if (ALLOWED_ORIGINS.includes(cleanOrigin)) return true;
+    if (cleanOrigin.endsWith('.vercel.app')) return true;
+    return false;
+};
+
 const corsOptions = {
     origin(origin, callback) {
-        // Allow non-browser clients (no Origin header) and allowlisted origins.
-        if (!origin || ALLOWED_ORIGINS.includes(origin.replace(/\/$/, ''))) {
+        if (isAllowedOrigin(origin)) {
             return callback(null, true);
         }
-        return callback(new Error('Not allowed by CORS'));
+        return callback(new Error(`Not allowed by CORS: ${origin}`));
     },
-    methods: ['GET', 'POST', 'DELETE', 'PUT', 'PATCH'],
+    methods: ['GET', 'POST', 'DELETE', 'PUT', 'PATCH', 'OPTIONS'],
     credentials: true,
 };
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: ALLOWED_ORIGINS, methods: ['GET', 'POST'] } });
+const io = new Server(server, { 
+    cors: { 
+        origin: (origin, callback) => {
+            if (isAllowedOrigin(origin)) callback(null, true);
+            else callback(new Error('Not allowed by CORS'));
+        },
+        methods: ['GET', 'POST', 'OPTIONS'],
+        credentials: true
+    } 
+});
 
 app.use(helmet());
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '1mb' }));
 
 const AUTH_RATE_LIMIT_MAX = parseInt(process.env.AUTH_RATE_LIMIT_MAX || '20', 10);
