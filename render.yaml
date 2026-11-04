@@ -2,12 +2,13 @@ services:
   # Backend API + WebSockets
   - type: web
     name: papertradex-backend
-    env: node
+    runtime: node
     plan: free
     region: singapore
     rootDir: backend
-    buildCommand: npm install --production
+    buildCommand: npm ci --omit=dev
     startCommand: node src/server.js
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
@@ -16,8 +17,10 @@ services:
       - key: MONGODB_URI
         sync: false
       - key: JWT_SECRET
-        sync: false
+        generateValue: true
       - key: CORS_ORIGIN
-        value: "*"
+        value: "https://papertradex.vercel.app"
+      - key: NODE_VERSION
+        value: "22"
       - key: FRONTEND_URL
         value: "https://papertradex.vercel.app"

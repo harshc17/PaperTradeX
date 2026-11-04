@@ -31,7 +31,7 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
 
 // Allowlisted CORS origins (comma-separated in CORS_ORIGIN, defaults to the local frontend).
-const ALLOWED_ORIGINS = (process.env.CORS_ORIGIN || '*')
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGIN || FRONTEND_URL)
     .split(',')
     .map(o => o.trim().replace(/\/$/, ''))
     .filter(Boolean);
@@ -41,7 +41,6 @@ const isAllowedOrigin = (origin) => {
     if (ALLOWED_ORIGINS.includes('*')) return true;
     const cleanOrigin = origin.replace(/\/$/, '');
     if (ALLOWED_ORIGINS.includes(cleanOrigin)) return true;
-    if (cleanOrigin.endsWith('.vercel.app')) return true;
     return false;
 };
 
@@ -51,7 +50,7 @@ app.set('trust proxy', 1);
 const server = http.createServer(app);
 const io = new Server(server, { 
     cors: { 
-        origin: '*',
+        origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),
         methods: ['GET', 'POST', 'OPTIONS'],
         credentials: true
     } 
@@ -59,12 +58,11 @@ const io = new Server(server, {
 
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(cors({
-    origin: (origin, callback) => callback(null, true),
+    origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),
     credentials: true,
     methods: ['GET', 'POST', 'DELETE', 'PUT', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
-app.options('*', cors());
 app.use(express.json({ limit: '1mb' }));
 
 const AUTH_RATE_LIMIT_MAX = parseInt(process.env.AUTH_RATE_LIMIT_MAX || '20', 10);
@@ -100,21 +98,14 @@ function validatePassword(password) {
 }
 
 const marketDataService = new MarketDataService(io);
-marketDataService.startPolling();
-
-// ── Connect to MongoDB + seed admin ─────────────────────────────────────────
-(async () => {
-    try {
-        await connectDB();
-        await seedAdmin();
-    } catch (error) {
-        console.error('[MongoDB] Startup error:', error.message);
-    }
-})();
 
 const PORT = process.env.PORT || 3001;
 
 app.get('/', (req, res) => res.send('PaperTradeX Backend Running'));
+app.get('/health', (req, res) => {
+    const ready = require('mongoose').connection.readyState === 1;
+    res.status(ready ? 200 : 503).json({ status: ready ? 'ok' : 'unavailable' });
+});
 
 // --- AUTH ROUTES ---
 
@@ -1563,6 +1554,23 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+async function start() {
+    try {
+        if (process.env.NODE_ENV === 'production' && !process.env.MONGODB_URI) {
+            throw new Error('MONGODB_URI is required in production');
+        }
+        await connectDB();
+        await seedAdmin();
+        server.listen(PORT, '0.0.0.0', () => {
+            console.log(`Server listening on port ${PORT}`);
+            marketDataService.startPolling();
+        });
+    } catch (error) {
+        console.error('[Startup] Database initialization failed:', error.message);
+        process.exit(1);
+    }
+}
+
+start();
 
 

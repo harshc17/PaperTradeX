@@ -1,11 +1,14 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
-    "builder": "NIXPACKS",
-    "watchPatterns": ["backend/**"]
+    "builder": "RAILPACK",
+    "buildCommand": "npm ci --omit=dev --prefix backend",
+    "watchPatterns": ["backend/**", "railway.json"]
   },
   "deploy": {
-    "startCommand": "if [ -d \"backend\" ]; then cd backend && node src/server.js; else node src/server.js; fi",
+    "startCommand": "npm start --prefix backend",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 120,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }
