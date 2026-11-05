@@ -187,20 +187,24 @@ class NSEClient {
             '2025-11-05': 'Guru Nanak Jayanti',
             '2025-12-25': 'Christmas',
 
-            // 2026
+            // 2026: NSE/CMTR/71775 regular-session calendar.
             '2026-01-26': 'Republic Day',
-            '2026-02-17': 'Mahashivratri',
+            '2026-02-15': 'Mahashivratri',
             '2026-03-03': 'Holi',
-            '2026-03-20': 'Id-Ul-Fitr',
+            '2026-03-21': 'Id-Ul-Fitr',
+            '2026-03-26': 'Shri Ram Navami',
+            '2026-03-31': 'Shri Mahavir Jayanti',
             '2026-04-03': 'Good Friday',
             '2026-04-14': 'Dr. Baba Saheb Ambedkar Jayanti',
             '2026-05-01': 'Maharashtra Day',
             '2026-05-28': 'Bakri Id / Eid ul-Adha',
+            '2026-06-26': 'Muharram',
             '2026-08-15': 'Independence Day',
             '2026-09-14': 'Ganesh Chaturthi',
             '2026-10-02': 'Mahatma Gandhi Jayanti',
             '2026-10-20': 'Dussehra',
             '2026-11-08': 'Diwali Laxmi Pujan',
+            '2026-11-10': 'Diwali-Balipratipada',
             '2026-11-24': 'Guru Nanak Jayanti',
             '2026-12-25': 'Christmas'
         };
@@ -233,7 +237,7 @@ class NSEClient {
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',
-            hour12: false,
+            hourCycle: 'h23',
             weekday: 'short'
         });
 
@@ -281,7 +285,7 @@ class NSEClient {
                 isOpen = false;
             } else {
                 session = 'CLOSED';
-                sessionName = totalMin < 9 * 60 ? 'Pre-Open (AMO Active)' : 'After-Market (AMO Active)';
+                sessionName = 'Market Closed';
                 isOpen = false;
             }
         } else {

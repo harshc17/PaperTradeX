@@ -12,6 +12,7 @@ class TradeEngine {
      * and records transaction history.
      */
     async _applyTradeExecution(user, type, bare, qty, price, totalAmount) {
+        this.assertMarketOpen();
         if (type === 'BUY') {
             if (user.balance < totalAmount) {
                 throw new Error(
@@ -65,7 +66,7 @@ class TradeEngine {
 
     /**
      * Execute a trade (BUY/SELL) for a user.
-     * In PaperTradeX (simulation), 24/7 trading is supported using the current/closing price.
+     * Paper orders execute only during the regular trading session.
      * For LIMIT orders:
      *   - If limit price is marketable (BUY with limitPrice >= currentPrice, or SELL with limitPrice <= currentPrice),
      *     it executes immediately.
@@ -73,23 +74,35 @@ class TradeEngine {
      * For MARKET orders:
      *   - Immediately updates balance, portfolio, and transaction history.
      */
-    async executeTrade(userId, type, symbol, quantity, currentPrice, orderType = 'MARKET', limitPrice = null, skipMarketCheck = false) {
+    assertMarketOpen() {
+        const status = NSEClient.getMarketStatus();
+        if (!status.isOpen) {
+            throw new Error(`Market closed. Trading resumes ${status.nextOpenFormatted} IST. Orders are accepted only during regular market hours.`);
+        }
+    }
+
+    async executeTrade(userId, type, symbol, quantity, currentPrice, orderType = 'MARKET', limitPrice = null) {
+        this.assertMarketOpen();
         // ── Input Validation ────────────────────────────────────────────────────
         const user = await User.findById(userId);
         if (!user) throw new Error('User not found');
 
-        const qty = parseInt(quantity, 10);
-        if (!qty || qty <= 0 || !Number.isInteger(qty)) {
+        const qty = Number(quantity);
+        if (!Number.isSafeInteger(qty) || qty <= 0 || !['number', 'string'].includes(typeof quantity)) {
             throw new Error('Quantity must be a positive whole number');
         }
 
-        const price = parseFloat(currentPrice);
-        if (!price || price <= 0) {
+        const price = Number(currentPrice);
+        if (!Number.isFinite(price) || price <= 0) {
             throw new Error('Price must be greater than zero');
         }
 
         if (!['BUY', 'SELL'].includes(type)) {
             throw new Error('Order side must be BUY or SELL');
+        }
+
+        if (!['MARKET', 'LIMIT'].includes(orderType)) {
+            throw new Error('Order type must be MARKET or LIMIT');
         }
 
         if (!symbol || typeof symbol !== 'string') {
@@ -100,8 +113,8 @@ class TradeEngine {
 
         // ── LIMIT Order ────────────────────────────────────────────────────────
         if (orderType === 'LIMIT') {
-            const lp = parseFloat(limitPrice);
-            if (!lp || lp <= 0) {
+            const lp = Number(limitPrice);
+            if (!Number.isFinite(lp) || lp <= 0) {
                 throw new Error('Limit price must be greater than zero for LIMIT orders');
             }
 
@@ -198,11 +211,13 @@ class TradeEngine {
      * SELL limit fills when price rises to or above limitPrice.
      */
     async processMarketTick(symbol, currentPrice) {
+        if (!NSEClient.isMarketHours()) return;
         const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
 
         const openOrders = await Order.find({ symbol: bare, status: 'OPEN' });
 
         for (const order of openOrders) {
+            if (!NSEClient.isMarketHours()) return;
             const shouldFill =
                 (order.side === 'BUY'  && currentPrice <= order.limitPrice) ||
                 (order.side === 'SELL' && currentPrice >= order.limitPrice);

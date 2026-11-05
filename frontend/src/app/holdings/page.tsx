@@ -158,7 +158,7 @@ export default function HoldingsPage() {
                             ₹{fmt(currentValue)}
                         </h2>
                         <div className="flex items-center gap-1.5 text-xs font-medium">
-                            <span className="text-ink-faint">Day&apos;s Gain:</span>
+                            <span className="text-ink-faint" title="Price movement from the previous market close, weighted by current holdings. This is not your profit since purchase.">Market move:</span>
                             <span className={`tabular-nums font-num font-semibold ${isTodayProfit ? 'text-up' : 'text-down'}`}>
                                 {isTodayProfit ? '+' : '-'}₹{fmt(Math.abs(todayReturns))} ({Math.abs(todayReturnsPercent).toFixed(2)}%)
                             </span>
@@ -297,7 +297,7 @@ export default function HoldingsPage() {
                                         <th className="px-5 py-3.5 text-right">Quantity</th>
                                         <th className="px-5 py-3.5 text-right">Avg. Price</th>
                                         <th className="px-5 py-3.5 text-right">Current Value</th>
-                                        <th className="px-5 py-3.5 text-right">Today&apos;s Gain</th>
+                                        <th className="px-5 py-3.5 text-right" title="Stock movement from previous close, not profit since purchase">Market Move (1D)</th>
                                         <th className="px-5 py-3.5 text-right">Total Returns</th>
                                         <th className="px-5 py-3.5 text-center">Action</th>
                                     </tr>

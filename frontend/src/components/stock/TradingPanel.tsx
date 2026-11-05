@@ -85,7 +85,7 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
     const fmt = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     const activePrice = orderType === 'MARKET' ? (displayPrice || 0) : (parseFloat(limitPrice) || displayPrice || 0);
-    const parsedQty = Math.max(0, parseInt(quantity, 10) || 0);
+    const parsedQty = Number(quantity);
     const estimatedTotal = parsedQty * activePrice;
     const balanceRemaining = Math.max(0, balance - (side === 'BUY' ? estimatedTotal : 0));
 
@@ -105,7 +105,8 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) { showToast('error', 'Please login to trade'); return; }
-        if (!parsedQty || parsedQty <= 0) { showToast('error', 'Enter a valid quantity'); return; }
+        if (!marketStatus?.isOpen) { showToast('error', 'Market closed. Please trade during regular market hours.'); return; }
+        if (!Number.isSafeInteger(parsedQty) || parsedQty <= 0) { showToast('error', 'Quantity must be a positive whole number'); return; }
         if (!activePrice || activePrice <= 0) { showToast('error', 'Valid price required'); return; }
 
         if (side === 'BUY' && balance < estimatedTotal) {
@@ -460,7 +461,7 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                 <button
                     id="place-order-btn"
                     type="submit"
-                    disabled={loading || !currentPrice || (isBuy && balance < estimatedTotal)}
+                    disabled={loading || !marketStatus?.isOpen || !currentPrice || (isBuy && balance < estimatedTotal)}
                     className={`w-full h-12 rounded-xl font-bold text-sm tracking-wide transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] shadow-lg flex items-center justify-center gap-2 ${
                         isBuy
                             ? 'bg-gradient-to-r from-[#26d07c] to-[#1cb569] text-[#003829] hover:brightness-110 shadow-[0_4px_20px_rgba(38,208,124,0.35)]'
@@ -472,6 +473,8 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                             <Loader2 className="w-4 h-4 animate-spin" />
                             <span>Processing Trade...</span>
                         </>
+                    ) : !marketStatus?.isOpen ? (
+                        <span>{marketStatus ? 'Market Closed' : 'Checking Market Hours...'}</span>
                     ) : isBuy && balance < estimatedTotal ? (
                         <span>Insufficient Balance</span>
                     ) : (

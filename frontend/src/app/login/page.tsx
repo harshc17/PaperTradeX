@@ -116,7 +116,7 @@ export default function AuthPage() {
                             'Real-time NSE & BSE stock prices',
                             '₹1,00,000 virtual money to start',
                             'Track P&L with live charts',
-                            'Buy & sell Indian stocks anytime',
+                            'Trade during regular Indian market hours',
                         ].map(feat => (
                             <div key={feat} className="flex items-center gap-3">
                                 <CheckCircle2 className="w-4 h-4 text-primary flex-shrink-0" />

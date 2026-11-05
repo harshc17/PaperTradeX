@@ -1467,6 +1467,7 @@ app.post('/api/trade', authenticateToken, async (req, res) => {
     const { symbol, type, quantity, price: clientPrice, orderType = 'MARKET', limitPrice } = req.body;
     const userId = req.user.id;
     try {
+        TradeEngine.assertMarketOpen();
         let effectivePrice = clientPrice;
         try {
             const resolved = await resolveStockPrice(symbol);
