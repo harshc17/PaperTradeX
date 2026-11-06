@@ -45,6 +45,12 @@ For preview deployments, explicitly add each trusted preview origin to the backe
 
 ## Verification and optional features
 
+Railway follows `main` without a commit pin. Install Railway's GitHub App with access restricted to `harshc17/PaperTradeX`, and confirm a push creates a deployment for that commit before relying on automatic updates.
+
+Trading is restricted to regular market hours. Closed-market requests must leave balance, holdings and orders unchanged. Verify a buy, sell, queued limit order and cancellation during an open session after changes to trade execution. Trades use server-resolved quotes and MongoDB transactions.
+
+Security regression checks: `node --test backend/test/deployment.test.js backend/test/trading-hours.test.js`. Run dependency audits in the root, backend and frontend directories after dependency updates. Password-reset delivery requires SMTP; production must not log reset tokens.
+
 - Confirm backend `/health` returns HTTP 200 and `{"status":"ok"}`.
 - Register a test account and log in on the Vercel site; verify the user exists in Atlas and survives a backend restart.
 - Verify market quotes and Socket.IO connections in browser developer tools. External market providers may restrict datacenter requests; validate them on the selected host.
