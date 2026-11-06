@@ -39,6 +39,18 @@ async function sendResetEmail(toEmail, resetLink) {
 }
 
 async function sendResetOtp(toEmail, code) {
+    if (process.env.RESEND_API_KEY && process.env.EMAIL_FROM) {
+        const response = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+            signal: AbortSignal.timeout(15000),
+            body: JSON.stringify({ from: process.env.EMAIL_FROM, to: [toEmail],
+                subject: 'Your PaperTradeX password reset code',
+                text: `Your password reset code is ${code}. It expires in 10 minutes. Do not share this code. If you did not request it, ignore this email.` }),
+        });
+        if (!response.ok) throw new Error('Email provider rejected delivery');
+        return;
+    }
     if (!SMTP_CONFIGURED) throw new Error('SMTP is not configured');
     await transporter.sendMail({
         from: process.env.SMTP_FROM || 'PaperTradeX <no-reply@papertradex.com>',
@@ -48,4 +60,4 @@ async function sendResetOtp(toEmail, code) {
     });
 }
 
-module.exports = { sendResetEmail, sendResetOtp, isConfigured: () => SMTP_CONFIGURED };
+module.exports = { sendResetEmail, sendResetOtp, isConfigured: () => SMTP_CONFIGURED || !!(process.env.RESEND_API_KEY && process.env.EMAIL_FROM) };
