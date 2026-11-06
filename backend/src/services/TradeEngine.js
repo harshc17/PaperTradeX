@@ -78,7 +78,7 @@ class TradeEngine {
     assertMarketOpen() {
         const status = NSEClient.getMarketStatus();
         if (!status.isOpen) {
-            throw new Error(`Market closed. Trading resumes ${status.nextOpenFormatted} IST. Orders are accepted only during regular market hours.`);
+            throw new Error(`Market closed. Trading resumes ${status.nextOpenFormatted}. Orders are accepted only during regular market hours.`);
         }
     }
 
