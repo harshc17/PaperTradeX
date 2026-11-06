@@ -141,6 +141,9 @@ app.post('/api/register', authLimiter, async (req, res) => {
 app.post('/api/login', authLimiter, async (req, res) => {
     const { email, password } = req.body;
     try {
+        if (typeof email !== 'string' || typeof password !== 'string') {
+            return res.status(401).json({ error: 'Invalid email or password' });
+        }
         const user = await User.findOne({ email: email?.toLowerCase().trim() });
         // Generic message for both cases to avoid user enumeration.
         if (!user || !user.password_hash) {
@@ -997,7 +1000,8 @@ app.get('/api/ai/market-news', async (req, res) => {
 });
 
 // Force-refresh endpoint (admin/debug use)
-app.post('/api/ai/market-news/refresh', async (req, res) => {
+app.post('/api/ai/market-news/refresh', authenticateToken, async (req, res) => {
+    if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Forbidden' });
     try {
         console.log('[AI Market News] Force refreshing news...');
         _newsCache = null;
@@ -1369,8 +1373,8 @@ app.post('/api/challenge/trade', authenticateToken, async (req, res) => {
             return res.status(400).json({ error: 'Trade type must be BUY or SELL' });
         }
 
-        const qty = parseInt(quantity, 10);
-        if (!qty || qty <= 0 || !Number.isInteger(qty)) {
+        const qty = Number(quantity);
+        if (!Number.isSafeInteger(qty) || qty <= 0 || !['number', 'string'].includes(typeof quantity)) {
             return res.status(400).json({ error: 'Quantity must be a positive whole number' });
         }
 
@@ -1464,21 +1468,17 @@ app.get('/api/challenge/trades', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/trade', authenticateToken, async (req, res) => {
-    const { symbol, type, quantity, price: clientPrice, orderType = 'MARKET', limitPrice } = req.body;
+    const { symbol, type, quantity, orderType = 'MARKET', limitPrice } = req.body;
     const userId = req.user.id;
     try {
         TradeEngine.assertMarketOpen();
-        let effectivePrice = clientPrice;
-        try {
-            const resolved = await resolveStockPrice(symbol);
-            if (resolved?.price > 0) {
-                effectivePrice = resolved.price;
-            }
-        } catch {
-            // fallback to clientPrice if server lookup failed
+        if (typeof symbol !== 'string' || !/^[A-Z0-9&-]{1,30}(\.(NS|BO))?$/i.test(symbol)) {
+            return res.status(400).json({ error: 'Invalid stock symbol' });
         }
+        const resolved = await resolveStockPrice(symbol);
+        const effectivePrice = resolved?.price;
 
-        if (!effectivePrice || effectivePrice <= 0) {
+        if (!Number.isFinite(effectivePrice) || effectivePrice <= 0) {
             return res.status(400).json({ error: `Price not available for ${symbol}` });
         }
 

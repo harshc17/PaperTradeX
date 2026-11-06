@@ -1,5 +1,6 @@
 const { User, Portfolio, TransactionHistory, Order } = require('../models');
 const NSEClient = require('./NSEClient');
+const mongoose = require('mongoose');
 
 class TradeEngine {
     /**
@@ -11,7 +12,7 @@ class TradeEngine {
      * Helper to apply trade execution: deducts/credits balance, upserts/removes portfolio holding,
      * and records transaction history.
      */
-    async _applyTradeExecution(user, type, bare, qty, price, totalAmount) {
+    async _applyTradeExecution(user, type, bare, qty, price, totalAmount, session) {
         this.assertMarketOpen();
         if (type === 'BUY') {
             if (user.balance < totalAmount) {
@@ -24,17 +25,17 @@ class TradeEngine {
             await user.save();
 
             // Upsert portfolio position
-            const position = await Portfolio.findOne({ user: user._id, symbol: bare });
+            const position = await Portfolio.findOne({ user: user._id, symbol: bare }).session(session);
             if (position) {
                 const totalCost = (position.quantity * position.averagePrice) + totalAmount;
                 position.quantity += qty;
                 position.averagePrice = parseFloat((totalCost / position.quantity).toFixed(4));
                 await position.save();
             } else {
-                await Portfolio.create({ user: user._id, symbol: bare, quantity: qty, averagePrice: price });
+                await Portfolio.create([{ user: user._id, symbol: bare, quantity: qty, averagePrice: price }], { session });
             }
         } else if (type === 'SELL') {
-            const position = await Portfolio.findOne({ user: user._id, symbol: bare });
+            const position = await Portfolio.findOne({ user: user._id, symbol: bare }).session(session);
             if (!position) throw new Error(`You don't hold any ${bare} shares`);
             if (position.quantity < qty) {
                 throw new Error(
@@ -54,14 +55,14 @@ class TradeEngine {
         }
 
         // Record transaction
-        await TransactionHistory.create({
+        await TransactionHistory.create([{
             user: user._id,
             type,
             symbol: bare,
             quantity: qty,
             price,
             totalAmount,
-        });
+        }], { session });
     }
 
     /**
@@ -83,8 +84,14 @@ class TradeEngine {
 
     async executeTrade(userId, type, symbol, quantity, currentPrice, orderType = 'MARKET', limitPrice = null) {
         this.assertMarketOpen();
+        return mongoose.connection.transaction(session =>
+            this._executeTrade(userId, type, symbol, quantity, currentPrice, orderType, limitPrice, session));
+    }
+
+    async _executeTrade(userId, type, symbol, quantity, currentPrice, orderType, limitPrice, session) {
+        this.assertMarketOpen();
         // ── Input Validation ────────────────────────────────────────────────────
-        const user = await User.findById(userId);
+        const user = await User.findById(userId).session(session);
         if (!user) throw new Error('User not found');
 
         const qty = Number(quantity);
@@ -127,7 +134,7 @@ class TradeEngine {
                 const execPrice = price;
                 const totalAmount = parseFloat((qty * execPrice).toFixed(2));
 
-                await this._applyTradeExecution(user, type, bare, qty, execPrice, totalAmount);
+                await this._applyTradeExecution(user, type, bare, qty, execPrice, totalAmount, session);
 
                 const order = new Order({
                     user:        userId,
@@ -140,7 +147,7 @@ class TradeEngine {
                     totalAmount,
                     status:      'FILLED',
                 });
-                await order.save();
+                await order.save({ session });
 
                 return { success: true, orderId: order.orderId, status: 'FILLED', newBalance: user.balance, price: execPrice };
             }
@@ -155,14 +162,14 @@ class TradeEngine {
                 limitPrice: lp,
                 status:    'OPEN',
             });
-            await order.save(); // pre-save hook assigns orderId (L-N)
+            await order.save({ session }); // pre-save hook assigns orderId (L-N)
 
             return { success: true, orderId: order.orderId, status: order.status };
         }
 
         // ── MARKET Order: execute immediately ──────────────────────────────────
         const totalAmount = parseFloat((qty * price).toFixed(2));
-        await this._applyTradeExecution(user, type, bare, qty, price, totalAmount);
+        await this._applyTradeExecution(user, type, bare, qty, price, totalAmount, session);
 
         // Save completed MARKET order for history
         const order = new Order({
@@ -175,7 +182,7 @@ class TradeEngine {
             totalAmount,
             status:      'FILLED',
         });
-        await order.save();
+        await order.save({ session });
 
         return { success: true, orderId: order.orderId, status: 'FILLED', newBalance: user.balance, price };
     }
@@ -196,12 +203,8 @@ class TradeEngine {
             ? { orderId, user: userId }
             : { _id: orderId, user: userId };
 
-        const order = await Order.findOne(query);
+        const order = await Order.findOneAndUpdate({ ...query, status: 'OPEN' }, { $set: { status: 'CANCELLED' } }, { returnDocument: 'after' });
         if (!order) throw new Error('Order not found');
-        if (order.status !== 'OPEN') throw new Error(`Cannot cancel order with status: ${order.status}`);
-
-        order.status = 'CANCELLED';
-        await order.save();
         return { success: true, orderId: order.orderId, status: order.status };
     }
 
@@ -212,6 +215,7 @@ class TradeEngine {
      */
     async processMarketTick(symbol, currentPrice) {
         if (!NSEClient.isMarketHours()) return;
+        if (!Number.isFinite(currentPrice) || currentPrice <= 0) return;
         const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
 
         const openOrders = await Order.find({ symbol: bare, status: 'OPEN' });
@@ -225,16 +229,18 @@ class TradeEngine {
             if (!shouldFill) continue;
 
             try {
-                const user = await User.findById(order.user);
-                if (!user) continue;
-
-                const totalAmount = parseFloat((order.quantity * currentPrice).toFixed(2));
-                await this._applyTradeExecution(user, order.side, order.symbol, order.quantity, currentPrice, totalAmount);
-
-                order.status = 'FILLED';
-                order.price = currentPrice;
-                order.totalAmount = totalAmount;
-                await order.save();
+                await mongoose.connection.transaction(async session => {
+                    const pending = await Order.findOne({ _id: order._id, status: 'OPEN' }).session(session);
+                    if (!pending) return;
+                    const user = await User.findById(pending.user).session(session);
+                    if (!user) return;
+                    const totalAmount = parseFloat((pending.quantity * currentPrice).toFixed(2));
+                    await this._applyTradeExecution(user, pending.side, pending.symbol, pending.quantity, currentPrice, totalAmount, session);
+                    pending.status = 'FILLED';
+                    pending.price = currentPrice;
+                    pending.totalAmount = totalAmount;
+                    await pending.save();
+                });
                 console.log(`[TradeEngine] Limit order ${order.orderId} filled: ${order.side} ${order.quantity}x ${order.symbol} @ ₹${currentPrice}`);
             } catch (e) {
                 console.error(`[TradeEngine] Failed to fill limit order ${order.orderId}:`, e.message);

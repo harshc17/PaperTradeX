@@ -5,6 +5,25 @@ const vm = require('node:vm');
 const http = require('node:http');
 const { createRequire } = require('node:module');
 const path = require('node:path');
+const jwt = require('jsonwebtoken');
+
+test('protected routes reject missing/forged tokens and non-admin refresh requests', async t => {
+    const app = await boot(t);
+    for (const [route, method] of [['/api/portfolio', 'GET'], ['/api/orders', 'GET'], ['/api/transactions', 'GET'], ['/api/trade', 'POST'], ['/api/ai/market-news/refresh', 'POST']]) {
+        const response = await fetch(app.url + route, { method });
+        assert.equal(response.status, 401, route);
+    }
+    const forged = await fetch(app.url + '/api/portfolio', { headers: { Authorization: 'Bearer invalid' } });
+    assert.equal(forged.status, 403);
+    const token = jwt.sign({ id: 'test', role: 'USER' }, 'deployment-test-secret');
+    const forbidden = await fetch(app.url + '/api/ai/market-news/refresh', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+    assert.equal(forbidden.status, 403);
+    const malformed = await fetch(app.url + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: { $ne: null }, password: [] }) });
+    assert.equal(malformed.status, 401);
+    const trade = await fetch(app.url + '/api/trade', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ symbol: 'RELIANCE', type: 'BUY', quantity: 1, price: 0.01 }) });
+    assert.equal(trade.status, 200);
+    assert.equal((await trade.json()).price, 1300);
+});
 
 // Exercise real Express/Socket.IO listeners without external databases or market APIs.
 async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1 } = {}) {
@@ -31,7 +50,13 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1 } = {})
                 async seedAdmin() {},
             };
             if (name === './services/MarketData') return class {
+                cache = { RELIANCE: { price: 1300 } };
                 startPolling() { polling = true; }
+            };
+            if (name === './services/NSEClient') return { constructor: { isMarketHours: () => true } };
+            if (name === './services/TradeEngine') return {
+                assertMarketOpen() {},
+                executeTrade: async (user, type, symbol, quantity, price) => ({ success: true, price }),
             };
             if (name.startsWith('./services/')) return {};
             return realRequire(name);

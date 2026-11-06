@@ -21,12 +21,13 @@ test('regular session boundaries, midnight, weekends and holidays use IST', () =
 function engine(open) {
     let reads = 0;
     const context = { module: { exports: {} }, console, require(name) {
+        if (name === 'mongoose') return { connection: { transaction: callback => callback({}) } };
         if (name === './NSEClient') return {
             getMarketStatus: () => ({ isOpen: open, nextOpenFormatted: 'next session' }),
             isMarketHours: () => open,
         };
         return {
-            User: { findById: async () => { reads++; return { balance: 100000 }; } },
+            User: { findById: () => ({ session: async () => { reads++; return { balance: 100000 }; } }) },
             Order: { find: async () => { reads++; return []; } },
         };
     } };

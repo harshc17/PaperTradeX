@@ -27,6 +27,9 @@ async function sendResetEmail(toEmail, resetLink) {
     `;
 
     if (!SMTP_CONFIGURED) {
+        if (process.env.NODE_ENV === 'production') {
+            throw new Error('Password reset email is unavailable: SMTP is not configured');
+        }
         console.log('\n[Mailer] SMTP not configured — password reset link (dev only):');
         console.log(`[Mailer] ${resetLink}\n`);
         return;
