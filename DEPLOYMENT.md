@@ -55,6 +55,7 @@ Security regression checks: `node --test backend/test/deployment.test.js backend
 - Register a test account and log in on the Vercel site; verify the user exists in Atlas and survives a backend restart.
 - Verify market quotes and Socket.IO connections in browser developer tools. External market providers may restrict datacenter requests; validate them on the selected host.
 - Configure SMTP for password-reset email delivery.
+  Set `SMTP_HOST`, `SMTP_PORT` (587 for STARTTLS or 465 for TLS), `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM` privately in Railway Variables. Redeploy after saving. Use a verified sender address approved by your email provider. The recovery flow sends a six-digit code valid for 10 minutes, permits five guesses, and limits resends to once per minute. A successful reset signs out existing sessions. Without SMTP, the API returns a delivery-unavailable error; it never prints codes or pretends to send them.
 - Configure matching backend `GOOGLE_CLIENT_ID` and frontend `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, plus the Vercel origin in Google OAuth settings, for Google login.
 - Configure AI provider keys on the backend for AI features.
 - Local deployment checks: `node --test backend/test/deployment.test.js` (mocked database and market services).

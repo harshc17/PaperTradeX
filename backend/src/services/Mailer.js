@@ -38,4 +38,14 @@ async function sendResetEmail(toEmail, resetLink) {
     await transporter.sendMail({ from, to: toEmail, subject, html });
 }
 
-module.exports = { sendResetEmail };
+async function sendResetOtp(toEmail, code) {
+    if (!SMTP_CONFIGURED) throw new Error('SMTP is not configured');
+    await transporter.sendMail({
+        from: process.env.SMTP_FROM || 'PaperTradeX <no-reply@papertradex.com>',
+        to: toEmail,
+        subject: 'Your PaperTradeX password reset code',
+        text: `Your password reset code is ${code}. It expires in 10 minutes. Do not share this code. If you did not request it, ignore this email.`,
+    });
+}
+
+module.exports = { sendResetEmail, sendResetOtp, isConfigured: () => SMTP_CONFIGURED };

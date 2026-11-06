@@ -48,6 +48,7 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1 } = {})
             if (name === './models') return {
                 async connectDB() { if (fail) throw new Error('Database unavailable'); },
                 async seedAdmin() {},
+                User: { findById: async () => ({ role: 'USER', tokenVersion: 0 }) },
             };
             if (name === './services/MarketData') return class {
                 cache = { RELIANCE: { price: 1300 } };
@@ -58,6 +59,7 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1 } = {})
                 assertMarketOpen() {},
                 executeTrade: async (user, type, symbol, quantity, price) => ({ success: true, price }),
             };
+            if (name === './services/PasswordReset') return realRequire(name);
             if (name.startsWith('./services/')) return {};
             return realRequire(name);
         },

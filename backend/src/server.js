@@ -131,7 +131,7 @@ app.post('/api/register', authLimiter, async (req, res) => {
             authProvider: 'local',
         });
 
-        const token = jwt.sign({ id: user._id.toString(), role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+        const token = jwt.sign({ id: user._id.toString(), role: user.role, tokenVersion: user.tokenVersion || 0 }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
         res.json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, role: user.role, balance: user.balance } });
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -153,7 +153,7 @@ app.post('/api/login', authLimiter, async (req, res) => {
         const match = await bcrypt.compare(password || '', user.password_hash);
         if (!match) return res.status(401).json({ error: 'Invalid email or password' });
 
-        const token = jwt.sign({ id: user._id.toString(), role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+        const token = jwt.sign({ id: user._id.toString(), role: user.role, tokenVersion: user.tokenVersion || 0 }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
         res.json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, role: user.role, balance: user.balance } });
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -197,7 +197,7 @@ app.post('/api/auth/google', authLimiter, async (req, res) => {
             }
         }
 
-        const token = jwt.sign({ id: user._id.toString(), role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+        const token = jwt.sign({ id: user._id.toString(), role: user.role, tokenVersion: user.tokenVersion || 0 }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
         res.json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, role: user.role, balance: user.balance } });
     } catch (e) {
         console.error('[Google Auth] Error:', e.message);
@@ -205,66 +205,31 @@ app.post('/api/auth/google', authLimiter, async (req, res) => {
     }
 });
 
-// --- Forgot / Reset password ---
+// --- Email OTP password recovery ---
+const passwordReset = require('./services/PasswordReset')({ User, mailer: Mailer, secret: JWT_SECRET, hashPassword: password => bcrypt.hash(password, BCRYPT_ROUNDS) });
 app.post('/api/forgot-password', authLimiter, async (req, res) => {
     const { email } = req.body;
-    // Always respond the same way to avoid leaking which emails are registered.
-    const genericResponse = { success: true, message: 'If that email is registered, a reset link has been sent.' };
+    if (typeof email !== 'string' || !validator.isEmail(email.trim())) return res.status(400).json({ error: 'Enter a valid email address' });
     try {
-        if (!email || !validator.isEmail(String(email))) return res.json(genericResponse);
-
-        const normalizedEmail = String(email).toLowerCase().trim();
-        const user = await User.findOne({ email: normalizedEmail });
-
-        // Only local/linked accounts (with a password) can reset a password.
-        if (user && user.password_hash) {
-            const rawToken = crypto.randomBytes(32).toString('hex');
-            const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
-            user.resetPasswordToken = tokenHash;
-            user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-            await user.save();
-
-            const resetLink = `${FRONTEND_URL}/reset-password?token=${rawToken}&email=${encodeURIComponent(normalizedEmail)}`;
-            await Mailer.sendResetEmail(normalizedEmail, resetLink);
-        }
-
-        res.json(genericResponse);
-    } catch (e) {
-        console.error('[Forgot Password] Error:', e.message);
-        // Still return the generic response to avoid leaking state.
-        res.json(genericResponse);
-    }
+        await passwordReset.request(email);
+        res.json({ success: true, message: 'If this email has a password account, a code has been sent.', retryAfter: 60 });
+    } catch { res.status(503).json({ error: 'Email delivery is unavailable. Please try again later.' }); }
 });
-
+app.post('/api/verify-reset-otp', authLimiter, async (req, res) => {
+    try {
+        const token = await passwordReset.verify(req.body.email, req.body.code);
+        res.set('Cache-Control', 'no-store').json({ success: true, token });
+    } catch { res.status(400).json({ error: 'Invalid or expired code. Request a new code after five failed attempts.' }); }
+});
 app.post('/api/reset-password', authLimiter, async (req, res) => {
     const { email, token, password } = req.body;
+    const error = validatePassword(password);
+    if (error) return res.status(400).json({ error });
+    if (Buffer.byteLength(password, 'utf8') > 72) return res.status(400).json({ error: 'Password is too long (maximum 72 bytes)' });
     try {
-        if (!email || !token || !password) return res.status(400).json({ error: 'Missing fields' });
-
-        const pwdError = validatePassword(password);
-        if (pwdError) return res.status(400).json({ error: pwdError });
-
-        const normalizedEmail = String(email).toLowerCase().trim();
-        const tokenHash = crypto.createHash('sha256').update(String(token)).digest('hex');
-
-        const user = await User.findOne({
-            email: normalizedEmail,
-            resetPasswordToken: tokenHash,
-            resetPasswordExpires: { $gt: new Date() },
-        });
-        if (!user) return res.status(400).json({ error: 'Invalid or expired reset link' });
-
-        user.password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-        user.resetPasswordToken = null;
-        user.resetPasswordExpires = null;
-        // A Google-only user who sets a password becomes usable locally too.
-        if (!user.authProvider) user.authProvider = 'local';
-        await user.save();
-
-        res.json({ success: true, message: 'Password has been reset. You can now log in.' });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+        await passwordReset.reset(email, token, password);
+        res.json({ success: true, message: 'Password changed. Please sign in again.' });
+    } catch { res.status(400).json({ error: 'Invalid or expired reset session. Please request a new code.' }); }
 });
 
 // --- PROTECTED TRADING ROUTES ---
@@ -278,12 +243,16 @@ const authenticateToken = (req, res, next) => {
 
     if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
-    jwt.verify(token, JWT_SECRET, (err, user) => {
+    jwt.verify(token, JWT_SECRET, async (err, user) => {
         if (err) {
             return res.status(403).json({ error: 'Session expired. Please login again.' });
         }
-        req.user = user;
-        return next();
+        try {
+            const account = await User.findById(user.id);
+            if (!account || (account.tokenVersion || 0) !== (user.tokenVersion || 0)) return res.status(403).json({ error: 'Session expired. Please login again.' });
+            req.user = { ...user, role: account.role };
+            return next();
+        } catch { return res.status(403).json({ error: 'Session expired. Please login again.' }); }
     });
 }
 

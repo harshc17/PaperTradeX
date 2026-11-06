@@ -29,6 +29,11 @@ const userSchema = new mongoose.Schema({
     authProvider:  { type: String, enum: ['local', 'google'], default: 'local' },
     resetPasswordToken:   { type: String, default: null },
     resetPasswordExpires: { type: Date, default: null },
+    resetOtpHash: { type: String, default: null },
+    resetOtpExpires: { type: Date, default: null },
+    resetOtpAttempts: { type: Number, default: 0 },
+    resetOtpSentAt: { type: Date, default: null },
+    tokenVersion: { type: Number, default: 0 },
     role:          { type: String, enum: ['USER', 'ADMIN'], default: 'USER' },
     balance:       { type: Number, default: 100000 },
 }, { timestamps: true });
