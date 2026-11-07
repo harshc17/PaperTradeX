@@ -311,7 +311,7 @@ export default function Header() {
                         <span className="font-bold tracking-tight">
                             {marketStatus?.isOpen ? 'NSE LIVE' : marketStatus?.session === 'PRE_MARKET' ? 'PRE-OPEN' : 'NSE CLOSED'}
                         </span>
-                        <span className="text-[10px] opacity-75 font-num tabular-nums border-l border-white/10 pl-1.5">
+                        <span className="hidden xl:inline text-[10px] opacity-75 font-num tabular-nums border-l border-white/10 pl-1.5">
                             {marketStatus?.isOpen ? `Closes ${formatRemaining(secondsLeft)}` : `Opens in ${formatRemaining(secondsLeft)}`}
                         </span>
                     </button>

@@ -169,9 +169,9 @@ export default function DashboardMarket() {
                     <button className="text-[12px] text-primary hover:underline font-medium">View all →</button>
                 </div>
                 <div className="bg-surface rounded-[14px] border border-white/10 overflow-hidden shadow-soft">
-                    <div className="grid grid-cols-12 gap-2 px-3 sm:px-5 py-3 bg-surface-2 border-b border-white/10 text-[10px] font-bold text-ink-faint uppercase tracking-widest">
+                    <div className="hidden sm:grid grid-cols-12 gap-2 px-3 sm:px-5 py-3 bg-surface-2 border-b border-white/10 text-[10px] font-bold text-ink-faint uppercase tracking-widest">
                         <div className="col-span-5">Company</div>
-                        <div className="col-span-3 text-right">Price</div>
+                        <div className="col-span-5 sm:col-span-3 text-right">Price</div>
                         <div className="col-span-2 text-right">Change</div>
                         <div className="col-span-2 text-right">Action</div>
                     </div>
@@ -184,7 +184,7 @@ export default function DashboardMarket() {
                                 <div key={stock.symbol}
                                     className="grid grid-cols-12 gap-1 px-3 sm:px-5 py-4 items-center hover:bg-surface-3 transition-colors cursor-pointer group"
                                     onClick={() => router.push(`/stock/${encodeURIComponent(stock.symbol)}`)}>
-                                    <div className="col-span-5 min-w-0 flex items-center gap-2 sm:gap-3">
+                                    <div className="col-span-7 sm:col-span-5 min-w-0 flex items-center gap-2 sm:gap-3">
                                         <div className="hidden sm:flex w-9 h-9 rounded-xl bg-surface-3 border border-white/10 flex items-center justify-center text-[10px] font-bold text-ink-muted group-hover:border-primary/30 group-hover:text-primary transition-all flex-shrink-0">
                                             {initials}
                                         </div>
@@ -197,18 +197,18 @@ export default function DashboardMarket() {
                                         {q ? <p className="text-xs sm:text-sm whitespace-nowrap font-bold text-ink-heading tabular-nums font-num">₹{fmt(q.price)}</p>
                                             : <div className="w-16 h-4 shimmer rounded ml-auto" />}
                                     </div>
-                                    <div className="col-span-2 text-right">
+                                    <div className="col-span-7 sm:col-span-2 text-left sm:text-right">
                                         {q ? (
                                             <span className={`text-[10px] sm:text-xs font-bold px-1 sm:px-2 py-1 rounded-lg tabular-nums font-num ${isUp ? 'text-up bg-up/10 border border-up/20' : 'text-down bg-down/10 border border-down/20'}`}>
                                                 {isUp ? '+' : ''}{q.dayChange.toFixed(2)}%
                                             </span>
                                         ) : <div className="w-12 h-5 shimmer rounded ml-auto" />}
                                     </div>
-                                    <div className="col-span-2 flex justify-end">
+                                    <div className="col-span-5 sm:col-span-2 flex justify-end">
                                         <button
                                             id={`buy-btn-${stock.symbol}`}
                                             onClick={e => { e.stopPropagation(); router.push(`/stock/${encodeURIComponent(stock.symbol)}`); }}
-                                            className="px-2 sm:px-3.5 py-2 text-xs font-bold text-[#003829] rounded-lg transition-all opacity-100"
+                                            className="min-h-11 min-w-11 px-4 sm:px-3.5 py-2 text-xs font-bold text-[#003829] rounded-lg transition-all opacity-100"
                                             style={{ background: 'linear-gradient(135deg, #33c9dd, #22a9bc)' }}>
                                             Buy
                                         </button>
