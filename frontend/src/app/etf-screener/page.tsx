@@ -164,8 +164,8 @@ export default function EtfScreenerPage() {
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
                     <div>
-                        <h1 className="text-[26px] font-semibold text-[#3b4252] font-heading">ETF Screener</h1>
-                        <p className="text-gray-500 text-sm mt-1">Discover and track top performing Exchange Traded Funds</p>
+                        <h1 className="text-[26px] font-semibold text-ink-heading font-heading">ETF Screener</h1>
+                        <p className="text-ink-muted text-sm mt-1">Discover and track top performing Exchange Traded Funds</p>
                     </div>
 
                     <div className="flex items-center gap-3">

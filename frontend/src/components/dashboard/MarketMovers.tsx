@@ -57,7 +57,7 @@ export default function MarketMovers() {
 
     return (
         <div className="bg-surface rounded-[14px] border border-white/10 overflow-hidden shadow-soft">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-3 sm:px-5 py-4 border-b border-white/10">
                 <h2 className="text-[15px] font-semibold text-ink-heading font-heading">Market Movers</h2>
                 <div className="flex bg-surface-2 border border-white/10 rounded-xl p-0.5">
                     {(['gainers', 'losers'] as const).map(t => (
@@ -76,17 +76,17 @@ export default function MarketMovers() {
                     const isUp = q.dayChange >= 0;
                     return (
                         <div key={q.symbol}
-                            className="flex items-center justify-between px-5 py-3.5 hover:bg-surface-3 transition-colors cursor-pointer group"
+                            className="flex items-center justify-between gap-3 px-3 sm:px-5 py-3.5 hover:bg-surface-3 transition-colors cursor-pointer group"
                             onClick={() => router.push(`/stock/${encodeURIComponent(q.symbol)}`)}>
-                            <div className="flex items-center gap-3">
-                                <span className="text-xs font-bold text-ink-faint w-4 font-num">{idx + 1}</span>
+                            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                                <span className="shrink-0 text-xs font-bold text-ink-faint w-4 font-num">{idx + 1}</span>
                                 <CompanyLogo symbol={q.symbol} className="h-8 w-8" />
-                                <div>
-                                    <p className="text-sm font-semibold text-ink group-hover:text-primary transition-colors">{q.name}</p>
+                                <div className="min-w-0">
+                                    <p className="truncate text-sm font-semibold text-ink group-hover:text-primary transition-colors" title={q.name}>{q.name}</p>
                                     <p className="text-[10px] text-ink-faint font-num">₹{q.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                                 </div>
                             </div>
-                            <span className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-xl tabular-nums font-num ${
+                            <span className={`shrink-0 flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-xl tabular-nums font-num ${
                                 isUp ? 'bg-up/10 text-up border border-up/20' : 'bg-down/10 text-down border border-down/20'
                             }`}>
                                 {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}

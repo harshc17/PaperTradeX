@@ -101,11 +101,11 @@ export default function OrdersPage() {
                 {/* Title Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-7">
                     <div>
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
                             <h1 className="text-[26px] font-bold text-ink-heading tracking-tight font-heading">
                                 Order Book
                             </h1>
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                            <span className="whitespace-nowrap text-xs font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                                 {orders.length} Total
                             </span>
                         </div>
@@ -114,18 +114,18 @@ export default function OrdersPage() {
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                         <button
                             onClick={handleManualRefresh}
                             disabled={isRefreshing}
-                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 border border-white/10 text-xs font-medium text-ink-muted hover:text-ink transition-all active:scale-95"
+                            className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-3 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 border border-white/10 text-xs font-medium text-ink-muted hover:text-ink transition-all active:scale-95"
                         >
                             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
                             Sync Orders
                         </button>
                         <Link
                             href="/holdings"
-                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-primary text-[#003829] hover:brightness-110 transition-all shadow-[0_0_15px_rgba(51,201,221,0.25)]"
+                            className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-primary text-[#003829] hover:brightness-110 transition-all shadow-[0_0_15px_rgba(51,201,221,0.25)]"
                         >
                             <Zap className="w-3.5 h-3.5" />
                             View Holdings

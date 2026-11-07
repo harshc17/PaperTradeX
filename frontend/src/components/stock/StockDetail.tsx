@@ -235,7 +235,7 @@ export default function StockDetail({ symbol }: { symbol: string }) {
                     </div>
                     <h1 className="flex items-center gap-3 text-[24px] sm:text-[26px] font-semibold text-ink-heading leading-[1.15] mb-2.5">
                         <CompanyLogo symbol={symbol} />
-                        <span>{stockData.shortName}</span>
+                        <span className="min-w-0 break-words">{stockData.shortName}</span>
                     </h1>
 
                     <div className={`flex flex-wrap items-baseline gap-2 transition-colors duration-300 ${

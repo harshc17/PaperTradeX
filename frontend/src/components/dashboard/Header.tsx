@@ -267,19 +267,19 @@ export default function Header() {
                                         </div>
                                         {combined.slice(0, 10).map((result: any, i: number) => (
                                             <div key={`${result.symbol}-${i}`}
-                                                className="px-4 py-3 hover:bg-surface-3 cursor-pointer flex justify-between items-center group transition-colors border-b border-white/10/50 last:border-0"
+                                                className="px-4 py-3 hover:bg-surface-3 cursor-pointer flex justify-between items-center gap-3 group transition-colors border-b border-white/10/50 last:border-0"
                                                 onClick={() => { router.push(`/stock/${encodeURIComponent(result.symbol)}`); setSearchQuery(''); setShowResults(false); }}>
                                                 <div className="flex min-w-0 items-center gap-3">
                                                     <CompanyLogo symbol={result.symbol} className="h-8 w-8" />
                                                     <div className="min-w-0">
-                                                    <div className="truncate font-semibold text-ink text-sm">{result.shortname || result.name || result.symbol}</div>
+                                                    <div className="truncate font-semibold text-ink text-sm" title={result.shortname || result.name || result.symbol}>{result.shortname || result.name || result.symbol}</div>
                                                     <div className="text-xs text-ink-faint flex items-center gap-2 mt-0.5">
                                                         {result.exchange && <span className="bg-surface-3 text-ink-muted px-1.5 py-0.5 rounded text-[10px] font-medium">{result.exchange}</span>}
                                                         <span>{result.symbol}</span>
                                                     </div>
                                                     </div>
                                                 </div>
-                                                <span className="text-xs text-ink-faint group-hover:text-primary transition-colors">→</span>
+                                                <span className="shrink-0 text-xs text-ink-faint group-hover:text-primary transition-colors">→</span>
                                             </div>
                                         ))}
                                     </>

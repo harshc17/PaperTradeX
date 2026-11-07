@@ -102,13 +102,16 @@ function WatchlistContent() {
                         <div className="absolute top-full left-5 right-5 mt-1 bg-surface rounded-xl shadow-xl border border-white/10 overflow-hidden z-50">
                             {searchResults.map((r: any, i) => (
                                 <div key={`${r.symbol}-${i}`}
-                                    className="flex items-center justify-between px-4 py-3 hover:bg-surface-3 cursor-pointer border-b border-white/10/50 last:border-0 transition-colors"
+                                    className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-surface-3 cursor-pointer border-b border-white/10/50 last:border-0 transition-colors"
                                     onClick={() => addToWatchlist(r.symbol, r.shortname || r.symbol)}>
-                                    <div>
-                                        <p className="text-sm font-semibold text-ink">{r.shortname || r.symbol}</p>
+                                    <div className="flex min-w-0 items-center gap-2">
+                                        <CompanyLogo symbol={r.symbol} className="h-8 w-8" />
+                                        <div className="min-w-0">
+                                        <p className="truncate text-sm font-semibold text-ink" title={r.shortname || r.symbol}>{r.shortname || r.symbol}</p>
                                         <p className="text-xs text-ink-faint">{r.symbol}</p>
+                                        </div>
                                     </div>
-                                    <span className="flex items-center gap-1 text-xs text-primary font-medium">
+                                    <span className="flex shrink-0 items-center gap-1 text-xs text-primary font-medium">
                                         <Plus className="w-3.5 h-3.5" /> Add
                                     </span>
                                 </div>
@@ -134,18 +137,18 @@ function WatchlistContent() {
                                 const isAdded = addedSymbol && item.symbol.toUpperCase() === addedSymbol;
                                 return (
                                     <div key={item.symbol}
-                                        className={`flex items-center justify-between px-5 py-4 transition-colors group ${
+                                        className={`grid grid-cols-1 gap-3 px-4 sm:px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center transition-colors group ${
                                             isAdded ? 'bg-primary/8 ring-1 ring-inset ring-primary/20' : 'hover:bg-surface-3'
                                         }`}>
-                                        <div className="flex items-center gap-3 flex-1 cursor-pointer"
+                                        <div className="flex min-w-0 items-center gap-3 cursor-pointer"
                                             onClick={() => router.push(`/stock/${encodeURIComponent(item.symbol)}`)}>
                                             <CompanyLogo symbol={item.symbol} className="h-9 w-9" />
-                                            <div>
-                                                <p className="text-sm font-semibold text-ink group-hover:text-primary transition-colors">{item.name}</p>
-                                                <p className="text-xs text-ink-faint">{item.symbol} · NSE</p>
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-semibold text-ink group-hover:text-primary transition-colors" title={item.name}>{item.name}</p>
+                                                <p className="truncate text-xs text-ink-faint">{item.symbol} · NSE</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-4">
+                                        <div className="flex min-w-0 items-center justify-between gap-3 sm:justify-end sm:gap-4">
                                             {q ? (
                                                 <>
                                                     <div className="text-right">
@@ -164,7 +167,7 @@ function WatchlistContent() {
                                             )}
                                             <button onClick={() => removeFromWatchlist(item.symbol)}
                                                 aria-label={`Remove ${item.symbol} from watchlist`}
-                                                className="min-h-11 min-w-11 grid place-items-center p-1.5 rounded-lg text-[#2e3a4b] hover:text-down hover:bg-down/10 opacity-100 transition-all">
+                                                className="shrink-0 min-h-11 min-w-11 grid place-items-center p-1.5 rounded-lg text-ink-muted hover:text-down hover:bg-down/10 opacity-100 transition-all">
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
                                         </div>

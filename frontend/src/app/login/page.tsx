@@ -140,7 +140,7 @@ export default function AuthPage() {
                 <div className="w-full max-w-md">
                     {/* Mobile logo */}
                     <div className="flex items-center gap-2 mb-8 lg:hidden">
-                        <BrandLogo className="text-[30px]" />
+                        <BrandLogo className="text-[26px] sm:text-[30px]" />
                     </div>
 
 
