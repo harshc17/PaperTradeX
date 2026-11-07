@@ -1,4 +1,5 @@
 'use client';
+import BrandLogo from '@/components/BrandLogo';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Search, Bell, TrendingUp, LogOut, ChevronDown, X, History, Clock, Calendar, Zap, Info, ShieldCheck } from 'lucide-react';
@@ -218,11 +219,7 @@ export default function Header() {
             <div className="flex items-center justify-between px-4 lg:px-6 py-3 gap-4">
                 {/* Logo */}
                 <Link href="/dashboard" className="flex items-center gap-2.5 flex-shrink-0 group">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-105 group-hover:rotate-3"
-                        style={{ background: 'linear-gradient(135deg, #33c9dd, #22a9bc)', boxShadow: '0 0 18px rgba(51,201,221,0.30)' }}>
-                        <TrendingUp className="h-5 w-5 text-[#003829]" />
-                    </div>
-                    <span className="text-base font-bold tracking-tight text-ink-heading hidden sm:block font-heading">PaperTradeX</span>
+                    <BrandLogo compact className="text-[26px]" />
                 </Link>
 
                 {/* Search */}

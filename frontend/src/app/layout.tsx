@@ -33,6 +33,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
     title: 'PaperTradeX — Paper Trading with Real Indian Stock Prices',
     description: 'Practice trading Indian stocks on NSE & BSE with ₹1 Lakh virtual money. Real-time prices, zero real risk.',
+    icons: { icon: [{ url: '/brand/icon.svg', type: 'image/svg+xml' }, { url: '/favicon.ico', sizes: 'any' }], apple: '/apple-touch-icon.png' },
     keywords: 'paper trading, NSE, BSE, Indian stocks, virtual trading, stock market simulator',
 }
 

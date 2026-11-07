@@ -1,9 +1,10 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import BrandLogo from '@/components/BrandLogo';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { GOOGLE_CLIENT_ID } from '@/lib/config';
-import { TrendingUp, Eye, EyeOff, ArrowRight, CheckCircle2, Activity } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, CheckCircle2, Activity } from 'lucide-react';
 
 declare global {
     interface Window {
@@ -90,11 +91,7 @@ export default function AuthPage() {
 
                 {/* Logo */}
                 <div className="relative z-10 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                        style={{ background: 'linear-gradient(135deg, #33c9dd, #22a9bc)', boxShadow: '0 0 24px rgba(51,201,221,0.35)' }}>
-                        <TrendingUp className="w-5 h-5 text-[#003829]" />
-                    </div>
-                    <span className="text-white text-xl font-bold tracking-tight font-heading">PaperTradeX</span>
+                    <BrandLogo className="text-[32px]" />
                     <span className="ml-1 text-[10px] font-semibold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full uppercase tracking-widest">Beta</span>
                 </div>
 
@@ -142,12 +139,9 @@ export default function AuthPage() {
                 <div className="w-full max-w-md">
                     {/* Mobile logo */}
                     <div className="flex items-center gap-2 mb-8 lg:hidden">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                            style={{ background: 'linear-gradient(135deg, #33c9dd, #22a9bc)' }}>
-                            <TrendingUp className="w-4 h-4 text-[#003829]" />
-                        </div>
-                        <span className="text-lg font-bold text-white font-heading">PaperTradeX</span>
+                        <BrandLogo className="text-[30px]" />
                     </div>
+
 
                     <h1 className="text-2xl font-bold text-ink-heading mb-1.5 font-heading">
                         {isLogin ? 'Welcome back' : 'Create account'}
