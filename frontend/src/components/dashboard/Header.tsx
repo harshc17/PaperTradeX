@@ -216,14 +216,14 @@ export default function Header() {
             style={{ background: 'rgba(10, 14, 20, 0.88)', backdropFilter: 'saturate(160%) blur(18px)', WebkitBackdropFilter: 'saturate(160%) blur(18px)' }}>
 
             {/* Top row */}
-            <div className="flex items-center justify-between px-4 lg:px-6 py-3 gap-4">
+            <div className="flex items-center justify-between flex-wrap lg:flex-nowrap px-3 sm:px-4 lg:px-6 py-3 gap-3">
                 {/* Logo */}
                 <Link href="/dashboard" className="flex items-center gap-2.5 flex-shrink-0 group">
                     <BrandLogo compact className="text-[26px]" />
                 </Link>
 
                 {/* Search */}
-                <div className="flex-1 max-w-xl relative" ref={searchRef}>
+                <div className="order-3 lg:order-none basis-full lg:basis-auto min-w-0 lg:flex-1 lg:max-w-xl relative" ref={searchRef}>
                     <div className="relative group">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-faint group-focus-within:text-primary transition-colors" />
                         <input
@@ -286,12 +286,12 @@ export default function Header() {
                 </div>
 
                 {/* Right actions */}
-                <div className="flex items-center gap-3 flex-shrink-0">
+                <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0 ml-auto">
                     {/* Market Status Pill */}
                     <button
                         type="button"
                         onClick={() => setShowMarketModal(true)}
-                        className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                        className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
                             marketStatus?.isOpen
                                 ? 'bg-up/10 text-up border-up/30 hover:bg-up/15 shadow-[0_0_12px_rgba(38,208,124,0.15)]'
                                 : marketStatus?.session === 'PRE_MARKET'
@@ -318,7 +318,7 @@ export default function Header() {
 
                     {/* Balance pill */}
                     {user && (
-                        <div className="hidden md:flex items-center gap-1.5 bg-[#0e2a30] border border-primary/20 text-primary px-3.5 py-1.5 rounded-xl text-sm font-semibold tabular-nums font-num"
+                        <div className="flex items-center gap-1.5 bg-[#0e2a30] border border-primary/20 text-primary px-2 sm:px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold tabular-nums font-num"
                             style={{ boxShadow: '0 0 12px rgba(51,201,221,0.10)' }}>
                             <span className="text-xs opacity-70">₹</span>
                             {fmtBalance(balance)}
@@ -381,7 +381,7 @@ export default function Header() {
                 <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
                     <div
                         ref={marketModalRef}
-                        className="max-w-lg w-full bg-[#0e1624] border border-white/15 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                        className="max-h-[85dvh] overflow-y-auto max-w-lg w-full bg-[#0e1624] border border-white/15 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
                     >
                         {/* Header */}
                         <div className="p-5 border-b border-white/10 flex items-center justify-between bg-[#141f30]">

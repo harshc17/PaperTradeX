@@ -37,13 +37,13 @@ export default function DashboardPage() {
             <Header />
             <IndicesBanner />
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 stagger-children">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 xl:gap-8 stagger-children">
                     {/* Main Content */}
-                    <div className="lg:col-span-2">
+                    <div className="min-w-0 lg:col-span-2">
                         <DashboardMarket />
                     </div>
                     {/* Sidebar */}
-                    <div className="lg:col-span-1">
+                    <div className="min-w-0 lg:col-span-1">
                         <DashboardSidebar />
                     </div>
                 </div>

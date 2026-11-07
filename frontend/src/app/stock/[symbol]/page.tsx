@@ -29,15 +29,17 @@ export default function StockPage() {
         <div className="min-h-screen bg-transparent font-sans page-fade-in">
             <Header />
             <main className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-7">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                    <div className="lg:col-span-8 space-y-5">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 items-start">
+                    <div className="min-w-0 lg:col-span-8 space-y-5">
                         <StockDetail symbol={symbol} />
                         <StockChart symbol={symbol} />
-                        <AINewsPanel symbol={symbol} companyName={decodeURIComponent(symbol).replace(/\.(NS|BO)$/i, '')} />
                     </div>
 
-                    <div className="lg:col-span-4">
+                    <div className="min-w-0 lg:col-span-4 lg:row-span-2">
                         <TradingPanel symbol={symbol} />
+                    </div>
+                    <div className="min-w-0 lg:col-span-8">
+                        <AINewsPanel symbol={symbol} companyName={symbol.replace(/\.(NS|BO)$/i, '')} />
                     </div>
                 </div>
             </main>

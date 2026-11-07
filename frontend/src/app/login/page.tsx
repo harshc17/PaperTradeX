@@ -75,7 +75,7 @@ export default function AuthPage() {
     return (
         <div className="min-h-screen flex font-sans bg-[#0a0e14]">
             {/* Left Panel */}
-            <div className="hidden lg:flex lg:w-[52%] flex-col justify-between p-14 relative overflow-hidden"
+            <div className="hidden lg:flex lg:w-[48%] xl:w-[52%] flex-col justify-between p-8 xl:p-14 relative overflow-hidden"
                 style={{ background: 'linear-gradient(145deg, #0b1a22 0%, #0d2030 40%, #091520 100%)' }}>
                 {/* Grid overlay */}
                 <div className="absolute inset-0 pointer-events-none"
@@ -101,7 +101,7 @@ export default function AuthPage() {
                         <span className="w-2 h-2 rounded-full bg-up animate-pulse" />
                         <span className="text-up text-xs font-semibold uppercase tracking-widest font-num">Live Market Data</span>
                     </div>
-                    <h2 className="text-[2.6rem] font-bold text-white leading-[1.15] mb-5 font-heading">
+                    <h2 className="text-[2.1rem] xl:text-[2.6rem] font-bold text-white leading-[1.15] mb-5 font-heading">
                         Trade Indian Stocks<br />
                         <span className="text-gradient">Without Real Risk</span>
                     </h2>
@@ -135,7 +135,7 @@ export default function AuthPage() {
             </div>
 
             {/* Right Panel — Form */}
-            <div className="flex-1 flex items-center justify-center p-8 bg-[#0a0e14]">
+            <div className="flex-1 flex items-center justify-center px-4 py-8 sm:p-8 bg-[#0a0e14]">
                 <div className="w-full max-w-md">
                     {/* Mobile logo */}
                     <div className="flex items-center gap-2 mb-8 lg:hidden">

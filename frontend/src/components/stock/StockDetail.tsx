@@ -168,7 +168,7 @@ export default function StockDetail({ symbol }: { symbol: string }) {
                 <div className="animate-pulse space-y-4">
                     <div className="h-5 w-48 shimmer rounded-lg" />
                     <div className="h-10 w-36 shimmer rounded-lg" />
-                    <div className="grid grid-cols-4 gap-4 pt-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
                         {[...Array(8)].map((_, i) => (
                             <div key={i} className="h-12 shimmer rounded-lg" />
                         ))}
@@ -236,7 +236,7 @@ export default function StockDetail({ symbol }: { symbol: string }) {
                         {stockData.shortName}
                     </h1>
 
-                    <div className={`flex items-baseline gap-2 transition-colors duration-300 ${
+                    <div className={`flex flex-wrap items-baseline gap-2 transition-colors duration-300 ${
                         flash === 'up' ? 'text-up' : flash === 'down' ? 'text-down' : 'text-ink-heading'
                     }`}>
                         <span className="text-[24px] sm:text-[26px] font-semibold tabular-nums tracking-tight">

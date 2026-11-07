@@ -48,6 +48,8 @@
 }
 
 body {
+  margin: 0;
+  min-width: 0;
   background:
     radial-gradient(1200px 560px at 8% -12%, rgba(0, 169, 130, 0.10), transparent 55%),
     radial-gradient(1000px 480px at 96% 2%, rgba(0, 169, 130, 0.05), transparent 60%),
@@ -59,6 +61,21 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+/* Let grid/flex content shrink instead of widening the page on small screens. */
+main, main > div, main section { min-width: 0; }
+img, video, canvas { max-width: 100%; }
+
+@media (max-width: 639px) {
+  input, select, textarea { font-size: 16px !important; }
+  header nav a, header a, header button { min-height: 44px; }
+  main { padding-top: 1.25rem; padding-bottom: 1.25rem; }
+  main h1 { font-size: 1.75rem; overflow-wrap: anywhere; }
+}
+
+@media (hover: none) {
+  button { touch-action: manipulation; }
 }
 
 /* Faint terminal grid overlay */

@@ -289,8 +289,8 @@ export default function HoldingsPage() {
                         </div>
 
                         {/* Holdings Data Table */}
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
+                        <div className="overflow-x-auto overscroll-x-contain">
+                            <table className="w-full min-w-[700px] text-left">
                                 <thead>
                                     <tr className="bg-surface-2/60 text-[10px] font-bold text-ink-faint uppercase tracking-wider border-b border-white/10">
                                         <th className="px-5 py-3.5">Asset / Company</th>
