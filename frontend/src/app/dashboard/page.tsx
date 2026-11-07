@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/context/AuthContext';
+import PortfolioSummary from '@/components/dashboard/PortfolioSummary';
 import Header from '@/components/dashboard/Header';
 import AppLoader from '@/components/ui/AppLoader';
 
@@ -37,6 +38,7 @@ export default function DashboardPage() {
             <Header />
             <IndicesBanner />
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="lg:hidden mb-5"><PortfolioSummary /></div>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 xl:gap-8 stagger-children">
                     {/* Main Content */}
                     <div className="min-w-0 lg:col-span-2">

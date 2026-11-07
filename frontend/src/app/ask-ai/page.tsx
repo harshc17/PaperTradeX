@@ -91,11 +91,11 @@ export default function AskAIPage() {
                     </div>
                 </div>
 
-                <div className="bg-surface flex-1 rounded-[18px] border border-white/10 shadow-elevated overflow-hidden flex flex-col">
+                <div className="bg-surface h-[65dvh] min-h-[320px] max-h-[800px] rounded-[18px] border border-white/10 shadow-elevated overflow-hidden flex flex-col">
                     {/* Chat Area */}
-                    <div className="flex-1 p-6 overflow-y-auto space-y-6 bg-surface-2">
+                    <div className="flex-1 min-h-0 p-3 sm:p-6 overflow-y-auto space-y-6 bg-surface-2">
                         {messages.map((msg, idx) => (
-                            <div key={idx} className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            <div key={idx} className={`flex gap-2 sm:gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 {msg.role === 'ai' && (
                                     <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1"
                                         style={{ background: 'linear-gradient(135deg, #33c9dd, #22a9bc)' }}>
@@ -103,13 +103,13 @@ export default function AskAIPage() {
                                     </div>
                                 )}
 
-                                <div className={`max-w-[80%] rounded-2xl px-5 py-3.5 text-[15px] ${
+                                <div className={`min-w-0 max-w-[85%] break-words rounded-2xl px-3 sm:px-5 py-3.5 text-[15px] ${
                                     msg.role === 'user'
                                     ? 'bg-primary text-[#003829] font-medium rounded-tr-sm'
                                     : 'bg-surface border border-white/10 text-ink rounded-tl-sm'
                                 }`}>
                                     {msg.role === 'ai' ? (
-                                        <div className="prose prose-sm prose-invert prose-p:leading-relaxed prose-headings:font-semibold prose-a:text-primary max-w-none">
+                                        <div className="prose prose-sm prose-invert [&_pre]:overflow-x-auto [&_pre]:max-w-full prose-p:leading-relaxed prose-headings:font-semibold prose-a:text-primary max-w-none">
                                             <ReactMarkdown>{msg.content}</ReactMarkdown>
                                         </div>
                                     ) : (
@@ -149,13 +149,15 @@ export default function AskAIPage() {
                                 onChange={e => setInput(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && sendMessage()}
                                 placeholder="Ask about stocks, market trends, or trading strategies..."
-                                className="flex-1 bg-transparent px-3 py-2 outline-none text-[15px] text-ink placeholder-[#5c6675]"
+                                aria-label="Message to AI"
+                                className="min-w-0 flex-1 bg-transparent px-3 py-2 outline-none text-[15px] text-ink placeholder-[#5c6675]"
                                 disabled={isTyping}
                             />
                             <button
                                 onClick={sendMessage}
                                 disabled={!input.trim() || isTyping}
-                                className="w-10 h-10 bg-primary hover:bg-[#22a9bc] disabled:bg-surface-3 disabled:text-ink-faint text-[#003829] rounded-lg flex items-center justify-center transition-colors"
+                                aria-label="Send message"
+                                className="shrink-0 w-11 h-11 bg-primary hover:bg-[#22a9bc] disabled:bg-surface-3 disabled:text-ink-faint text-[#003829] rounded-lg flex items-center justify-center transition-colors"
                             >
                                 <Send className="w-4 h-4" />
                             </button>

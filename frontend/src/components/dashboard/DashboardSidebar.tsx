@@ -1,17 +1,11 @@
 'use client';
 import Link from 'next/link';
-import { useAuth } from '@/context/AuthContext';
-import { usePortfolio } from '@/context/PortfolioContext';
+import PortfolioSummary from './PortfolioSummary';
+
 import { ChevronRight, BarChart3, Search, Bot, Trophy } from 'lucide-react';
 import AIPortfolioAnalyst from './AIPortfolioAnalyst';
 
 export default function DashboardSidebar() {
-    const { balance } = useAuth();
-    const { holdings, totalInvested, currentValue, totalReturns, totalReturnsPercent, todayReturns, todayReturnsPercent } = usePortfolio();
-
-    const fmt = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-    const isProfit = totalReturns >= 0;
-
     const tools = [
         { name: 'Ask AI', icon: <Bot className="w-4 h-4 text-[#c084fc]" />, href: '/ask-ai', badge: 'New' },
         { name: 'Stock Screener', icon: <Search className="w-4 h-4 text-[#60a5fa]" />, href: '/stock-screener' },
@@ -21,42 +15,7 @@ export default function DashboardSidebar() {
     return (
         <div className="space-y-5">
             {/* Portfolio Card */}
-            <div className="bg-surface rounded-[14px] border border-white/10 p-6 shadow-soft">
-                <div className="flex items-center justify-between mb-5">
-                    <h3 className="text-[15px] font-semibold text-ink-heading font-heading">Your Portfolio</h3>
-                    <Link href="/holdings" className="text-[12px] text-primary hover:underline font-medium">View all →</Link>
-                </div>
-
-                <div className="mb-5">
-                    <p className="text-[12px] text-ink-faint uppercase tracking-wider mb-1">Current Value</p>
-                    <h2 className="text-[26px] font-bold text-ink-heading tracking-tight tabular-nums font-num">₹{fmt(currentValue)}</h2>
-                </div>
-
-                {holdings.length > 0 ? (
-                    <div className="space-y-3 pt-4 border-t border-white/10">
-                        {[
-                            { label: '1D returns', val: todayReturns, pct: todayReturnsPercent },
-                            { label: 'Total returns', val: totalReturns, pct: totalReturnsPercent },
-                        ].map(({ label, val, pct }) => (
-                            <div key={label} className="flex justify-between items-center">
-                                <span className="text-[13px] text-ink-faint">{label}</span>
-                                <span className={`text-[13px] font-semibold tabular-nums font-num ${val >= 0 ? 'text-up' : 'text-down'}`}>
-                                    {val >= 0 ? '+' : '-'}₹{fmt(Math.abs(val))} ({Math.abs(pct).toFixed(2)}%)
-                                </span>
-                            </div>
-                        ))}
-                        <div className="flex justify-between items-center">
-                            <span className="text-[13px] text-ink-faint">Invested</span>
-                            <span className="text-[13px] font-semibold text-ink tabular-nums font-num">₹{fmt(totalInvested)}</span>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="text-center py-4 border-t border-white/10">
-                        <p className="text-[13px] text-ink-faint mb-3">No holdings yet.</p>
-                        <Link href="/dashboard" className="text-[13px] font-semibold text-primary hover:underline">Start investing →</Link>
-                    </div>
-                )}
-            </div>
+            <div className="hidden lg:block"><PortfolioSummary /></div>
 
             {/* Products & Tools */}
             <div className="bg-surface rounded-[14px] border border-white/10 p-5 shadow-soft">

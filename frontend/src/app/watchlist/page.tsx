@@ -164,7 +164,8 @@ function WatchlistContent() {
                                                 <div className="w-20 h-8 shimmer rounded-xl" />
                                             )}
                                             <button onClick={() => removeFromWatchlist(item.symbol)}
-                                                className="p-1.5 rounded-lg text-[#2e3a4b] hover:text-down hover:bg-down/10 opacity-0 group-hover:opacity-100 transition-all">
+                                                aria-label={`Remove ${item.symbol} from watchlist`}
+                                                className="min-h-11 min-w-11 grid place-items-center p-1.5 rounded-lg text-[#2e3a4b] hover:text-down hover:bg-down/10 opacity-100 transition-all">
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
                                         </div>

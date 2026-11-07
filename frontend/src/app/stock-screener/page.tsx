@@ -265,8 +265,8 @@ export default function StockScreenerPage() {
                 )}
 
                 <div className="bg-white rounded-[16px] border border-gray-200/80 shadow-sm overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
+                    <div className="overflow-x-auto overscroll-x-contain">
+                        <table className="w-full min-w-[680px] text-left">
                             <thead>
                                 <tr className="bg-gray-50 border-b border-gray-100 text-[12px] font-semibold text-gray-500 uppercase tracking-wider">
                                     <th className="px-6 py-4">Company Name</th>

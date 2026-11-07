@@ -1,10 +1,10 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getSocket } from '@/lib/socket';
 import { API_URL } from '@/lib/config';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, ArrowUpRight, Loader2 } from 'lucide-react';
 import MarketMovers from './MarketMovers';
 import DashboardNews from './DashboardNews';
 
@@ -45,6 +45,14 @@ function resolveQuote(quotes: Record<string, QuoteData>, symbol: string): QuoteD
 
 export default function DashboardMarket() {
     const router = useRouter();
+    const [showAllStocks, setShowAllStocks] = useState(false);
+    const [openingSymbol, setOpeningSymbol] = useState<string | null>(null);
+    const [isNavigating, startNavigation] = useTransition();
+    const openStock = (symbol: string) => {
+        if (isNavigating) return;
+        setOpeningSymbol(symbol);
+        startNavigation(() => router.push('/stock/' + encodeURIComponent(symbol)));
+    };
     const [quotes, setQuotes] = useState<Record<string, QuoteData>>({});
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
@@ -166,7 +174,7 @@ export default function DashboardMarket() {
             <section>
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-[16px] font-semibold text-ink-heading font-heading">Top Stocks</h2>
-                    <button className="text-[12px] text-primary hover:underline font-medium">View all →</button>
+                    <button type="button" aria-expanded={showAllStocks} aria-controls="top-stocks-list" onClick={() => setShowAllStocks(v => !v)} className="lg:hidden min-h-11 text-[12px] text-primary hover:underline font-medium">{showAllStocks ? 'Show fewer' : 'View all 10'}</button>
                 </div>
                 <div className="bg-surface rounded-[14px] border border-white/10 overflow-hidden shadow-soft">
                     <div className="hidden sm:grid grid-cols-12 gap-2 px-3 sm:px-5 py-3 bg-surface-2 border-b border-white/10 text-[10px] font-bold text-ink-faint uppercase tracking-widest">
@@ -175,15 +183,15 @@ export default function DashboardMarket() {
                         <div className="col-span-2 text-right">Change</div>
                         <div className="col-span-2 text-right">Action</div>
                     </div>
-                    <div className="divide-y divide-[#222c3a]/60">
-                        {TOP_STOCKS.map(stock => {
+                    <div id="top-stocks-list" className="divide-y divide-[#222c3a]/60">
+                        {TOP_STOCKS.map((stock, index) => {
                             const q = resolveQuote(quotes, stock.symbol);
                             const isUp = (q?.change ?? 0) >= 0;
                             const initials = stock.symbol.replace('.NS', '').substring(0, 2);
                             return (
                                 <div key={stock.symbol}
-                                    className="grid grid-cols-12 gap-1 px-3 sm:px-5 py-4 items-center hover:bg-surface-3 transition-colors cursor-pointer group"
-                                    onClick={() => router.push(`/stock/${encodeURIComponent(stock.symbol)}`)}>
+                                    className={`${index >= 4 && !showAllStocks ? 'hidden lg:grid' : 'grid'} grid-cols-12 gap-1 px-3 sm:px-5 py-3 sm:py-4 items-center hover:bg-surface-3 transition-colors cursor-pointer group`}
+                                    onClick={() => openStock(stock.symbol)}>
                                     <div className="col-span-7 sm:col-span-5 min-w-0 flex items-center gap-2 sm:gap-3">
                                         <div className="hidden sm:flex w-9 h-9 rounded-xl bg-surface-3 border border-white/10 flex items-center justify-center text-[10px] font-bold text-ink-muted group-hover:border-primary/30 group-hover:text-primary transition-all flex-shrink-0">
                                             {initials}
@@ -207,10 +215,13 @@ export default function DashboardMarket() {
                                     <div className="col-span-5 sm:col-span-2 flex justify-end">
                                         <button
                                             id={`buy-btn-${stock.symbol}`}
-                                            onClick={e => { e.stopPropagation(); router.push(`/stock/${encodeURIComponent(stock.symbol)}`); }}
-                                            className="min-h-11 min-w-11 px-4 sm:px-3.5 py-2 text-xs font-bold text-[#003829] rounded-lg transition-all opacity-100"
+                                            onClick={e => { e.stopPropagation(); openStock(stock.symbol); }}
+                                            disabled={isNavigating}
+                                            aria-label={`Buy ${stock.name}`}
+                                            aria-busy={isNavigating && openingSymbol === stock.symbol}
+                                            className="min-h-11 min-w-11 inline-flex items-center justify-center gap-1.5 px-2 sm:px-2 py-2 text-xs font-bold text-[#003829] rounded-lg transition-all duration-150 hover:brightness-110 hover:shadow-[0_0_16px_rgba(51,201,221,0.35)] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60 disabled:cursor-wait"
                                             style={{ background: 'linear-gradient(135deg, #33c9dd, #22a9bc)' }}>
-                                            Buy
+                                            {isNavigating && openingSymbol === stock.symbol ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /><span className="sm:sr-only">Opening…</span></> : <><span>Buy</span><ArrowUpRight className="w-3.5 h-3.5" /></>}
                                         </button>
                                     </div>
                                 </div>

@@ -365,7 +365,7 @@ export default function ChallengePage() {
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {loading ? (
-                    <div className="flex flex-col items-center justify-center min-h-[420px] rounded-2xl bg-surface border border-white/10 p-12 text-center">
+                    <div className="flex flex-col items-center justify-center min-h-[280px] sm:min-h-[420px] rounded-2xl bg-surface border border-white/10 p-5 sm:p-12 text-center">
                         <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
                         <p className="text-base font-semibold text-ink-heading">Loading Weekly Challenge...</p>
                         <p className="text-xs text-ink-faint mt-1">Fetching live portfolio allocations and rules</p>
@@ -376,7 +376,7 @@ export default function ChallengePage() {
                        ═════════════════════════════════════════════════════════════ */
                     <div className="space-y-8">
                         {/* Hero Card */}
-                        <div className="relative overflow-hidden rounded-3xl bg-surface border border-white/10 p-8 sm:p-12 shadow-soft">
+                        <div className="relative overflow-hidden rounded-3xl bg-surface border border-white/10 p-5 sm:p-12 shadow-soft">
                             {/* Ambient Glows */}
                             <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
                             <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-up/10 rounded-full blur-3xl pointer-events-none" />
@@ -387,7 +387,7 @@ export default function ChallengePage() {
                                     7-Day Trading Sprint
                                 </div>
 
-                                <h1 className="text-3xl sm:text-5xl font-extrabold text-ink-heading tracking-tight leading-[1.15] mb-4">
+                                <h1 className="text-2xl sm:text-5xl font-extrabold text-ink-heading tracking-tight leading-[1.15] mb-4">
                                     Turn <span className="text-primary font-num">₹10,000</span> into <span className="text-up font-num">₹15,000</span> in 7 Days
                                 </h1>
 
@@ -401,7 +401,7 @@ export default function ChallengePage() {
                                         type="button"
                                         onClick={acceptChallenge}
                                         disabled={accepting}
-                                        className="inline-flex items-center gap-2.5 h-12 px-8 rounded-xl bg-primary text-[#061016] font-bold text-sm hover:bg-primary-hover shadow-[0_0_25px_rgba(51,201,221,0.30)] hover:shadow-[0_0_35px_rgba(51,201,221,0.45)] transition-all disabled:opacity-50 cursor-pointer active:scale-[0.98]"
+                                        className="inline-flex w-full sm:w-auto justify-center items-center gap-2.5 min-h-12 px-4 sm:px-8 rounded-xl bg-primary text-[#061016] font-bold text-sm hover:bg-primary-hover shadow-[0_0_25px_rgba(51,201,221,0.30)] hover:shadow-[0_0_35px_rgba(51,201,221,0.45)] transition-all disabled:opacity-50 cursor-pointer active:scale-[0.98]"
                                     >
                                         {accepting ? (
                                             <>
@@ -538,7 +538,7 @@ export default function ChallengePage() {
                         </div>
 
                         {/* Top 4 Metrics Row */}
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             <div className="bg-surface rounded-2xl border border-white/10 p-5 shadow-soft">
                                 <div className="flex items-center justify-between text-ink-faint mb-2">
                                     <span className="text-xs font-semibold uppercase tracking-wider">Available Cash</span>
@@ -654,7 +654,7 @@ export default function ChallengePage() {
                                         </div>
                                     ) : (
                                         <div className="overflow-x-auto">
-                                            <table className="w-full text-left text-sm">
+                                            <table className="w-full min-w-[600px] text-left text-sm">
                                                 <thead>
                                                     <tr className="bg-surface-2 text-[11px] uppercase tracking-wider text-ink-faint border-b border-white/5 font-semibold">
                                                         <th className="px-6 py-3.5">Asset</th>
