@@ -1,4 +1,5 @@
 'use client';
+import CompanyLogo from '@/components/CompanyLogo';
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -284,9 +285,7 @@ export default function OrdersPage() {
                                                 {/* Symbol */}
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-2.5">
-                                                        <div className="w-8 h-8 rounded-xl bg-surface-2 border border-white/10 flex items-center justify-center text-[10px] font-black text-primary">
-                                                            {cleanSymbol.slice(0, 2)}
-                                                        </div>
+                                                        <CompanyLogo symbol={cleanSymbol} className="h-8 w-8" />
                                                         <div>
                                                             <p className="text-sm font-bold text-ink-heading">
                                                                 {cleanSymbol}

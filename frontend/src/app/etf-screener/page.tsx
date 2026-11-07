@@ -1,4 +1,5 @@
 'use client';
+import CompanyLogo from '@/components/CompanyLogo';
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSocket } from '@/lib/socket';
@@ -225,7 +226,7 @@ export default function EtfScreenerPage() {
                                     filteredETFs.map(etf => {
                                         const q = quotes[etf.symbol];
                                         const isUp = (q?.change ?? 0) >= 0;
-                                        const initials = etf.symbol.substring(0, 2);
+
 
                                         return (
                                             <tr
@@ -235,9 +236,7 @@ export default function EtfScreenerPage() {
                                             >
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center text-[11px] font-bold text-indigo-600 group-hover:bg-indigo-100 transition-colors">
-                                                            {initials}
-                                                        </div>
+                                                        <CompanyLogo symbol={etf.symbol} />
                                                         <div>
                                                             <p className="text-[14px] font-semibold text-[#3b4252] group-hover:text-[#00b386] transition-colors">{etf.name}</p>
                                                             <p className="text-[12px] text-gray-400">{etf.symbol.replace('.NS', '')}</p>

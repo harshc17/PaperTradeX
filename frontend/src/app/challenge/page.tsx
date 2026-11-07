@@ -1,4 +1,5 @@
 'use client';
+import CompanyLogo from '@/components/CompanyLogo';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -673,8 +674,11 @@ export default function ChallengePage() {
                                                         return (
                                                             <tr key={p.symbol} className="hover:bg-surface-2/60 transition-colors">
                                                                 <td className="px-6 py-4">
-                                                                    <div className="font-bold text-ink-heading">{p.symbol}</div>
-                                                                    <div className="text-[11px] text-ink-faint">EQUITY / ETF</div>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <CompanyLogo symbol={p.symbol} className="h-8 w-8" />
+                                                                        <div><div className="font-bold text-ink-heading">{p.symbol}</div>
+                                                                        <div className="text-[11px] text-ink-faint">EQUITY / ETF</div></div>
+                                                                    </div>
                                                                 </td>
                                                                 <td className="px-4 py-4 text-right font-num font-semibold text-ink">
                                                                     {p.quantity}
