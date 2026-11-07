@@ -228,8 +228,8 @@ export default function StockDetail({ symbol }: { symbol: string }) {
 
     return (
         <div className="bg-transparent">
-            <div className="flex items-start justify-between gap-4">
-                <div>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0 flex-1 basis-72">
                     <div className="text-[20px] text-ink-muted leading-6 mb-1 tracking-tight">
                         {prettySymbol} · {stockData.exchange}
                     </div>
@@ -266,7 +266,7 @@ export default function StockDetail({ symbol }: { symbol: string }) {
                     </div>
                 </div>
 
-                <div className="hidden sm:flex items-center gap-3 pt-1">
+                <div className="hidden shrink-0 sm:flex items-center gap-3 pt-1">
                     <button className="w-12 h-12 rounded-full border border-white/10 bg-surface grid place-items-center text-ink-muted hover:text-primary">
                         <Link2 className="w-5 h-5" />
                     </button>

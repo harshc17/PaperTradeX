@@ -178,9 +178,9 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
 
             {/* Header: Symbol, Exchange & Market Status */}
             <div className="px-5 pt-5 pb-4 border-b border-white/[0.08]">
-                <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                        <span className="text-[19px] font-black tracking-tight text-ink-heading font-heading">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                        <span className="break-all text-[19px] font-black tracking-tight text-ink-heading font-heading">
                             {bare}
                         </span>
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-ink-faint">
@@ -189,7 +189,7 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                     </div>
 
                     {/* Exchange Switcher */}
-                    <div className="flex items-center gap-1 bg-[#151f30] border border-white/10 rounded-lg p-0.5">
+                    <div className="shrink-0 flex items-center gap-1 bg-[#151f30] border border-white/10 rounded-lg p-0.5">
                         {(['NSE', 'BSE'] as const).map(ex => (
                             <button
                                 key={ex}
@@ -208,9 +208,9 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                 </div>
 
                 {/* Price & Day Change */}
-                <div className="flex items-baseline justify-between">
-                    <div className="flex items-baseline gap-2">
-                        <span className="text-[22px] font-bold text-ink-heading tabular-nums font-num">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-2">
+                    <div className="flex min-w-0 flex-wrap items-baseline gap-2">
+                        <span className="whitespace-nowrap text-[22px] font-bold text-ink-heading tabular-nums font-num">
                             ₹{fmt(displayPrice)}
                         </span>
                         <span className={`inline-flex items-center text-xs font-semibold tabular-nums font-num ${isUp ? 'text-up' : 'text-down'}`}>
@@ -221,7 +221,7 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
 
                     {/* Market Status Badge */}
                     <div
-                        className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border transition-all ${
+                        className={`shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border transition-all ${
                             marketStatus?.isOpen
                                 ? 'bg-up/10 text-up border-up/25 shadow-[0_0_10px_rgba(38,208,124,0.15)]'
                                 : marketStatus?.session === 'PRE_MARKET'
@@ -250,8 +250,8 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                 </div>
 
                 {!marketStatus?.isOpen && (
-                    <div className="mt-2.5 px-3 py-1.5 rounded-lg bg-surface-2 border border-white/5 flex items-center justify-between text-[11px] text-ink-faint">
-                        <span className="flex items-center gap-1.5 truncate">
+                    <div className="mt-2.5 px-3 py-1.5 rounded-lg bg-surface-2 border border-white/5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] text-ink-faint">
+                        <span className="flex min-w-0 items-center gap-1.5">
                             <span className="w-1.5 h-1.5 rounded-full bg-slate-400 flex-shrink-0" />
                             <span className="truncate">{marketStatus?.sessionName || 'Market Closed'}</span>
                         </span>
