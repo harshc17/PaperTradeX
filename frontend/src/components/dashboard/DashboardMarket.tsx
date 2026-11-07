@@ -1,4 +1,5 @@
 'use client';
+import CompanyLogo from '@/components/CompanyLogo';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -187,15 +188,13 @@ export default function DashboardMarket() {
                         {TOP_STOCKS.map((stock, index) => {
                             const q = resolveQuote(quotes, stock.symbol);
                             const isUp = (q?.change ?? 0) >= 0;
-                            const initials = stock.symbol.replace('.NS', '').substring(0, 2);
+
                             return (
                                 <div key={stock.symbol}
                                     className={`${index >= 4 && !showAllStocks ? 'hidden lg:grid' : 'grid'} grid-cols-12 gap-1 px-3 sm:px-5 py-3 sm:py-4 items-center hover:bg-surface-3 transition-colors cursor-pointer group`}
                                     onClick={() => openStock(stock.symbol)}>
                                     <div className="col-span-7 sm:col-span-5 min-w-0 flex items-center gap-2 sm:gap-3">
-                                        <div className="hidden sm:flex w-9 h-9 rounded-xl bg-surface-3 border border-white/10 flex items-center justify-center text-[10px] font-bold text-ink-muted group-hover:border-primary/30 group-hover:text-primary transition-all flex-shrink-0">
-                                            {initials}
-                                        </div>
+                                        <CompanyLogo symbol={stock.symbol} className="h-8 w-8 sm:h-9 sm:w-9" />
                                         <div className="min-w-0">
                                             <p className="truncate text-xs sm:text-sm font-semibold text-ink group-hover:text-primary transition-colors" title={stock.name}>{stock.name}</p>
                                             <p className="text-[11px] text-ink-faint">{stock.symbol.replace('.NS', '')} · NSE</p>

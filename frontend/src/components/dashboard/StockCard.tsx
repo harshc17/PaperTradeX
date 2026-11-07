@@ -1,6 +1,7 @@
 'use client';
 import { Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import CompanyLogo from '@/components/CompanyLogo';
 
 interface StockCardProps {
     name: string;
@@ -30,12 +31,7 @@ export default function StockCard({ name, symbol, price, change, isPositive, log
                 title="Buy Stock">
                 <Plus className="h-4 w-4" />
             </button>
-            <div className="w-10 h-10 rounded-xl border border-white/10 flex items-center justify-center bg-surface-3 mb-4 group-hover:border-primary/30 transition-colors">
-                {logoUrl
-                    ? <img src={logoUrl} alt={name} className="w-full h-full object-contain" />
-                    : <span className="text-xs font-bold text-ink-faint">{symbol.substring(0, 2)}</span>
-                }
-            </div>
+            <CompanyLogo symbol={symbol} className="h-10 w-10 mb-4" />
             <div className="space-y-1">
                 <h3 className="text-sm font-medium text-ink truncate pr-6" title={name}>{name}</h3>
                 <p className="text-xl font-bold text-ink-heading tabular-nums font-num">₹{price}</p>

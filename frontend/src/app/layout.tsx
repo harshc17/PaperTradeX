@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { EB_Garamond, Hanken_Grotesk, JetBrains_Mono } from 'next/font/google'
 import Script from 'next/script'
 import AppProviders from './providers'
+import SiteFooter from '@/components/SiteFooter'
 
 const hankenGrotesk = Hanken_Grotesk({
     subsets: ['latin'],
@@ -47,6 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 )}
                 <AppProviders>
                     {children}
+                    <SiteFooter />
                 </AppProviders>
             </body>
         </html>

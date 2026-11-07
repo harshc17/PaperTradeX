@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import BrandLogo from '@/components/BrandLogo';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { GOOGLE_CLIENT_ID } from '@/lib/config';
@@ -235,9 +236,9 @@ export default function AuthPage() {
 
                     <p className="text-center text-ink-faint text-xs mt-6">
                         By continuing, you agree to our{' '}
-                        <span className="text-primary cursor-pointer hover:underline">Terms of Service</span>
+                        <Link href="/terms" className="text-primary hover:underline">Terms &amp; Conditions</Link>
                         {' '}and{' '}
-                        <span className="text-primary cursor-pointer hover:underline">Privacy Policy</span>
+                        <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
                     </p>
                 </div>
             </div>

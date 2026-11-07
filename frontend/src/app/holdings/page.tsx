@@ -1,4 +1,5 @@
 'use client';
+import CompanyLogo from '@/components/CompanyLogo';
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -319,9 +320,7 @@ export default function HoldingsPage() {
                                                 {/* Asset / Company */}
                                                 <td className="px-5 py-4">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1a2538] to-[#121a28] border border-white/10 flex items-center justify-center text-xs font-black text-primary tracking-wider shadow-inner group-hover:scale-105 transition-transform">
-                                                            {cleanSymbol.slice(0, 2)}
-                                                        </div>
+                                                        <CompanyLogo symbol={h.symbol} />
                                                         <div>
                                                             <div className="flex items-center gap-1.5">
                                                                 <span className="text-sm font-bold text-ink-heading">

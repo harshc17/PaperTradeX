@@ -1,0 +1,20 @@
+import type { Metadata } from 'next';
+import InformationPage from '@/components/InformationPage';
+
+export const metadata: Metadata = { title: 'Terms & Conditions | PaperTradeX', description: 'Terms for using PaperTradeX virtual trading, market data and educational tools.' };
+
+export default function TermsPage() {
+    return <InformationPage title="Terms & Conditions"
+        intro="These terms govern your use of PaperTradeX at papertradex.in. By creating an account or using the service, you agree to these terms. Read our Privacy Policy to understand how information is handled."
+        sections={[
+            { title: 'Eligibility and your account', text: 'You must be at least 18 years old to create an account. Provide accurate account details, keep your password and OTPs private, and notify us if you suspect unauthorised access. You are responsible for activity carried out through your account, subject to applicable law.' },
+            { title: 'Virtual trading only', text: 'PaperTradeX is an educational simulator. All balances, positions, orders, returns and challenge results are virtual. Orders are not sent to a stock exchange or broker. Virtual money has no monetary value and cannot be withdrawn or redeemed. Challenge targets do not promise cash, prizes or investment returns.' },
+            { title: 'Market data and simulated execution', text: 'Quotes and other market information may be delayed, incomplete, stale or inaccurate. Market hours, data availability and simulation rules can affect order acceptance and fills. Real trading involves factors that a simulation may not reproduce, including liquidity, slippage, fees, taxes and execution delays. We may correct erroneous data or simulated records when necessary to maintain the service.' },
+            { title: 'Educational information and AI', text: 'Content, charts, news summaries and AI responses are provided for general learning and are not personalised financial, investment, tax or legal advice. AI output can be incorrect or outdated. Make independent checks and seek qualified advice before making real financial decisions. Past performance and simulated results do not guarantee future returns.' },
+            { title: 'Acceptable use', text: 'Do not attempt to access another account, bypass security or usage limits, manipulate challenges, exploit pricing errors, introduce harmful code, or disrupt the service. Do not use the platform unlawfully or misrepresent simulated results as real investment performance. Report suspected vulnerabilities privately through the support email below.' },
+            { title: 'Content and third parties', text: 'Respect intellectual property rights in the site, market feeds and third-party content. Company names, trademarks and logos belong to their respective owners and are shown for identification, without implying endorsement. Third-party services and linked websites have their own terms and privacy practices.' },
+            { title: 'Availability and account restrictions', text: 'The service is provided as available. Features may change, be interrupted or be discontinued. We may restrict accounts involved in abuse or security risks. You can stop using the service at any time and request account deletion using the contact below.' },
+            { title: 'Responsibility and applicable law', text: 'To the extent permitted by applicable law, PaperTradeX does not guarantee uninterrupted operation or accurate data and is not responsible for losses arising from reliance on simulated results, market information or AI output. These terms do not exclude rights or liabilities that cannot lawfully be excluded. Applicable Indian law governs these terms, subject to any mandatory rights that apply to you.' },
+            { title: 'Changes and questions', text: 'We may revise these terms as the platform evolves and will update the date above. Material changes will be communicated through the service where appropriate. Contact us with questions before continuing if you do not understand a term.' },
+        ]} />;
+}

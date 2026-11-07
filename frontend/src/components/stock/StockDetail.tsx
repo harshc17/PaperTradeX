@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Bell, Bookmark, Link2, TrendingDown, TrendingUp } from 'lucide-react';
 import { getSocket } from '@/lib/socket';
 import { API_URL } from '@/lib/config';
+import CompanyLogo from '@/components/CompanyLogo';
 import { usePortfolio } from '@/context/PortfolioContext';
 
 type StockData = {
@@ -232,8 +233,9 @@ export default function StockDetail({ symbol }: { symbol: string }) {
                     <div className="text-[20px] text-ink-muted leading-6 mb-1 tracking-tight">
                         {prettySymbol} · {stockData.exchange}
                     </div>
-                    <h1 className="text-[24px] sm:text-[26px] font-semibold text-ink-heading leading-[1.15] mb-2.5">
-                        {stockData.shortName}
+                    <h1 className="flex items-center gap-3 text-[24px] sm:text-[26px] font-semibold text-ink-heading leading-[1.15] mb-2.5">
+                        <CompanyLogo symbol={symbol} />
+                        <span>{stockData.shortName}</span>
                     </h1>
 
                     <div className={`flex flex-wrap items-baseline gap-2 transition-colors duration-300 ${

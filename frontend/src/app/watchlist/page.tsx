@@ -1,4 +1,5 @@
 'use client';
+import CompanyLogo from '@/components/CompanyLogo';
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -138,9 +139,7 @@ function WatchlistContent() {
                                         }`}>
                                         <div className="flex items-center gap-3 flex-1 cursor-pointer"
                                             onClick={() => router.push(`/stock/${encodeURIComponent(item.symbol)}`)}>
-                                            <div className="w-9 h-9 rounded-xl bg-surface-3 border border-white/10 flex items-center justify-center text-xs font-bold text-ink-muted group-hover:border-primary/30 group-hover:text-primary transition-colors">
-                                                {item.symbol.replace('.NS', '').substring(0, 2)}
-                                            </div>
+                                            <CompanyLogo symbol={item.symbol} className="h-9 w-9" />
                                             <div>
                                                 <p className="text-sm font-semibold text-ink group-hover:text-primary transition-colors">{item.name}</p>
                                                 <p className="text-xs text-ink-faint">{item.symbol} · NSE</p>

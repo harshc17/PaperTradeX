@@ -1,4 +1,5 @@
 'use client';
+import CompanyLogo from '@/components/CompanyLogo';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { TrendingUp, TrendingDown } from 'lucide-react';
@@ -79,9 +80,7 @@ export default function MarketMovers() {
                             onClick={() => router.push(`/stock/${encodeURIComponent(q.symbol)}`)}>
                             <div className="flex items-center gap-3">
                                 <span className="text-xs font-bold text-ink-faint w-4 font-num">{idx + 1}</span>
-                                <div className="w-8 h-8 rounded-xl bg-surface-3 border border-white/10 flex items-center justify-center text-[9px] font-bold text-ink-muted group-hover:text-primary group-hover:border-primary/30 transition-colors">
-                                    {q.symbol.replace('.NS', '').substring(0, 2)}
-                                </div>
+                                <CompanyLogo symbol={q.symbol} className="h-8 w-8" />
                                 <div>
                                     <p className="text-sm font-semibold text-ink group-hover:text-primary transition-colors">{q.name}</p>
                                     <p className="text-[10px] text-ink-faint font-num">₹{q.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
