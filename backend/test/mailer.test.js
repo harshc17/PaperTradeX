@@ -16,7 +16,7 @@ test('signup and reset use Brevo HTTPS and the PaperTradeX sender', async () => 
             assert.equal(call.headers['api-key'], 'test-key');
         }
         assert.match(calls[0].body.textContent, /123456/); assert.match(calls[1].body.textContent, /654321/);
-        global.fetch = async () => ({ ok: false });
+        global.fetch = async () => ({ ok: false, status: 401, json: async () => ({ message: 'Key not found' }) });
         await assert.rejects(mailer.sendResetOtp('qa@example.com', '123456'), /rejected/);
     } finally {
         global.fetch = originalFetch;

@@ -16,8 +16,13 @@ async function send(toEmail, subject, text) {
             body: JSON.stringify({ sender: { name: 'PaperTradeX', email: FROM_EMAIL }, to: [{ email: toEmail }], subject, textContent: text }),
         });
         if (!response.ok) {
+            const failure = await response.json().catch(() => ({}));
+            const message = String(failure.message || '').toLowerCase();
+            const reason = /ip|not verified/.test(message) ? 'IP authorization required'
+                : /key/.test(message) ? 'API key rejected'
+                : /sender/.test(message) ? 'Sender verification required' : 'Provider authorization or delivery failure';
             // Record only the provider status, never the API key or message/code.
-            console.error(`[Mailer] Brevo rejected delivery (HTTP ${response.status})`);
+            console.error(`[Mailer] Brevo rejected delivery (HTTP ${response.status}; ${reason})`);
             throw new Error('Email provider rejected delivery');
         }
         return;
