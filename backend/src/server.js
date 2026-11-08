@@ -12,7 +12,7 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const MarketDataService = require('./services/MarketData');
 const TradeEngine = require('./services/TradeEngine');
-const { connectDB, User, Order, TransactionHistory, WeeklyChallenge, WeeklyChallengeTrade, seedAdmin } = require('./models');
+const { connectDB, User, PendingSignup, Order, TransactionHistory, WeeklyChallenge, WeeklyChallengeTrade, seedAdmin } = require('./models');
 const NSEClient = require('./services/NSEClient');
 const HistoricalClient = require('./services/HistoricalClient');
 const AIService = require('./services/AIService');
@@ -109,6 +109,7 @@ app.get('/health', (req, res) => {
 
 // --- AUTH ROUTES ---
 
+const signupVerification = require('./services/SignupVerification')({ PendingSignup, User, mailer: Mailer, secret: JWT_SECRET });
 app.post('/api/register', authLimiter, async (req, res) => {
     const { name, phone, email, password } = req.body;
     try {
@@ -122,19 +123,25 @@ app.post('/api/register', authLimiter, async (req, res) => {
         const exists = await User.findOne({ email: normalizedEmail });
         if (exists) return res.status(409).json({ error: 'Email already registered' });
 
+        if (Buffer.byteLength(password, 'utf8') > 72) return res.status(400).json({ error: 'Password is too long (maximum 72 bytes)' });
+        if (!String(name).trim() || String(name).length > 100 || String(phone || '').length > 30) return res.status(400).json({ error: 'Enter a valid name and phone number' });
+        if (!Mailer.isConfigured()) return res.status(503).json({ error: 'Email delivery is unavailable. Please try again later.' });
         const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-        const user = await User.create({
-            name: String(name).trim(),
-            phone: phone ? String(phone).trim() : '',
-            email: normalizedEmail,
-            password_hash,
-            authProvider: 'local',
-        });
-
-        const token = jwt.sign({ id: user._id.toString(), role: user.role, tokenVersion: user.tokenVersion || 0 }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-        res.json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, role: user.role, balance: user.balance } });
+        await signupVerification.request({ name: String(name).trim(), phone: String(phone || '').trim(), email: normalizedEmail, password_hash });
+        res.status(202).json({ success: true, verificationRequired: true, retryAfter: 60 });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        const cooldown = e.message.startsWith('Please wait');
+        res.status(cooldown ? 429 : 503).json({ error: cooldown ? e.message : 'Email delivery is unavailable. Please try again later.' });
+    }
+});
+
+app.post('/api/verify-signup-otp', authLimiter, async (req, res) => {
+    try {
+        const user = await signupVerification.verify(req.body.email, req.body.code);
+        const token = jwt.sign({ id: user._id.toString(), role: user.role, tokenVersion: user.tokenVersion || 0 }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+        res.set('Cache-Control', 'no-store').json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, role: user.role, balance: user.balance } });
+    } catch {
+        res.status(400).json({ error: 'Invalid or expired code. Request a new code after five failed attempts. If already verified, sign in.' });
     }
 });
 

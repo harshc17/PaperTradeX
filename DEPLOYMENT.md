@@ -49,14 +49,14 @@ Railway follows `main` without a commit pin. Install Railway's GitHub App with a
 
 Trading is restricted to regular market hours. Closed-market requests must leave balance, holdings and orders unchanged. Verify a buy, sell, queued limit order and cancellation during an open session after changes to trade execution. Trades use server-resolved quotes and MongoDB transactions.
 
-Security regression checks: `node --test backend/test/deployment.test.js backend/test/trading-hours.test.js`. Run dependency audits in the root, backend and frontend directories after dependency updates. Password-reset delivery requires SMTP; production must not log reset tokens.
+Security regression checks: `node --test backend/test/deployment.test.js backend/test/trading-hours.test.js`. Run dependency audits in the root, backend and frontend directories after dependency updates. Signup verification and password-reset delivery require a configured email provider; production must not log codes or reset tokens.
 
 - Confirm backend `/health` returns HTTP 200 and `{"status":"ok"}`.
 - Register a test account and log in on the Vercel site; verify the user exists in Atlas and survives a backend restart.
 - Verify market quotes and Socket.IO connections in browser developer tools. External market providers may restrict datacenter requests; validate them on the selected host.
-- Configure SMTP for password-reset email delivery.
-  On Railway Trial/Free/Hobby, use the Resend HTTPS API instead: privately set `RESEND_API_KEY` and `EMAIL_FROM` (a sender on your verified Resend domain). Resend's test sender can only deliver to the account owner's email. SMTP requires Railway Pro or above.
-  Set `SMTP_HOST`, `SMTP_PORT` (587 for STARTTLS or 465 for TLS), `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM` privately in Railway Variables. Redeploy after saving. Use a verified sender address approved by your email provider. The recovery flow sends a six-digit code valid for 10 minutes, permits five guesses, and limits resends to once per minute. A successful reset signs out existing sessions. Without SMTP, the API returns a delivery-unavailable error; it never prints codes or pretends to send them.
+- Configure Brevo HTTPS delivery for signup verification and password-reset OTPs. Verify `harsh@papertradex.in` as a sender in Brevo, authenticate `papertradex.in` using Brevo's DNS records, and privately set `BREVO_API_KEY` in Railway Variables. Set `EMAIL_FROM=harsh@papertradex.in`. Use an API key, not an SMTP key. Never commit the key or expose it through frontend variables.
+  Both flows use six-digit codes valid for 10 minutes, five guesses and a 60-second resend cooldown. Codes are hashed in the database and never returned or logged. Signup stores a temporary pending registration and creates the account only after verification; pending records expire automatically. Existing accounts continue to sign in. A successful password reset revokes existing sessions. Without a configured delivery service, signup and recovery return an explicit delivery-unavailable error.
+  Optional SMTP uses `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and the same `EMAIL_FROM` sender. Prefer the Brevo HTTPS API on Railway.
 - Configure matching backend `GOOGLE_CLIENT_ID` and frontend `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, plus the Vercel origin in Google OAuth settings, for Google login.
 - Configure AI provider keys on the backend for AI features.
 - Local deployment checks: `node --test backend/test/deployment.test.js` (mocked database and market services).

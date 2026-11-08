@@ -18,6 +18,7 @@ interface AuthContextType {
     login: (email: string, password: string) => Promise<void>;
     loginWithGoogle: (credential: string) => Promise<void>;
     register: (name: string, email: string, password: string, phone: string) => Promise<void>;
+    verifySignup: (email: string, code: string) => Promise<void>;
     logout: () => void;
     refreshBalance: () => Promise<void>;
 }
@@ -115,6 +116,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Registration failed');
+    };
+
+    const verifySignup = async (email: string, code: string) => {
+        const res = await fetch(`${API}/api/verify-signup-otp`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Verification failed');
         localStorage.setItem('ptx_token', data.token);
         localStorage.setItem('ptx_user', JSON.stringify(data.user));
         localStorage.setItem('token', data.token);
@@ -134,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, balance, loading, login, loginWithGoogle, register, logout, refreshBalance }}>
+        <AuthContext.Provider value={{ user, token, balance, loading, login, loginWithGoogle, register, verifySignup, logout, refreshBalance }}>
             {children}
         </AuthContext.Provider>
     );

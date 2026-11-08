@@ -59,7 +59,7 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1 } = {})
                 assertMarketOpen() {},
                 executeTrade: async (user, type, symbol, quantity, price) => ({ success: true, price }),
             };
-            if (name === './services/PasswordReset') return realRequire(name);
+            if (name === './services/PasswordReset' || name === './services/SignupVerification') return realRequire(name);
             if (name.startsWith('./services/')) return {};
             return realRequire(name);
         },

@@ -27,6 +27,7 @@ const userSchema = new mongoose.Schema({
     password_hash: { type: String, default: null },
     googleId:      { type: String, default: null, index: true },
     authProvider:  { type: String, enum: ['local', 'google'], default: 'local' },
+    emailVerifiedAt: { type: Date, default: null },
     resetPasswordToken:   { type: String, default: null },
     resetPasswordExpires: { type: Date, default: null },
     resetOtpHash: { type: String, default: null },
@@ -37,6 +38,19 @@ const userSchema = new mongoose.Schema({
     role:          { type: String, enum: ['USER', 'ADMIN'], default: 'USER' },
     balance:       { type: Number, default: 100000 },
 }, { timestamps: true });
+
+const pendingSignupSchema = new mongoose.Schema({
+    email: { type: String, required: true, unique: true },
+    name: { type: String, required: true },
+    phone: { type: String, default: '' },
+    password_hash: { type: String, required: true },
+    otpHash: { type: String, required: true },
+    attempts: { type: Number, default: 0 },
+    sentAt: { type: Date, required: true },
+    expiresAt: { type: Date, required: true },
+});
+pendingSignupSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+const PendingSignup = mongoose.models.PendingSignup || mongoose.model('PendingSignup', pendingSignupSchema);
 
 const portfolioSchema = new mongoose.Schema({
     user:         { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -142,6 +156,8 @@ async function connectDB() {
         await mongoose.connect(MONGODB_URI, {
             serverSelectionTimeoutMS: 5000,
         });
+        // Signup throttling and one-account-per-email depend on these indexes.
+        await PendingSignup.init();
         const safeUri = MONGODB_URI.replace(/\/\/[^@]+@/, '//***:***@');
         console.log(`[MongoDB] Connected successfully to ${safeUri} ✓`);
     } catch (err) {
@@ -181,6 +197,7 @@ async function seedAdmin() {
 }
 
 module.exports = {
+    PendingSignup,
     connectDB,
     User,
     Portfolio,

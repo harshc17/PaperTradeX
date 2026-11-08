@@ -18,7 +18,7 @@ declare global {
 
 export default function AuthPage() {
     const router = useRouter();
-    const { login, loginWithGoogle, register } = useAuth();
+    const { login, loginWithGoogle, register, verifySignup } = useAuth();
     const [isLogin, setIsLogin] = useState(true);
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -28,6 +28,22 @@ export default function AuthPage() {
     const [phone, setPhone] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [verificationPending, setVerificationPending] = useState(false);
+    const [code, setCode] = useState('');
+    const [cooldown, setCooldown] = useState(0);
+    useEffect(() => {
+        if (!cooldown) return;
+        const timer = setTimeout(() => setCooldown(value => value - 1), 1000);
+        return () => clearTimeout(timer);
+    }, [cooldown]);
+
+    const sendSignupCode = async () => {
+        await register(name, email, password, phone);
+        setVerificationPending(true);
+        setCode('');
+        setCooldown(60);
+        setSuccess('Verification code sent. Check your inbox and spam folder.');
+    };
 
     const handleGoogleCredential = useCallback(async (response: { credential: string }) => {
         setLoading(true);
@@ -58,10 +74,13 @@ export default function AuthPage() {
             if (isLogin) {
                 await login(email, password);
                 router.push('/dashboard');
+            } else if (verificationPending) {
+                await verifySignup(email, code);
+                setPassword('');
+                setCode('');
+                router.push('/dashboard');
             } else {
-                await register(name, email, password, phone);
-                setSuccess('Account created! Redirecting...');
-                setTimeout(() => router.push('/dashboard'), 1000);
+                await sendSignupCode();
             }
         } catch (e: any) {
             setError(e.message || 'Something went wrong');
@@ -70,7 +89,7 @@ export default function AuthPage() {
         }
     };
 
-    const switchTab = (toLogin: boolean) => { setIsLogin(toLogin); setError(''); setSuccess(''); };
+    const switchTab = (toLogin: boolean) => { setIsLogin(toLogin); setVerificationPending(false); setCode(''); setPassword(''); setError(''); setSuccess(''); };
 
     const inputCls = "w-full px-4 py-3 rounded-xl text-sm text-ink placeholder-[var(--text-faint)] bg-surface-2 border border-line focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors";
 
@@ -117,7 +136,7 @@ export default function AuthPage() {
                         {['Sign in', 'Create account'].map((tab, i) => {
                             const active = i === 0 ? isLogin : !isLogin;
                             return (
-                                <button key={tab} type="button" onClick={() => switchTab(i === 0)}
+                                    <button key={tab} type="button" disabled={loading} onClick={() => switchTab(i === 0)}
                                     className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-colors ${active ? 'bg-surface-3 text-primary shadow-none border border-line' : 'text-ink-faint hover:text-ink-muted'}`}>
                                     {tab}
                                 </button>
@@ -125,7 +144,7 @@ export default function AuthPage() {
                         })}
                     </div>
 
-                    {error && <div className="mb-4 p-3 bg-down/10 border border-down/25 rounded-xl text-down text-sm">{error}</div>}
+                    {error && <div role="alert" className="mb-4 p-3 bg-down/10 border border-down/25 rounded-xl text-down text-sm">{error}</div>}
                     {success && (
                         <div className="mb-4 p-3 bg-up/10 border border-up/25 rounded-xl text-up text-sm flex items-center gap-2">
                             <CheckCircle2 className="w-4 h-4" />{success}
@@ -133,6 +152,11 @@ export default function AuthPage() {
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-4">
+                        {verificationPending ? <div>
+                            <p className="mb-4 break-words text-sm text-ink-muted">Enter the six-digit code sent to {email}. It expires in 10 minutes.</p>
+                            <label htmlFor="signup-code" className="block text-xs font-semibold text-ink-muted mb-1.5">Email verification code</label>
+                            <input id="signup-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} className={inputCls} />
+                        </div> : <>
                         {!isLogin && (
                             <>
                                 <div>
@@ -164,6 +188,7 @@ export default function AuthPage() {
                             )}
                         </div>
 
+                        </>}
                         <button type="submit" id="auth-submit-btn" disabled={loading}
                             className="w-full py-3.5 text-sm font-medium rounded-xl transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group mt-2 text-[var(--primary-ink)]"
                             style={{ background: 'var(--text-main)', color: 'var(--bg)' }}>
@@ -173,16 +198,24 @@ export default function AuthPage() {
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                                     </svg>
-                                    {isLogin ? 'Signing in...' : 'Creating Account...'}
+                                    {isLogin ? 'Signing in...' : verificationPending ? 'Verifying...' : 'Sending code...'}
                                 </span>
                             ) : (
                                 <>
-                                    {isLogin ? 'Sign in to PaperTradeX' : 'Create account'}
+                                    {isLogin ? 'Sign in to PaperTradeX' : verificationPending ? 'Verify email and create account' : 'Send verification code'}
                                     <ArrowRight className="w-4 h-4 transition-colors" />
                                 </>
                             )}
                         </button>
                     </form>
+                    {verificationPending && <div className="mt-4 flex flex-wrap gap-4 text-sm">
+                        <button type="button" disabled={loading || cooldown > 0} className="min-h-[44px] text-primary disabled:text-ink-faint" onClick={async () => {
+                            setLoading(true); setError('');
+                            try { await sendSignupCode(); } catch (e) { setError(e instanceof Error ? e.message : 'Unable to send code'); }
+                            finally { setLoading(false); }
+                        }}>{cooldown ? `Resend code in ${cooldown}s` : 'Resend code'}</button>
+                        <button type="button" disabled={loading} className="min-h-[44px] text-ink-muted" onClick={() => { setVerificationPending(false); setCode(''); setError(''); setSuccess(''); }}>Edit signup details</button>
+                    </div>}
 
                     {GOOGLE_CLIENT_ID && (
                         <>
