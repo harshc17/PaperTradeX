@@ -25,7 +25,6 @@ export default function AuthPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
-    const [phone, setPhone] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [verificationPending, setVerificationPending] = useState(false);
@@ -38,7 +37,7 @@ export default function AuthPage() {
     }, [cooldown]);
 
     const sendSignupCode = async () => {
-        await register(name, email, password, phone);
+        await register(name, email, password);
         setVerificationPending(true);
         setCode('');
         setCooldown(60);
@@ -162,10 +161,6 @@ export default function AuthPage() {
                                 <div>
                                     <label htmlFor="signup-name" className="block text-xs font-semibold text-ink-muted mb-1.5">Full name</label>
                                     <input id="signup-name" autoComplete="name" type="text" required value={name} onChange={e => setName(e.target.value)} placeholder="Your name" className={inputCls} />
-                                </div>
-                                <div>
-                                    <label htmlFor="signup-phone" className="block text-xs font-semibold text-ink-muted mb-1.5">Phone number</label>
-                                    <input id="signup-phone" autoComplete="tel" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 98765 43210" className={inputCls} />
                                 </div>
                             </>
                         )}

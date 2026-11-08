@@ -17,7 +17,7 @@ interface AuthContextType {
     loading: boolean;
     login: (email: string, password: string) => Promise<void>;
     loginWithGoogle: (credential: string) => Promise<void>;
-    register: (name: string, email: string, password: string, phone: string) => Promise<void>;
+    register: (name: string, email: string, password: string) => Promise<void>;
     verifySignup: (email: string, code: string) => Promise<void>;
     logout: () => void;
     refreshBalance: () => Promise<void>;
@@ -108,11 +108,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setBalance(data.user.balance ?? 0);
     };
 
-    const register = async (name: string, email: string, password: string, phone: string) => {
+    const register = async (name: string, email: string, password: string) => {
         const res = await fetch(`${API}/api/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, password, phone })
+            body: JSON.stringify({ name, email, password })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Registration failed');
