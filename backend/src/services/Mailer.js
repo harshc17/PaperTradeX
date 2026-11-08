@@ -21,8 +21,12 @@ async function send(toEmail, subject, text) {
             const reason = /ip|not verified/.test(message) ? 'IP authorization required'
                 : /key/.test(message) ? 'API key rejected'
                 : /sender/.test(message) ? 'Sender verification required' : 'Provider authorization or delivery failure';
-            // Record only the provider status, never the API key or message/code.
-            console.error(`[Mailer] Brevo rejected delivery (HTTP ${response.status}; ${reason})`);
+            // Extract only the server's public IPv4 address from an IP rejection.
+            // Never log the complete provider message, API key or OTP content.
+            const addresses = reason === 'IP authorization required'
+                ? (message.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g) || []).filter(ip => ip.split('.').every(part => Number(part) <= 255)) : [];
+            const ipHint = addresses.length ? `; outbound IP ${[...new Set(addresses)].join(', ')}` : '';
+            console.error(`[Mailer] Brevo rejected delivery (HTTP ${response.status}; ${reason}${ipHint})`);
             throw new Error('Email provider rejected delivery');
         }
         return;
