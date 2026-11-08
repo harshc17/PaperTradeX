@@ -45,7 +45,7 @@ export default function DashboardNews() {
             </div>
             <p className="text-center text-xs text-ink-faint mt-5 flex items-center justify-center gap-1.5">
 
-                Loading market news
+                Loading practice scenarios
             </p>
         </div>
     );
@@ -53,7 +53,7 @@ export default function DashboardNews() {
     if (error || !news || !news.articles?.length) return (
         <div className="bg-surface rounded-2xl border border-white/10 p-6 shadow-none text-center">
             <Newspaper className="w-8 h-8 text-[var(--text-faint)] mx-auto mb-2" />
-            <p className="text-sm text-ink-faint mb-3">Could not load market news</p>
+            <p className="text-sm text-ink-faint mb-3">Practice scenarios are currently unavailable</p>
             <button onClick={fetchNews} className="text-xs text-primary hover:underline flex items-center gap-1 mx-auto">
                 <RefreshCw className="w-3 h-3" /> Try again
             </button>
@@ -66,13 +66,13 @@ export default function DashboardNews() {
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
                     <h2 className="text-base font-semibold text-ink-heading flex items-center gap-2 font-heading">
                         <Newspaper className="w-4 h-4 text-primary" />
-                        Stocks in news today
+                        Practice scenarios
                     </h2>
                     <div className="flex items-center gap-2">
                         {news.generatedAt && (
                             <span className="text-xs text-ink-faint flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
-                                {formatDate(news.generatedAt)} · {formatTime(news.generatedAt)}
+                                Generated {formatDate(news.generatedAt)} · {formatTime(news.generatedAt)} IST
                             </span>
                         )}
                         <span className="text-xs font-medium px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-lg flex items-center gap-1">
@@ -80,6 +80,8 @@ export default function DashboardNews() {
                         </span>
                     </div>
                 </div>
+
+                <p className="mb-5 text-sm leading-6 text-ink-muted">Illustrative AI-generated market scenarios for paper trading, not current or verified news</p>
 
                 {news.title && (
                     <p className="text-[12px] font-medium text-ink-faint mb-5 pb-4 border-b border-white/10">{news.title}</p>
@@ -95,9 +97,6 @@ export default function DashboardNews() {
                                 <div className="flex-1 min-w-0">
                                     <h3 className="text-sm font-medium text-ink group-hover:text-primary transition-colors leading-snug mb-1">{article.headline}</h3>
                                     <p className="text-[12px] text-ink-faint leading-relaxed mb-1.5">{article.summary}</p>
-                                    <div className="flex items-center gap-1 text-xs font-medium text-ink-faint">
-                                        <Clock className="w-2.5 h-2.5" />{article.time}
-                                    </div>
                                 </div>
                             </div>
                             {idx < news.articles.length - 1 && <div className="mt-4 border-b border-white/10/60" />}
