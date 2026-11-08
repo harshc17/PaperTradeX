@@ -1,6 +1,7 @@
 'use client';
 import BrandLogo from '@/components/BrandLogo';
 import CompanyLogo from '@/components/CompanyLogo';
+import ThemeToggle from '@/components/ThemeToggle';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Search, Bell, LogOut, ChevronDown, Menu, X, History, Clock, Info } from 'lucide-react';
@@ -214,18 +215,18 @@ export default function Header() {
     const fmtBalance = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     return (
-        <header className="sticky top-0 z-40 flex flex-col border-b border-white/10"
+        <header className="sticky top-0 z-40 flex flex-col border-b border-line"
             style={{ background: 'var(--surface)' }}>
 
             {/* Top row */}
-            <div className="flex items-center justify-between flex-wrap lg:flex-nowrap px-3 sm:px-4 lg:px-6 py-3 gap-3">
+            <div className="flex items-center justify-between flex-wrap xl:flex-nowrap px-3 sm:px-4 lg:px-6 py-3 gap-3">
                 {/* Logo */}
                 <Link href="/dashboard" className="flex items-center gap-2.5 flex-shrink-0 group">
                     <BrandLogo compact className="text-[28px]" />
                 </Link>
 
                 {/* Search */}
-                <div className="order-3 lg:order-none basis-full lg:basis-auto min-w-0 lg:flex-1 lg:max-w-xl relative" ref={searchRef}>
+                <div className="order-3 xl:order-none basis-full xl:basis-auto min-w-0 xl:flex-1 xl:max-w-xl relative" ref={searchRef}>
                     <div className="relative group">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-faint group-focus-within:text-primary transition-colors" />
                         <input
@@ -235,7 +236,7 @@ export default function Header() {
                             onChange={e => setSearchQuery(e.target.value)}
                             onFocus={() => setShowResults(true)}
                             placeholder="Search stocks, ETFs, indices..."
-                            className="w-full pl-10 pr-10 py-2.5 border border-white/10 rounded-xl bg-surface text-ink placeholder-[var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-sm"
+                            className="w-full pl-10 pr-10 py-2.5 border border-line rounded-xl bg-surface text-ink placeholder-[var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-sm"
                         />
                         {searchQuery && (
                             <button onClick={() => { setSearchQuery(''); setSearchResults([]); }}
@@ -247,7 +248,7 @@ export default function Header() {
 
                     {/* Search dropdown */}
                     {showResults && searchQuery.length >= 1 && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-surface rounded-xl shadow-none border border-white/10 overflow-hidden max-h-80 overflow-y-auto z-50">
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-surface rounded-xl shadow-none border border-line overflow-hidden max-h-80 overflow-y-auto z-50">
                             {(() => {
                                 const seen = new Set<string>();
                                 const combined: any[] = [];
@@ -263,12 +264,12 @@ export default function Header() {
                                 }
                                 return (
                                     <>
-                                        <div className="px-3 py-2 bg-surface-2 border-b border-white/10">
+                                        <div className="px-3 py-2 bg-surface-2 border-b border-line">
                                             <p className="text-xs font-semibold text-ink-faint">Search Results</p>
                                         </div>
                                         {combined.slice(0, 10).map((result: any, i: number) => (
                                             <div key={`${result.symbol}-${i}`}
-                                                className="px-4 py-3 hover:bg-surface-3 cursor-pointer flex justify-between items-center gap-3 group transition-colors border-b border-white/10/50 last:border-0"
+                                                className="px-4 py-3 hover:bg-surface-3 cursor-pointer flex justify-between items-center gap-3 group transition-colors border-b border-line last:border-0"
                                                 onClick={() => { router.push(`/stock/${encodeURIComponent(result.symbol)}`); setSearchQuery(''); setShowResults(false); }}>
                                                 <div className="flex min-w-0 items-center gap-3">
                                                     <CompanyLogo symbol={result.symbol} className="h-8 w-8" />
@@ -292,16 +293,17 @@ export default function Header() {
 
                 {/* Right actions */}
                 <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0 ml-auto">
+                    <ThemeToggle className="hidden sm:inline-flex" />
                     {/* Market Status Pill */}
                     <button
                         type="button"
                         onClick={() => setShowMarketModal(true)}
-                        className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors ${
+                        className={`hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors ${
                             marketStatus?.isOpen
                                 ? 'bg-up/10 text-up border-up/30 hover:bg-up/15 shadow-none'
                                 : marketStatus?.session === 'PRE_MARKET'
                                 ? 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/15'
-                                : 'bg-surface-2 text-ink-muted border-white/10 hover:border-white/20 hover:text-ink'
+                                : 'bg-surface-2 text-ink-muted border-line hover:border-line hover:text-ink'
                         }`}
                         title="View NSE/BSE Trading Hours & Schedule"
                     >
@@ -313,7 +315,7 @@ export default function Header() {
                         <span className="font-medium">
                             {marketStatus?.isOpen ? 'NSE open' : marketStatus?.session === 'PRE_MARKET' ? 'Pre-open' : 'NSE closed'}
                         </span>
-                        <span className="hidden xl:inline text-xs opacity-75 font-num tabular-nums border-l border-white/10 pl-1.5">
+                        <span className="hidden 2xl:inline text-xs font-num tabular-nums border-l border-line pl-1.5">
                             {marketStatus?.isOpen ? `Closes ${formatRemaining(secondsLeft)}` : `Opens in ${formatRemaining(secondsLeft)}`}
                         </span>
                     </button>
@@ -344,8 +346,8 @@ export default function Header() {
                                 <ChevronDown className={`w-4 h-4 text-ink-faint transition-colors ${showUserMenu ? 'rotate-180' : ''}`} />
                             </button>
                             {showUserMenu && (
-                                <div className="absolute right-0 top-full mt-2 w-56 bg-surface rounded-xl shadow-none border border-white/10 overflow-hidden z-50">
-                                    <div className="px-4 py-3 border-b border-white/10">
+                                <div className="absolute right-0 top-full mt-2 w-56 bg-surface rounded-xl shadow-none border border-line overflow-hidden z-50">
+                                    <div className="px-4 py-3 border-b border-line">
                                         <p className="font-semibold text-ink-heading text-sm">{user.name}</p>
                                         <p className="text-xs text-ink-faint">{user.email}</p>
                                         <div className="mt-2 bg-[var(--surface-2)] rounded-lg px-2 py-1.5 flex items-center justify-between border border-primary/15">
@@ -356,7 +358,7 @@ export default function Header() {
                                     <Link
                                         href="/transactions"
                                         onClick={() => setShowUserMenu(false)}
-                                        className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-ink-muted hover:text-ink hover:bg-surface-3 transition-colors border-b border-white/10"
+                                        className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-ink-muted hover:text-ink hover:bg-surface-3 transition-colors border-b border-line"
                                     >
                                         <History className="w-4 h-4 text-primary" />
                                         Transactions
@@ -383,10 +385,10 @@ export default function Header() {
                 <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
                     <div
                         ref={marketModalRef}
-                        className="max-h-[85dvh] overflow-y-auto max-w-lg w-full bg-surface-2 border border-white/15 rounded-2xl shadow-none overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                        className="max-h-[85dvh] overflow-y-auto max-w-lg w-full bg-surface-2 border border-line rounded-2xl shadow-none overflow-hidden animate-in fade-in zoom-in-95 duration-200"
                     >
                         {/* Header */}
-                        <div className="p-5 border-b border-white/10 flex items-center justify-between bg-[var(--surface-2)]">
+                        <div className="p-5 border-b border-line flex items-center justify-between bg-[var(--surface-2)]">
                             <div className="flex items-center gap-2.5">
                                 <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
                                     <Clock className="w-4 h-4" />
@@ -402,7 +404,7 @@ export default function Header() {
                             </div>
                             <button
                                 onClick={() => setShowMarketModal(false)}
-                                className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-ink-muted hover:text-ink transition-colors"
+                                className="w-8 h-8 rounded-lg bg-surface-2 hover:bg-surface-2 flex items-center justify-center text-ink-muted hover:text-ink transition-colors"
                             >
                                 <X className="w-4 h-4" />
                             </button>
@@ -416,7 +418,7 @@ export default function Header() {
                                     ? 'bg-up/10 border-up/30 text-up'
                                     : marketStatus?.session === 'PRE_MARKET'
                                     ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
-                                    : 'bg-surface-2 border-white/10 text-ink'
+                                    : 'bg-surface-2 border-line text-ink'
                             }`}>
                                 <div>
                                     <div className="flex items-center gap-2 mb-1">
@@ -455,7 +457,7 @@ export default function Header() {
 
                                 <div className="space-y-1.5">
                                     <div className={`p-3 rounded-xl border flex items-center justify-between text-xs transition-colors ${
-                                        marketStatus?.session === 'PRE_MARKET' ? 'bg-amber-500/10 border-amber-500/40 text-amber-300' : 'bg-surface-2 border-white/5 text-ink-muted'
+                                        marketStatus?.session === 'PRE_MARKET' ? 'bg-amber-500/10 border-amber-500/40 text-amber-300' : 'bg-surface-2 border-line text-ink-muted'
                                     }`}>
                                         <div className="flex items-center gap-2.5">
                                             <span className="w-2 h-2 rounded-full bg-amber-400" />
@@ -468,7 +470,7 @@ export default function Header() {
                                     </div>
 
                                     <div className={`p-3 rounded-xl border flex items-center justify-between text-xs transition-colors ${
-                                        marketStatus?.isOpen ? 'bg-up/10 border-up/40 text-up' : 'bg-surface-2 border-white/5 text-ink-muted'
+                                        marketStatus?.isOpen ? 'bg-up/10 border-up/40 text-up' : 'bg-surface-2 border-line text-ink-muted'
                                     }`}>
                                         <div className="flex items-center gap-2.5">
                                             <span className="w-2 h-2 rounded-full bg-up animate-pulse" />
@@ -481,7 +483,7 @@ export default function Header() {
                                     </div>
 
                                     <div className={`p-3 rounded-xl border flex items-center justify-between text-xs transition-colors ${
-                                        marketStatus?.session === 'POST_MARKET' ? 'bg-orange-500/10 border-orange-500/40 text-orange-300' : 'bg-surface-2 border-white/5 text-ink-muted'
+                                        marketStatus?.session === 'POST_MARKET' ? 'bg-orange-500/10 border-orange-500/40 text-orange-300' : 'bg-surface-2 border-line text-ink-muted'
                                     }`}>
                                         <div className="flex items-center gap-2.5">
                                             <span className="w-2 h-2 rounded-full bg-orange-400" />
@@ -494,7 +496,7 @@ export default function Header() {
                                     </div>
 
                                     <div className={`p-3 rounded-xl border flex items-center justify-between text-xs transition-colors ${
-                                        marketStatus?.session === 'CLOSED' ? 'bg-surface-2 border-primary/30 text-primary' : 'bg-surface-2 border-white/5 text-ink-muted'
+                                        marketStatus?.session === 'CLOSED' ? 'bg-surface-2 border-primary/30 text-primary' : 'bg-surface-2 border-line text-ink-muted'
                                     }`}>
                                         <div className="flex items-center gap-2.5">
                                             <span className="w-2 h-2 rounded-full bg-primary" />
@@ -510,14 +512,14 @@ export default function Header() {
 
                             {/* Next Session & Exchange Info */}
                             <div className="grid grid-cols-2 gap-3 pt-1">
-                                <div className="bg-surface-2 rounded-xl p-3 border border-white/5">
+                                <div className="bg-surface-2 rounded-xl p-3 border border-line">
                                     <span className="text-xs font-medium text-ink-faint block">Next Regular Open</span>
                                     <span className="text-xs font-medium text-ink-heading font-num">
                                         {marketStatus?.nextOpenFormatted || 'Mon, 09:15 AM IST'}
                                     </span>
                                 </div>
 
-                                <div className="bg-surface-2 rounded-xl p-3 border border-white/5">
+                                <div className="bg-surface-2 rounded-xl p-3 border border-line">
                                     <span className="text-xs font-medium text-ink-faint block">Current Time (IST)</span>
                                     <span className="text-xs font-medium text-primary font-num">
                                         {marketStatus?.currentTimeIST || 'Asia/Kolkata'}
@@ -527,7 +529,7 @@ export default function Header() {
                         </div>
 
                         {/* Footer */}
-                        <div className="p-4 border-t border-white/10 bg-[var(--surface-2)] flex justify-end">
+                        <div className="p-4 border-t border-line bg-[var(--surface-2)] flex justify-end">
                             <button
                                 onClick={() => setShowMarketModal(false)}
                                 className="px-4 py-2 rounded-xl text-xs font-medium text-[var(--primary-ink)] transition-colors hover:brightness-110"
@@ -542,10 +544,13 @@ export default function Header() {
 
             {/* Bottom nav */}
             <nav aria-label="Main navigation" className="px-4 lg:px-6 border-t border-line">
-                <button type="button" aria-expanded={showMobileNav} aria-controls="mobile-navigation" onClick={() => setShowMobileNav(v => !v)} className="flex min-h-11 w-full items-center justify-between text-sm text-ink sm:hidden">
+                <div className="flex items-center gap-3 sm:hidden">
+                <button type="button" aria-expanded={showMobileNav} aria-controls="mobile-navigation" onClick={() => setShowMobileNav(v => !v)} className="flex min-h-11 min-w-0 flex-1 items-center justify-between text-sm text-ink">
                     <span>{navItems.find(item => pathname === item.href)?.name || 'Navigation'}</span>
                     {showMobileNav ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
                 </button>
+                <ThemeToggle className="my-1" />
+                </div>
                 {showMobileNav && <div id="mobile-navigation" className="grid grid-cols-2 gap-1 border-t border-line py-2 sm:hidden">
                     {navItems.map(item => <Link key={item.href} href={item.href} onClick={() => setShowMobileNav(false)} aria-current={pathname === item.href ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm transition-colors ${pathname === item.href ? 'bg-surface-2 text-primary' : 'text-ink-muted hover:bg-surface-2 hover:text-ink'}`}>{item.name}</Link>)}
                 </div>}

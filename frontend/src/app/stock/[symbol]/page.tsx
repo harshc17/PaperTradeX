@@ -10,7 +10,7 @@ import TradingPanel from '@/components/stock/TradingPanel';
 import AINewsPanel from '@/components/stock/AINewsPanel';
 
 const StockChart = dynamic(() => import('@/components/stock/StockChart'), {
-    loading: () => <div className="h-[390px] rounded-2xl bg-surface border border-white/10 shimmer" />,
+    loading: () => <div className="h-[390px] rounded-2xl bg-surface border border-line shimmer" />,
 });
 
 export default function StockPage() {

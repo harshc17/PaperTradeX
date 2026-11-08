@@ -339,8 +339,8 @@ export default function ChallengePage() {
             {toast && (
                 <div className={`fixed top-20 right-4 z-50 px-4 py-3 rounded-xl border text-sm font-semibold shadow-none flex items-center gap-2.5  transition-colors ${
                     toast.type === 'success'
-                        ? 'bg-[#00281b]/95 border-up/30 text-up shadow-none'
-                        : 'bg-[#2a0e14]/95 border-down/30 text-down shadow-none'
+                        ? 'bg-surface border-up/30 text-up shadow-none'
+                        : 'bg-surface border-down/30 text-down shadow-none'
                 }`}>
                     {toast.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-up flex-shrink-0" /> : <X className="w-4 h-4 text-down flex-shrink-0" />}
                     <span>{toast.message}</span>
@@ -349,7 +349,7 @@ export default function ChallengePage() {
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {loading ? (
-                    <div className="flex flex-col items-center justify-center min-h-[280px] sm:min-h-[420px] rounded-2xl bg-surface border border-white/10 p-5 sm:p-12 text-center">
+                    <div className="flex flex-col items-center justify-center min-h-[280px] sm:min-h-[420px] rounded-2xl bg-surface border border-line p-5 sm:p-12 text-center">
                         <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
                         <p className="text-base font-semibold text-ink-heading">Loading Weekly challenge...</p>
                         <p className="text-xs text-ink-faint mt-1">Fetching live portfolio allocations and rules</p>
@@ -360,7 +360,7 @@ export default function ChallengePage() {
                        ═════════════════════════════════════════════════════════════ */
                     <div className="space-y-8">
                         {/* Hero Card */}
-                        <div className="relative overflow-hidden rounded-3xl bg-surface border border-white/10 p-5 sm:p-12 shadow-none">
+                        <div className="relative overflow-hidden rounded-3xl bg-surface border border-line p-5 sm:p-12 shadow-none">
                             {/* Ambient Glows */}
                             <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
                             <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-up/10 rounded-full blur-3xl pointer-events-none" />
@@ -385,11 +385,11 @@ export default function ChallengePage() {
                                         type="button"
                                         onClick={acceptChallenge}
                                         disabled={accepting}
-                                        className="inline-flex w-full sm:w-auto justify-center items-center gap-2.5 min-h-12 px-4 sm:px-8 rounded-xl bg-primary text-[#061016] font-medium text-sm hover:bg-primary-hover shadow-none shadow-none transition-colors disabled:opacity-50 cursor-pointer active:scale-[0.98]"
+                                        className="inline-flex w-full sm:w-auto justify-center items-center gap-2.5 min-h-12 px-4 sm:px-8 rounded-xl bg-primary text-[var(--primary-ink)] font-medium text-sm hover:bg-primary-hover shadow-none shadow-none transition-colors disabled:opacity-50 cursor-pointer active:scale-[0.98]"
                                     >
                                         {accepting ? (
                                             <>
-                                                <Loader2 className="w-4 h-4 animate-spin text-[#061016]" />
+                                                <Loader2 className="w-4 h-4 animate-spin text-[var(--primary-ink)]" />
                                                 <span>Allocating ₹10,000 Wallet...</span>
                                             </>
                                         ) : (
@@ -408,18 +408,18 @@ export default function ChallengePage() {
                             </div>
 
                             {/* 3 Key Parameter Metrics */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10 pt-8 border-t border-white/10">
-                                <div className="p-4 rounded-xl bg-surface-2 border border-white/5">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10 pt-8 border-t border-line">
+                                <div className="p-4 rounded-xl bg-surface-2 border border-line">
                                     <p className="text-xs font-semibold text-ink-faint mb-1">Starting balance</p>
                                     <p className="text-2xl font-medium text-ink-heading font-num">₹10,000</p>
                                     <p className="text-xs text-ink-muted mt-0.5">Isolated virtual challenge wallet</p>
                                 </div>
-                                <div className="p-4 rounded-xl bg-surface-2 border border-white/5">
+                                <div className="p-4 rounded-xl bg-surface-2 border border-line">
                                     <p className="text-xs font-semibold text-ink-faint mb-1">Target equity</p>
                                     <p className="text-2xl font-medium text-up font-num">₹15,000</p>
                                     <p className="text-xs text-ink-muted mt-0.5">+50% return in 7 calendar days</p>
                                 </div>
-                                <div className="p-4 rounded-xl bg-surface-2 border border-white/5">
+                                <div className="p-4 rounded-xl bg-surface-2 border border-line">
                                     <p className="text-xs font-semibold text-ink-faint mb-1">Duration</p>
                                     <p className="text-2xl font-medium text-primary font-num">7 Days</p>
                                     <p className="text-xs text-ink-muted mt-0.5">Real-time matching during market hours</p>
@@ -428,12 +428,12 @@ export default function ChallengePage() {
                         </div>
 
                         {/* Rules Blueprint */}
-                        <div className="rounded-3xl bg-surface border border-white/10 p-8 shadow-none">
+                        <div className="rounded-3xl bg-surface border border-line p-8 shadow-none">
                             <h2 className="text-xl font-medium text-ink-heading mb-2">Challenge Rules & Guidelines</h2>
                             <p className="text-sm text-ink-muted mb-6">Designed to simulate real institutional swing trading conditions:</p>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="p-5 rounded-2xl bg-surface-2 border border-white/5 flex gap-4 items-start">
+                                <div className="p-5 rounded-2xl bg-surface-2 border border-line flex gap-4 items-start">
                                     <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 text-primary">
                                         <Wallet className="w-4 h-4" />
                                     </div>
@@ -445,7 +445,7 @@ export default function ChallengePage() {
                                     </div>
                                 </div>
 
-                                <div className="p-5 rounded-2xl bg-surface-2 border border-white/5 flex gap-4 items-start">
+                                <div className="p-5 rounded-2xl bg-surface-2 border border-line flex gap-4 items-start">
                                     <div className="w-10 h-10 rounded-xl bg-up/10 border border-up/20 flex items-center justify-center flex-shrink-0 text-up">
                                         <Zap className="w-4 h-4" />
                                     </div>
@@ -457,7 +457,7 @@ export default function ChallengePage() {
                                     </div>
                                 </div>
 
-                                <div className="p-5 rounded-2xl bg-surface-2 border border-white/5 flex gap-4 items-start">
+                                <div className="p-5 rounded-2xl bg-surface-2 border border-line flex gap-4 items-start">
                                     <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 text-primary">
                                         <Target className="w-4 h-4" />
                                     </div>
@@ -469,7 +469,7 @@ export default function ChallengePage() {
                                     </div>
                                 </div>
 
-                                <div className="p-5 rounded-2xl bg-surface-2 border border-white/5 flex gap-4 items-start">
+                                <div className="p-5 rounded-2xl bg-surface-2 border border-line flex gap-4 items-start">
                                     <div className="w-10 h-10 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center flex-shrink-0 text-amber-400">
                                         <Clock className="w-4 h-4" />
                                     </div>
@@ -489,7 +489,7 @@ export default function ChallengePage() {
                        ═════════════════════════════════════════════════════════════ */
                     <div className="space-y-6">
                         {/* Status Header */}
-                        <div className="flex flex-wrap items-center justify-between gap-4 bg-surface rounded-2xl border border-white/10 p-5 shadow-none">
+                        <div className="flex flex-wrap items-center justify-between gap-4 bg-surface rounded-2xl border border-line p-5 shadow-none">
                             <div>
                                 <div className="flex items-center gap-3">
                                     <h1 className="text-2xl font-medium text-ink-heading">Weekly challenge</h1>
@@ -509,12 +509,12 @@ export default function ChallengePage() {
 
                             {/* Remaining Time & Market State */}
                             <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-surface-2 border border-white/5 text-xs font-semibold text-ink-muted">
+                                <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-surface-2 border border-line text-xs font-semibold text-ink-muted">
                                     <Clock className="w-3.5 h-3.5 text-primary" />
                                     <span>{timeRemainingFormatted || '7 Days Sprint'}</span>
                                 </div>
 
-                                <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-surface-2 border border-white/5 text-xs font-semibold text-ink-muted">
+                                <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-surface-2 border border-line text-xs font-semibold text-ink-muted">
                                     <span className={`w-2 h-2 rounded-full ${marketOpen ? 'bg-up' : 'bg-ink-faint'}`} />
                                     <span>{marketOpen ? 'Market Open' : 'P&L Frozen (Market closed)'}</span>
                                 </div>
@@ -523,7 +523,7 @@ export default function ChallengePage() {
 
                         {/* Top 4 Metrics Row */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div className="bg-surface rounded-2xl border border-white/10 p-5 shadow-none">
+                            <div className="bg-surface rounded-2xl border border-line p-5 shadow-none">
                                 <div className="flex items-center justify-between text-ink-faint mb-2">
                                     <span className="text-xs font-semibold">Available Cash</span>
                                     <Wallet className="w-4 h-4 text-primary" />
@@ -532,7 +532,7 @@ export default function ChallengePage() {
                                 <p className="text-xs text-ink-faint mt-1">Uninvested challenge cash</p>
                             </div>
 
-                            <div className="bg-surface rounded-2xl border border-white/10 p-5 shadow-none">
+                            <div className="bg-surface rounded-2xl border border-line p-5 shadow-none">
                                 <div className="flex items-center justify-between text-ink-faint mb-2">
                                     <span className="text-xs font-semibold">Total Equity</span>
                                     <TrendingUp className="w-4 h-4 text-up" />
@@ -541,7 +541,7 @@ export default function ChallengePage() {
                                 <p className="text-xs text-ink-faint mt-1">Cash + market value of shares</p>
                             </div>
 
-                            <div className="bg-surface rounded-2xl border border-white/10 p-5 shadow-none">
+                            <div className="bg-surface rounded-2xl border border-line p-5 shadow-none">
                                 <div className="flex items-center justify-between text-ink-faint mb-2">
                                     <span className="text-xs font-semibold">Sprint Target</span>
                                     <Target className="w-4 h-4 text-primary" />
@@ -550,7 +550,7 @@ export default function ChallengePage() {
                                 <p className="text-xs text-ink-faint mt-1">Target portfolio threshold</p>
                             </div>
 
-                            <div className="bg-surface rounded-2xl border border-white/10 p-5 shadow-none">
+                            <div className="bg-surface rounded-2xl border border-line p-5 shadow-none">
                                 <div className="flex items-center justify-between text-ink-faint mb-2">
                                     <span className="text-xs font-semibold">Net P&L</span>
                                     <Trophy className={`w-4 h-4 ${challenge.pnl >= 0 ? 'text-up' : 'text-down'}`} />
@@ -574,7 +574,7 @@ export default function ChallengePage() {
                             const progressPct = Math.min(100, Math.max(0, (currentProfit / profitGoal) * 100));
 
                             return (
-                                <div className="bg-surface rounded-2xl border border-white/10 p-6 shadow-none space-y-3">
+                                <div className="bg-surface rounded-2xl border border-line p-6 shadow-none space-y-3">
                                     <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                                         <div className="flex items-center gap-2">
                                             <Target className="w-4 h-4 text-primary" />
@@ -590,7 +590,7 @@ export default function ChallengePage() {
                                         </div>
                                     </div>
 
-                                    <div className="w-full h-3 bg-surface-2 rounded-full overflow-hidden p-0.5 border border-white/5">
+                                    <div className="w-full h-3 bg-surface-2 rounded-full overflow-hidden p-0.5 border border-line">
                                         <div
                                             className="h-full bg-surface rounded-full transition-colors duration-150 shadow-none"
                                             style={{ width: `${progressPct}%` }}
@@ -615,8 +615,8 @@ export default function ChallengePage() {
                             {/* Left Area (8 cols) */}
                             <div className="lg:col-span-7 xl:col-span-8 space-y-6">
                                 {/* Challenge Holdings Table */}
-                                <div className="bg-surface rounded-2xl border border-white/10 overflow-hidden shadow-none">
-                                    <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between">
+                                <div className="bg-surface rounded-2xl border border-line overflow-hidden shadow-none">
+                                    <div className="px-6 py-4 border-b border-line flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <h2 className="font-medium text-ink-heading text-base">Challenge Holdings</h2>
                                             <span className="text-xs bg-surface-2 text-ink-muted px-2 py-0.5 rounded-lg font-num">
@@ -628,7 +628,7 @@ export default function ChallengePage() {
 
                                     {challenge.positions.length === 0 ? (
                                         <div className="p-12 text-center">
-                                            <div className="w-12 h-12 rounded-2xl bg-surface-2 border border-white/5 mx-auto mb-3 flex items-center justify-center text-ink-faint">
+                                            <div className="w-12 h-12 rounded-2xl bg-surface-2 border border-line mx-auto mb-3 flex items-center justify-center text-ink-faint">
                                                 <Wallet className="w-6 h-6" />
                                             </div>
                                             <p className="font-semibold text-ink text-sm">No challenge holdings yet</p>
@@ -640,7 +640,7 @@ export default function ChallengePage() {
                                         <div className="overflow-x-auto">
                                             <table className="w-full min-w-[600px] text-left text-sm">
                                                 <thead>
-                                                    <tr className="bg-surface-2 text-xs text-ink-faint border-b border-white/5 font-semibold">
+                                                    <tr className="bg-surface-2 text-xs text-ink-faint border-b border-line font-semibold">
                                                         <th className="px-6 py-3.5">Asset</th>
                                                         <th className="px-4 py-3.5 text-right">Qty</th>
                                                         <th className="px-4 py-3.5 text-right">Avg Price</th>
@@ -650,7 +650,7 @@ export default function ChallengePage() {
                                                         <th className="px-6 py-3.5 text-right">Action</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody className="divide-y divide-white/5">
+                                                <tbody className="divide-y divide-line">
                                                     {challenge.positions.map((p) => {
                                                         const isPosProfit = p.pnl >= 0;
                                                         const pnlPercent = p.averagePrice > 0 ? ((p.ltp - p.averagePrice) / p.averagePrice) * 100 : 0;
@@ -685,7 +685,7 @@ export default function ChallengePage() {
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => handleQuickSell(p)}
-                                                                        className="px-3 py-1 rounded-lg bg-surface-2 hover:bg-down/20 border border-white/10 hover:border-down/40 text-xs font-semibold text-ink-muted hover:text-down transition-colors cursor-pointer"
+                                                                        className="px-3 py-1 rounded-lg bg-surface-2 hover:bg-down/20 border border-line hover:border-down/40 text-xs font-semibold text-ink-muted hover:text-down transition-colors cursor-pointer"
                                                                     >
                                                                         Sell
                                                                     </button>
@@ -700,7 +700,7 @@ export default function ChallengePage() {
                                 </div>
 
                                 {/* Challenge Trade History */}
-                                <div className="bg-surface rounded-2xl border border-white/10 p-6 shadow-none">
+                                <div className="bg-surface rounded-2xl border border-line p-6 shadow-none">
                                     <div className="flex items-center justify-between mb-4">
                                         <h2 className="font-medium text-ink-heading text-base">Challenge Trade Ledger</h2>
                                         <span className="text-xs text-ink-faint font-num">{trades.length} trades</span>
@@ -713,7 +713,7 @@ export default function ChallengePage() {
                                             {trades.map((t) => (
                                                 <div
                                                     key={t._id}
-                                                    className="p-4 rounded-xl bg-surface-2 border border-white/5 flex items-center justify-between gap-3 hover:border-white/10 transition-colors"
+                                                    className="p-4 rounded-xl bg-surface-2 border border-line flex items-center justify-between gap-3 hover:border-line transition-colors"
                                                 >
                                                     <div className="flex items-center gap-3">
                                                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${
@@ -749,8 +749,8 @@ export default function ChallengePage() {
 
                             {/* Right Area: Challenge Trading Terminal (4-5 cols) */}
                             <div className="lg:col-span-5 xl:col-span-4">
-                                <div className="sticky top-20 bg-surface rounded-2xl border border-white/10 p-6 shadow-none space-y-5">
-                                    <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                                <div className="sticky top-20 bg-surface rounded-2xl border border-line p-6 shadow-none space-y-5">
+                                    <div className="flex items-center justify-between pb-3 border-b border-line">
                                         <h2 className="font-medium text-ink-heading text-base">Challenge Terminal</h2>
                                         <span className="text-xs font-semibold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-lg">
                                             ₹{fmt(challenge.cashBalance)} Cash
@@ -758,7 +758,7 @@ export default function ChallengePage() {
                                     </div>
 
                                     {/* BUY / SELL Switcher */}
-                                    <div className="grid grid-cols-2 gap-2 bg-surface-2 p-1 rounded-xl border border-white/5">
+                                    <div className="grid grid-cols-2 gap-2 bg-surface-2 p-1 rounded-xl border border-line">
                                         <button
                                             type="button"
                                             onClick={() => setSide('BUY')}
@@ -775,7 +775,7 @@ export default function ChallengePage() {
                                             onClick={() => setSide('SELL')}
                                             className={`py-2 rounded-lg font-medium text-xs   transition-colors cursor-pointer ${
                                                 side === 'SELL'
-                                                    ? 'bg-down text-white shadow-none'
+                                                    ? 'bg-down text-ink shadow-none'
                                                     : 'text-ink-muted hover:text-ink'
                                             }`}
                                         >
@@ -799,7 +799,7 @@ export default function ChallengePage() {
                                                 }}
                                                 onFocus={() => setShowResults(true)}
                                                 placeholder="Search e.g. RELIANCE, TCS, GOLDBEES"
-                                                className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-white/10 bg-surface-2 text-ink text-sm placeholder-[var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                                                className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-line bg-surface-2 text-ink text-sm placeholder-[var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                                             />
                                             {searchQuery && (
                                                 <button
@@ -817,7 +817,7 @@ export default function ChallengePage() {
 
                                         {/* Dropdown Menu */}
                                         {showResults && (
-                                            <div className="absolute top-full left-0 right-0 mt-1 bg-surface-2 rounded-xl shadow-none border border-white/15 overflow-hidden z-30 max-h-60 overflow-y-auto">
+                                            <div className="absolute top-full left-0 right-0 mt-1 bg-surface-2 rounded-xl shadow-none border border-line overflow-hidden z-30 max-h-60 overflow-y-auto">
                                                 {searchLoading && searchResults.length === 0 ? (
                                                     <div className="p-3 text-center text-xs text-ink-faint">Searching...</div>
                                                 ) : searchResults.length === 0 ? (
@@ -832,7 +832,7 @@ export default function ChallengePage() {
                                                                 setSearchQuery('');
                                                                 setShowResults(false);
                                                             }}
-                                                            className="px-3.5 py-2.5 hover:bg-surface-3 cursor-pointer flex items-center justify-between border-b border-white/5 last:border-b-0 transition-colors"
+                                                            className="px-3.5 py-2.5 hover:bg-surface-3 cursor-pointer flex items-center justify-between border-b border-line last:border-b-0 transition-colors"
                                                         >
                                                             <div>
                                                                 <p className="text-sm font-semibold text-ink-heading">{item.shortname || item.symbol}</p>
@@ -847,7 +847,7 @@ export default function ChallengePage() {
                                     </div>
 
                                     {/* Active Selected Symbol Card */}
-                                    <div className="p-4 rounded-xl bg-surface-2 border border-white/5">
+                                    <div className="p-4 rounded-xl bg-surface-2 border border-line">
                                         <div className="flex items-center justify-between">
                                             <div>
                                                 <p className="text-xs text-ink-faint font-semibold">{symbol}</p>
@@ -887,7 +887,7 @@ export default function ChallengePage() {
                                             <button
                                                 type="button"
                                                 onClick={() => setQuantity(prev => String(Math.max(1, (parseInt(prev, 10) || 1) - 1)))}
-                                                className="w-10 h-10 rounded-xl bg-surface-2 hover:bg-surface-3 border border-white/10 flex items-center justify-center text-ink cursor-pointer active:scale-[0.98] transition-colors"
+                                                className="w-10 h-10 rounded-xl bg-surface-2 hover:bg-surface-3 border border-line flex items-center justify-center text-ink cursor-pointer active:scale-[0.98] transition-colors"
                                             >
                                                 <Minus className="w-4 h-4" />
                                             </button>
@@ -897,13 +897,13 @@ export default function ChallengePage() {
                                                 min="1"
                                                 value={quantity}
                                                 onChange={(e) => setQuantity(e.target.value)}
-                                                className="flex-1 h-10 px-3 rounded-xl border border-white/10 bg-surface-2 text-ink text-center font-medium text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors font-num"
+                                                className="flex-1 h-10 px-3 rounded-xl border border-line bg-surface-2 text-ink text-center font-medium text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors font-num"
                                             />
 
                                             <button
                                                 type="button"
                                                 onClick={() => setQuantity(prev => String((parseInt(prev, 10) || 0) + 1))}
-                                                className="w-10 h-10 rounded-xl bg-surface-2 hover:bg-surface-3 border border-white/10 flex items-center justify-center text-ink cursor-pointer active:scale-[0.98] transition-colors"
+                                                className="w-10 h-10 rounded-xl bg-surface-2 hover:bg-surface-3 border border-line flex items-center justify-center text-ink cursor-pointer active:scale-[0.98] transition-colors"
                                             >
                                                 <Plus className="w-4 h-4" />
                                             </button>
@@ -911,7 +911,7 @@ export default function ChallengePage() {
                                     </div>
 
                                     {/* Order Cost Breakdown */}
-                                    <div className="space-y-2 pt-2 border-t border-white/10 text-xs">
+                                    <div className="space-y-2 pt-2 border-t border-line text-xs">
                                         <div className="flex items-center justify-between text-ink-muted">
                                             <span>Estimated Order value</span>
                                             <span className="font-semibold text-ink-heading font-num">₹{fmt(estimatedTotal)}</span>
@@ -944,7 +944,7 @@ export default function ChallengePage() {
                                         className={`w-full h-11 rounded-xl font-medium text-sm  transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed ${
                                             side === 'BUY'
                                                 ? 'bg-up text-[var(--primary-ink)] hover:bg-up-hover shadow-none'
-                                                : 'bg-down text-white hover:bg-down-hover shadow-none'
+                                                : 'bg-down text-ink hover:bg-down-hover shadow-none'
                                         }`}
                                     >
                                         {placing ? (

@@ -104,7 +104,7 @@ export default function OrdersPage() {
                         <button
                             onClick={handleManualRefresh}
                             disabled={isRefreshing}
-                            className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-3 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 border border-white/10 text-xs font-medium text-ink-muted hover:text-ink transition-colors active:scale-[0.98]"
+                            className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-3 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 border border-line text-xs font-medium text-ink-muted hover:text-ink transition-colors active:scale-[0.98]"
                         >
                             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
                             Refresh orders
@@ -121,7 +121,7 @@ export default function OrdersPage() {
 
                 {/* Quick Metric Tiles */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-none">
+                    <div className="rounded-2xl p-5 bg-surface border border-line shadow-none">
                         <div className="flex items-center justify-between text-xs text-ink-faint mb-2">
                             <span className="font-semibold text-xs">Open Limit Orders</span>
                             <Clock className="w-4 h-4 text-primary" />
@@ -132,7 +132,7 @@ export default function OrdersPage() {
                         <p className="text-xs text-ink-faint mt-1">Pending target fill price</p>
                     </div>
 
-                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-none">
+                    <div className="rounded-2xl p-5 bg-surface border border-line shadow-none">
                         <div className="flex items-center justify-between text-xs text-ink-faint mb-2">
                             <span className="font-semibold text-xs">Filled Trades</span>
                             <CheckCircle2 className="w-4 h-4 text-up" />
@@ -143,7 +143,7 @@ export default function OrdersPage() {
                         <p className="text-xs text-ink-faint mt-1">Settled into portfolio</p>
                     </div>
 
-                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-none">
+                    <div className="rounded-2xl p-5 bg-surface border border-line shadow-none">
                         <div className="flex items-center justify-between text-xs text-ink-faint mb-2">
                             <span className="font-semibold text-xs">Cancelled</span>
                             <XCircle className="w-4 h-4 text-ink-faint" />
@@ -157,8 +157,8 @@ export default function OrdersPage() {
 
                 {/* Orders Content */}
                 {orders.length === 0 ? (
-                    <div className="rounded-2xl border border-white/10 bg-surface p-14 text-center shadow-none">
-                        <div className="w-16 h-16 bg-surface-2 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <div className="rounded-2xl border border-line bg-surface p-14 text-center shadow-none">
+                        <div className="w-16 h-16 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mx-auto mb-4">
                             <ClipboardList className="w-8 h-8 text-ink-faint" />
                         </div>
                         <h3 className="text-base font-medium text-ink-heading mb-2">No Orders Placed</h3>
@@ -174,9 +174,9 @@ export default function OrdersPage() {
                         </Link>
                     </div>
                 ) : (
-                    <div className="bg-surface rounded-2xl border border-white/10 shadow-none overflow-hidden">
+                    <div className="bg-surface rounded-2xl border border-line shadow-none overflow-hidden">
                         {/* Filter Toolbar */}
-                        <div className="p-4 sm:p-5 border-b border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="p-4 sm:p-5 border-b border-line flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             {/* Search */}
                             <div className="relative w-full sm:w-72">
                                 <Search className="w-4 h-4 text-ink-faint absolute left-3 top-1/2 -translate-y-1/2" />
@@ -185,12 +185,12 @@ export default function OrdersPage() {
                                     placeholder="Search by symbol..."
                                     value={searchQuery}
                                     onChange={e => setSearchQuery(e.target.value)}
-                                    className="w-full h-9 pl-9 pr-3 text-xs bg-surface-2 border border-white/10 rounded-xl outline-none focus:border-primary text-ink transition-colors"
+                                    className="w-full h-9 pl-9 pr-3 text-xs bg-surface-2 border border-line rounded-xl outline-none focus:border-primary text-ink transition-colors"
                                 />
                             </div>
 
                             {/* Status Filter Tabs */}
-                            <div className="flex items-center gap-1.5 bg-surface-2 p-1 rounded-xl border border-white/10">
+                            <div className="flex items-center gap-1.5 bg-surface-2 p-1 rounded-xl border border-line">
                                 {(
                                     [
                                         { key: 'ALL', label: `All (${orders.length})` },
@@ -219,7 +219,7 @@ export default function OrdersPage() {
                         <div className="overflow-x-auto overscroll-x-contain">
                             <table className="w-full min-w-[700px] text-left">
                                 <thead>
-                                    <tr className="bg-surface-2/60 text-xs font-medium text-ink-faint border-b border-white/10">
+                                    <tr className="bg-surface-2/60 text-xs font-medium text-ink-faint border-b border-line">
                                         <th className="px-6 py-3.5">Time & Date</th>
                                         <th className="px-6 py-3.5">Side</th>
                                         <th className="px-6 py-3.5">Symbol</th>
@@ -230,7 +230,7 @@ export default function OrdersPage() {
                                         <th className="px-6 py-3.5 text-right">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-white/[0.06]">
+                                <tbody className="divide-y divide-line">
                                     {filteredOrders.map(order => {
                                         const isBuy = order.side === 'BUY';
                                         const date = new Date(order.createdAt);
@@ -308,7 +308,7 @@ export default function OrdersPage() {
                                                                 ? 'bg-up/10 text-up border-up/20'
                                                                 : order.status === 'OPEN'
                                                                 ? 'bg-primary/10 text-primary border-primary/20'
-                                                                : 'bg-surface-2 text-ink-faint border-white/10'
+                                                                : 'bg-surface-2 text-ink-faint border-line'
                                                         }`}
                                                     >
                                                         {order.status === 'FILLED' && <CheckCircle2 className="w-2.5 h-2.5" />}

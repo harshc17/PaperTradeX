@@ -52,7 +52,7 @@ export default function IndicesBanner() {
 
     return (
         <div className="border-b border-line overflow-hidden" style={{ background: 'var(--bg)' }}>
-            <div className="flex items-center divide-x divide-[#222c3a] overflow-x-auto no-scrollbar">
+            <div className="flex items-center divide-x divide-line overflow-x-auto no-scrollbar">
                 {INDICES.map(({ symbol, label }) => {
                     const q = quotes[symbol];
                     const isUp = (q?.change ?? 0) >= 0;

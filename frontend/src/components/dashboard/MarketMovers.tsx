@@ -56,14 +56,14 @@ export default function MarketMovers() {
     const sorted = resolved.sort((a, b) => tab === 'gainers' ? b.dayChange - a.dayChange : a.dayChange - b.dayChange).slice(0, 5);
 
     return (
-        <div className="bg-surface rounded-2xl border border-white/10 overflow-hidden shadow-none">
-            <div className="flex flex-wrap items-center justify-between gap-3 px-3 sm:px-5 py-4 border-b border-white/10">
+        <div className="bg-surface rounded-2xl border border-line overflow-hidden shadow-none">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-3 sm:px-5 py-4 border-b border-line">
                 <h2 className="text-base font-semibold text-ink-heading font-heading">Market movers</h2>
-                <div className="flex bg-surface-2 border border-white/10 rounded-xl p-0.5">
+                <div className="flex bg-surface-2 border border-line rounded-xl p-0.5">
                     {(['gainers', 'losers'] as const).map(t => (
                         <button key={t} onClick={() => setTab(t)}
                             className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors capitalize ${
-                                tab === t ? 'bg-surface-3 text-primary border border-white/10' : 'text-ink-faint hover:text-ink-muted'
+                                tab === t ? 'bg-surface-3 text-primary border border-line' : 'text-ink-faint hover:text-ink-muted'
                             }`}>
                             {t === 'gainers' ? 'Gainers' : 'Losers'}
                         </button>
@@ -71,7 +71,7 @@ export default function MarketMovers() {
                 </div>
             </div>
 
-            <div className="divide-y divide-[#222c3a]/60">
+            <div className="divide-y divide-line">
                 {sorted.length > 0 ? sorted.map((q, idx) => {
                     const isUp = q.dayChange >= 0;
                     return (

@@ -43,7 +43,7 @@ export default function Watchlist() {
                             <div>
                                 <h3 className="text-sm font-medium text-ink dark:text-ink mb-1">{stock.name}</h3>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-lg font-semibold text-ink dark:text-white">₹{stock.price}</span>
+                                    <span className="text-lg font-semibold text-ink dark:text-ink">₹{stock.price}</span>
                                     <span className={`text-xs font-medium flex items-center gap-1 ${stock.isPositive ? 'text-green-500' : 'text-red-500'}`}>
                                         {stock.change}
                                         {stock.isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}

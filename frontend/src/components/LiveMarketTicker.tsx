@@ -28,13 +28,13 @@ export default function LiveMarketTicker() {
     };
 
     return (
-        <div className="bg-surface border border-white/10 rounded-xl p-4 shadow-none">
+        <div className="bg-surface border border-line rounded-xl p-4 shadow-none">
             <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-semibold text-ink-heading font-heading">Market quotes <span className="text-ink-faint font-normal text-xs">(latest available)</span></h2>
                 <div className="flex gap-2">
                     <input value={inputSymbol} onChange={e => setInputSymbol(e.target.value)}
                         placeholder="Add symbol..."
-                        className="text-xs px-2 py-1 rounded-lg border border-white/10 bg-surface-2 text-ink placeholder-[var(--text-faint)] focus:outline-none focus:ring-1 focus:ring-primary/40" />
+                        className="text-xs px-2 py-1 rounded-lg border border-line bg-surface-2 text-ink placeholder-[var(--text-faint)] focus:outline-none focus:ring-1 focus:ring-primary/40" />
                     <button onClick={handleAddSymbol}
                         className="text-xs px-3 py-1 rounded-lg text-[var(--primary-ink)] font-medium transition-colors"
                         style={{ background: 'var(--primary)', color: 'var(--primary-ink)' }}>
@@ -45,7 +45,7 @@ export default function LiveMarketTicker() {
             <div className="overflow-x-auto">
                 <table className="min-w-full text-xs">
                     <thead>
-                        <tr className="text-ink-faint border-b border-white/10 text-xs">
+                        <tr className="text-ink-faint border-b border-line text-xs">
                             <th className="text-left py-2 pr-4">Symbol</th>
                             <th className="text-left py-2 pr-4">Name</th>
                             <th className="text-right py-2 pr-4">Last</th>
@@ -59,7 +59,7 @@ export default function LiveMarketTicker() {
                             const pct = q.dayChange ?? 0;
                             const isUp = change >= 0;
                             return (
-                                <tr key={q.symbol} className="border-b border-white/10/50 last:border-0 hover:bg-surface-3 transition-colors">
+                                <tr key={q.symbol} className="border-b border-line last:border-0 hover:bg-surface-3 transition-colors">
                                     <td className="py-2 pr-4 font-medium text-xs text-ink font-num">{q.symbol}</td>
                                     <td className="py-2 pr-4 text-xs text-ink-faint max-w-[150px] truncate">{q.shortname || '-'}</td>
                                     <td className="py-2 pr-4 text-right text-xs text-ink tabular-nums font-num">{q.price != null ? q.price.toFixed(2) : '-'}</td>

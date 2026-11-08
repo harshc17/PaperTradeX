@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import BrandLogo from '@/components/BrandLogo';
+import ThemeToggle from '@/components/ThemeToggle';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -71,7 +72,7 @@ export default function AuthPage() {
 
     const switchTab = (toLogin: boolean) => { setIsLogin(toLogin); setError(''); setSuccess(''); };
 
-    const inputCls = "w-full px-4 py-3 rounded-xl text-sm text-ink placeholder-[var(--text-faint)] bg-surface-2 border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors";
+    const inputCls = "w-full px-4 py-3 rounded-xl text-sm text-ink placeholder-[var(--text-faint)] bg-surface-2 border border-line focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors";
 
     return (
         <div className="min-h-screen flex font-sans bg-[var(--bg)]">
@@ -98,8 +99,9 @@ export default function AuthPage() {
             <div className="flex-1 flex items-center justify-center px-4 py-8 sm:p-8 bg-[var(--bg)]">
                 <div className="w-full max-w-md">
                     {/* Mobile logo */}
-                    <div className="flex items-center gap-2 mb-8 lg:hidden">
-                        <BrandLogo className="text-[28px] sm:text-[30px]" />
+                    <div className="mb-8 flex items-center justify-between gap-4">
+                        <div className="lg:hidden"><BrandLogo className="text-xl sm:text-3xl" /></div>
+                        <ThemeToggle className="ml-auto" />
                     </div>
 
 
@@ -111,12 +113,12 @@ export default function AuthPage() {
                     </p>
 
                     {/* Tab toggle */}
-                    <div className="flex bg-surface border border-white/10 rounded-xl p-1 mb-8">
+                    <div className="flex bg-surface border border-line rounded-xl p-1 mb-8">
                         {['Sign in', 'Create account'].map((tab, i) => {
                             const active = i === 0 ? isLogin : !isLogin;
                             return (
                                 <button key={tab} type="button" onClick={() => switchTab(i === 0)}
-                                    className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-colors ${active ? 'bg-surface-3 text-primary shadow-none border border-white/10' : 'text-ink-faint hover:text-ink-muted'}`}>
+                                    className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-colors ${active ? 'bg-surface-3 text-primary shadow-none border border-line' : 'text-ink-faint hover:text-ink-muted'}`}>
                                     {tab}
                                 </button>
                             );

@@ -25,7 +25,7 @@ export default function DashboardNews() {
     const formatDate = (iso?: string) => iso ? new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' }) : '';
 
     if (loading) return (
-        <div className="bg-surface rounded-2xl border border-white/10 p-6 shadow-none">
+        <div className="bg-surface rounded-2xl border border-line p-6 shadow-none">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
                 <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-surface-3 rounded-full animate-pulse" />
@@ -51,7 +51,7 @@ export default function DashboardNews() {
     );
 
     if (error || !news || !news.articles?.length) return (
-        <div className="bg-surface rounded-2xl border border-white/10 p-6 shadow-none text-center">
+        <div className="bg-surface rounded-2xl border border-line p-6 shadow-none text-center">
             <Newspaper className="w-8 h-8 text-[var(--text-faint)] mx-auto mb-2" />
             <p className="text-sm text-ink-faint mb-3">Practice scenarios are currently unavailable</p>
             <button onClick={fetchNews} className="text-xs text-primary hover:underline flex items-center gap-1 mx-auto">
@@ -61,7 +61,7 @@ export default function DashboardNews() {
     );
 
     return (
-        <div className="bg-surface rounded-2xl border border-white/10 p-6 shadow-none relative overflow-hidden">
+        <div className="bg-surface rounded-2xl border border-line p-6 shadow-none relative overflow-hidden">
             <div className="relative z-10">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
                     <h2 className="text-base font-semibold text-ink-heading flex items-center gap-2 font-heading">
@@ -84,7 +84,7 @@ export default function DashboardNews() {
                 <p className="mb-5 text-sm leading-6 text-ink-muted">Illustrative AI-generated market scenarios for paper trading, not current or verified news</p>
 
                 {news.title && (
-                    <p className="text-[12px] font-medium text-ink-faint mb-5 pb-4 border-b border-white/10">{news.title}</p>
+                    <p className="text-[12px] font-medium text-ink-faint mb-5 pb-4 border-b border-line">{news.title}</p>
                 )}
 
                 <div className="space-y-5">
@@ -99,17 +99,17 @@ export default function DashboardNews() {
                                     <p className="text-[12px] text-ink-faint leading-relaxed mb-1.5">{article.summary}</p>
                                 </div>
                             </div>
-                            {idx < news.articles.length - 1 && <div className="mt-4 border-b border-white/10/60" />}
+                            {idx < news.articles.length - 1 && <div className="mt-4 border-b border-line" />}
                         </div>
                     ))}
                 </div>
 
-                <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between">
+                <div className="mt-5 pt-4 border-t border-line flex items-center justify-between">
                     <p className="text-xs text-ink-faint flex items-center gap-1">
 
                         AI-generated · Updated daily
                     </p>
-                    {news.cached && <span className="text-xs text-ink-faint bg-surface-3 px-2 py-0.5 rounded-lg border border-white/10">cached</span>}
+                    {news.cached && <span className="text-xs text-ink-faint bg-surface-3 px-2 py-0.5 rounded-lg border border-line">cached</span>}
                 </div>
             </div>
         </div>

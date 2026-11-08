@@ -19,7 +19,7 @@ export default function ToolsSidebar() {
                             <div className="w-10 h-10 rounded-full bg-surface-2 dark:bg-surface-2 flex items-center justify-center group-hover:bg-surface dark:group-hover:bg-gray-700 transition-colors">
                                 {tool.icon}
                             </div>
-                            <span className="text-sm font-medium text-ink-muted dark:text-gray-200 group-hover:text-ink dark:group-hover:text-white transition-colors">{tool.name}</span>
+                            <span className="text-sm font-medium text-ink-muted dark:text-gray-200 group-hover:text-ink dark:group-hover:text-ink transition-colors">{tool.name}</span>
                         </div>
                         {tool.badge && (
                             <span className="px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-xs font-medium text-green-700 dark:text-green-400">{tool.badge}</span>

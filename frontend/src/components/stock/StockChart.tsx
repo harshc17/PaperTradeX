@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { getSocket } from '@/lib/socket';
 import { API_URL } from '@/lib/config';
+import { useTheme } from '@/context/ThemeContext';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -94,6 +95,7 @@ function formatVol(v: number): string {
 
 /* ─── Component ──────────────────────────────────────────────────────────────── */
 export default function StockChart({ symbol }: { symbol: string }) {
+    const { theme } = useTheme();
     const [history, setHistory] = useState<HistoryPoint[]>([]);
     const [activePeriod, setActivePeriod] = useState<Period>(PERIODS[2]); // default 1M
     const [loading, setLoading] = useState(true);
@@ -210,8 +212,11 @@ export default function StockChart({ symbol }: { symbol: string }) {
         : 0;
     const isPositive = priceChange >= 0;
 
-    const color = isPositive ? '#62c39e' : '#ed9b96';
-    const colorBg = isPositive ? 'rgba(98,195,158,0.12)' : 'rgba(237,155,150,0.10)';
+    const light = theme === 'light';
+    const color = isPositive ? (light ? '#157a50' : '#62c39e') : (light ? '#b93e3a' : '#ed9b96');
+    const lineRgb = isPositive ? (light ? '21,122,80' : '98,195,158') : (light ? '185,62,58' : '237,155,150');
+    const colorBg = `rgba(${lineRgb},0.10)`;
+    const axisColor = light ? '#64646e' : '#909097';
 
     const labels = displayHistory.map(h => formatLabel(h.date, activePeriod.fmt));
     const closes = displayHistory.map(h => h.close);
@@ -244,15 +249,9 @@ export default function StockChart({ symbol }: { symbol: string }) {
                 const { ctx: c, chartArea } = chart;
                 if (!chartArea) return colorBg;
                 const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-                if (isPositive) {
-                    g.addColorStop(0, 'rgba(98,195,158,0.22)');
-                    g.addColorStop(0.5, 'rgba(98,195,158,0.08)');
-                    g.addColorStop(1, 'rgba(98,195,158,0.00)');
-                } else {
-                    g.addColorStop(0, 'rgba(237,155,150,0.18)');
-                    g.addColorStop(0.5, 'rgba(237,155,150,0.06)');
-                    g.addColorStop(1, 'rgba(237,155,150,0.00)');
-                }
+                g.addColorStop(0, `rgba(${lineRgb},0.18)`);
+                g.addColorStop(0.5, `rgba(${lineRgb},0.06)`);
+                g.addColorStop(1, `rgba(${lineRgb},0)`);
                 return g;
             },
             fill: true,
@@ -276,11 +275,11 @@ export default function StockChart({ symbol }: { symbol: string }) {
         plugins: {
             legend: { display: false },
             tooltip: {
-                backgroundColor: '#232325',
-                titleColor: '#b1b1b7',
-                bodyColor: '#ededed',
+                backgroundColor: light ? '#ffffff' : '#232325',
+                titleColor: light ? '#52525b' : '#b1b1b7',
+                bodyColor: light ? '#171717' : '#ededed',
                 padding: 14,
-                borderColor: '#3b3b40',
+                borderColor: light ? '#d4d4d8' : '#3b3b40',
                 borderWidth: 1,
                 cornerRadius: 10,
                 displayColors: false,
@@ -305,7 +304,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
                 display: true,
                 grid: { display: false },
                 ticks: {
-                    color: '#909097',
+                    color: axisColor,
                     font: { size: 12, family: 'monospace' },
                     maxTicksLimit: activePeriod.maxTicks,
                     maxRotation: 0,
@@ -316,9 +315,9 @@ export default function StockChart({ symbol }: { symbol: string }) {
             y: {
                 display: true,
                 position: 'right' as const,
-                grid: { color: 'rgba(148,163,184,0.08)', drawTicks: false },
+                grid: { color: light ? 'rgba(23,23,23,0.08)' : 'rgba(237,237,237,0.08)', drawTicks: false },
                 ticks: {
-                    color: '#909097',
+                    color: axisColor,
                     font: { size: 12, family: 'monospace' },
                     padding: 8,
                     callback: (v: any) => formatINR(Number(v), 0),
@@ -336,7 +335,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
             data: volumes,
             backgroundColor: volumes.map((_, i) => {
                 const isGreen = i === 0 || closes[i] >= closes[i - 1];
-                return isGreen ? 'rgba(177,177,183,0.30)' : 'rgba(177,177,183,0.18)';
+                return light ? (isGreen ? 'rgba(82,82,91,0.35)' : 'rgba(82,82,91,0.20)') : (isGreen ? 'rgba(177,177,183,0.30)' : 'rgba(177,177,183,0.18)');
             }),
             borderRadius: 2,
             borderSkipped: false,
@@ -407,7 +406,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
                         className={`h-9 min-w-[48px] px-3.5 rounded-full border text-xs sm:text-sm font-medium transition-colors ${
                             activePeriod.value === p.value
                                 ? 'bg-surface-3 border-primary/40 text-primary'
-                                : 'bg-surface-2 border-white/10 text-ink-muted hover:text-ink hover:border-white/20'
+                                : 'bg-surface-2 border-line text-ink-muted hover:text-ink hover:border-line'
                         }`}
                     >
                         {p.label}
@@ -417,7 +416,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
                 <button
                     onClick={() => fetchHistory(activePeriod)}
                     disabled={loading}
-                    className="h-9 w-9 rounded-full border border-white/10 bg-surface-2 grid place-items-center text-ink-muted hover:text-primary hover:border-white/20 disabled:opacity-50"
+                    className="h-9 w-9 rounded-full border border-line bg-surface-2 grid place-items-center text-ink-muted hover:text-primary hover:border-line disabled:opacity-50"
                     title="Refresh chart"
                 >
                     <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />

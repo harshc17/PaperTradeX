@@ -91,7 +91,7 @@ export default function AskAIPage() {
                     </div>
                 </div>
 
-                <div className="bg-surface h-[65dvh] min-h-[320px] max-h-[800px] rounded-2xl border border-white/10 shadow-none overflow-hidden flex flex-col">
+                <div className="bg-surface h-[65dvh] min-h-[320px] max-h-[800px] rounded-2xl border border-line shadow-none overflow-hidden flex flex-col">
                     {/* Chat Area */}
                     <div className="flex-1 min-h-0 p-3 sm:p-6 overflow-y-auto space-y-6 bg-surface-2">
                         {messages.map((msg, idx) => (
@@ -106,7 +106,7 @@ export default function AskAIPage() {
                                 <div className={`min-w-0 max-w-[85%] break-words rounded-2xl px-3 sm:px-5 py-3.5 text-base ${
                                     msg.role === 'user'
                                     ? 'bg-primary text-[var(--primary-ink)] font-medium rounded-tr-sm'
-                                    : 'bg-surface border border-white/10 text-ink rounded-tl-sm'
+                                    : 'bg-surface border border-line text-ink rounded-tl-sm'
                                 }`}>
                                     {msg.role === 'ai' ? (
                                         <div className="prose prose-sm prose-invert [&_pre]:overflow-x-auto [&_pre]:max-w-full prose-p:leading-relaxed prose-headings:font-semibold prose-a:text-primary max-w-none">
@@ -118,7 +118,7 @@ export default function AskAIPage() {
                                 </div>
 
                                 {msg.role === 'user' && (
-                                    <div className="w-8 h-8 rounded-full bg-surface-3 border border-white/10 flex items-center justify-center flex-shrink-0 mt-1">
+                                    <div className="w-8 h-8 rounded-full bg-surface-3 border border-line flex items-center justify-center flex-shrink-0 mt-1">
                                         <UserIcon className="w-4 h-4 text-ink-muted" />
                                     </div>
                                 )}
@@ -130,7 +130,7 @@ export default function AskAIPage() {
                                     style={{ background: 'var(--primary)', color: 'var(--primary-ink)' }}>
                                     <Bot className="w-4 h-4 text-[var(--primary-ink)]" />
                                 </div>
-                                <div className="bg-surface border border-white/10 rounded-2xl rounded-tl-sm px-5 py-4 flex items-center gap-2">
+                                <div className="bg-surface border border-line rounded-2xl rounded-tl-sm px-5 py-4 flex items-center gap-2">
                                     <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                                     <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                                     <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
@@ -141,8 +141,8 @@ export default function AskAIPage() {
                     </div>
 
                     {/* Input Area */}
-                    <div className="p-4 bg-surface border-t border-white/10">
-                        <div className="flex items-center gap-2 bg-surface-2 border border-white/10 rounded-xl p-2 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-colors">
+                    <div className="p-4 bg-surface border-t border-line">
+                        <div className="flex items-center gap-2 bg-surface-2 border border-line rounded-xl p-2 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-colors">
                             <input
                                 type="text"
                                 value={input}

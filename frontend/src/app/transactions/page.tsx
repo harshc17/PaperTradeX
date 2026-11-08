@@ -103,7 +103,7 @@ export default function TransactionsPage() {
                         <button
                             onClick={handleManualRefresh}
                             disabled={isRefreshing}
-                            className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-3 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 border border-white/10 text-xs font-medium text-ink-muted hover:text-ink transition-colors active:scale-[0.98]"
+                            className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-3 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 border border-line text-xs font-medium text-ink-muted hover:text-ink transition-colors active:scale-[0.98]"
                         >
                             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
                             Refresh trades
@@ -111,7 +111,7 @@ export default function TransactionsPage() {
                         {transactions.length > 0 && (
                             <button
                                 onClick={exportCSV}
-                                className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-3.5 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 border border-white/10 text-xs font-medium text-ink-heading transition-colors active:scale-[0.98] shadow-none"
+                                className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-3.5 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 border border-line text-xs font-medium text-ink-heading transition-colors active:scale-[0.98] shadow-none"
                             >
                                 <Download className="w-3.5 h-3.5 text-primary" />
                                 Export CSV
@@ -130,7 +130,7 @@ export default function TransactionsPage() {
                 {/* Ledger Metrics Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                     {/* Total Transactions */}
-                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-none">
+                    <div className="rounded-2xl p-5 bg-surface border border-line shadow-none">
                         <div className="flex items-center justify-between text-xs text-ink-faint mb-2">
                             <span className="font-semibold text-xs">Total Executions</span>
                             <Activity className="w-4 h-4 text-primary" />
@@ -142,7 +142,7 @@ export default function TransactionsPage() {
                     </div>
 
                     {/* Total buy volume */}
-                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-none">
+                    <div className="rounded-2xl p-5 bg-surface border border-line shadow-none">
                         <div className="flex items-center justify-between text-xs text-ink-faint mb-2">
                             <span className="font-semibold text-xs">Total buy volume</span>
                             <TrendingUp className="w-4 h-4 text-up" />
@@ -154,7 +154,7 @@ export default function TransactionsPage() {
                     </div>
 
                     {/* Total Sell Volume */}
-                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-none">
+                    <div className="rounded-2xl p-5 bg-surface border border-line shadow-none">
                         <div className="flex items-center justify-between text-xs text-ink-faint mb-2">
                             <span className="font-semibold text-xs">Total sell realised</span>
                             <TrendingDown className="w-4 h-4 text-down" />
@@ -168,8 +168,8 @@ export default function TransactionsPage() {
 
                 {/* Ledger Table Section */}
                 {transactions.length === 0 ? (
-                    <div className="rounded-2xl border border-white/10 bg-surface p-14 text-center shadow-none">
-                        <div className="w-16 h-16 bg-surface-2 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <div className="rounded-2xl border border-line bg-surface p-14 text-center shadow-none">
+                        <div className="w-16 h-16 bg-surface-2 border border-line rounded-2xl flex items-center justify-center mx-auto mb-4">
                             <History className="w-8 h-8 text-ink-faint" />
                         </div>
                         <h3 className="text-base font-medium text-ink-heading mb-2">No Transactions Yet</h3>
@@ -185,9 +185,9 @@ export default function TransactionsPage() {
                         </Link>
                     </div>
                 ) : (
-                    <div className="bg-surface rounded-2xl border border-white/10 shadow-none overflow-hidden">
+                    <div className="bg-surface rounded-2xl border border-line shadow-none overflow-hidden">
                         {/* Filter Toolbar */}
-                        <div className="p-4 sm:p-5 border-b border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="p-4 sm:p-5 border-b border-line flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             {/* Search */}
                             <div className="relative w-full sm:w-72">
                                 <Search className="w-4 h-4 text-ink-faint absolute left-3 top-1/2 -translate-y-1/2" />
@@ -196,12 +196,12 @@ export default function TransactionsPage() {
                                     placeholder="Search by symbol..."
                                     value={searchQuery}
                                     onChange={e => setSearchQuery(e.target.value)}
-                                    className="w-full h-9 pl-9 pr-3 text-xs bg-surface-2 border border-white/10 rounded-xl outline-none focus:border-primary text-ink transition-colors"
+                                    className="w-full h-9 pl-9 pr-3 text-xs bg-surface-2 border border-line rounded-xl outline-none focus:border-primary text-ink transition-colors"
                                 />
                             </div>
 
                             {/* Side Filter Tabs */}
-                            <div className="flex items-center gap-1.5 bg-surface-2 p-1 rounded-xl border border-white/10">
+                            <div className="flex items-center gap-1.5 bg-surface-2 p-1 rounded-xl border border-line">
                                 {(
                                     [
                                         { key: 'ALL', label: `All (${transactions.length})` },
@@ -229,7 +229,7 @@ export default function TransactionsPage() {
                         <div className="overflow-x-auto overscroll-x-contain">
                             <table className="w-full min-w-[700px] text-left">
                                 <thead>
-                                    <tr className="bg-surface-2/60 text-xs font-medium text-ink-faint border-b border-white/10">
+                                    <tr className="bg-surface-2/60 text-xs font-medium text-ink-faint border-b border-line">
                                         <th className="px-6 py-3.5">Date & Time</th>
                                         <th className="px-6 py-3.5">Type</th>
                                         <th className="px-6 py-3.5">Symbol</th>
@@ -239,7 +239,7 @@ export default function TransactionsPage() {
                                         <th className="px-6 py-3.5 text-center">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-white/[0.06]">
+                                <tbody className="divide-y divide-line">
                                     {filteredTransactions.map(txn => {
                                         const isBuy = txn.type === 'BUY';
                                         const date = new Date(txn.createdAt);
@@ -308,7 +308,7 @@ export default function TransactionsPage() {
                                                 <td className="px-6 py-4 text-center">
                                                     <Link
                                                         href={`/stock/${cleanSymbol}`}
-                                                        className="px-2.5 py-1 text-xs font-medium rounded-lg bg-surface-2 hover:bg-primary hover:text-[var(--primary-ink)] border border-white/10 transition-colors text-ink-muted inline-flex items-center gap-1"
+                                                        className="px-2.5 py-1 text-xs font-medium rounded-lg bg-surface-2 hover:bg-primary hover:text-[var(--primary-ink)] border border-line transition-colors text-ink-muted inline-flex items-center gap-1"
                                                     >
                                                         <span>Trade</span>
                                                         <ExternalLink className="w-3 h-3" />

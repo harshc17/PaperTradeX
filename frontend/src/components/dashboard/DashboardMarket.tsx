@@ -179,14 +179,14 @@ export default function DashboardMarket() {
                     <h2 className="text-base font-medium text-ink-heading">Top stocks</h2>
                     <button type="button" aria-expanded={showAllStocks} aria-controls="top-stocks-list" onClick={() => setShowAllStocks(v => !v)} className="lg:hidden min-h-11 text-[12px] text-primary hover:underline font-medium">{showAllStocks ? 'Show fewer' : 'View all 10'}</button>
                 </div>
-                <div className="bg-surface rounded-2xl border border-white/10 overflow-hidden shadow-none">
-                    <div className="hidden sm:grid grid-cols-12 gap-2 px-3 sm:px-5 py-3 bg-surface-2 border-b border-white/10 text-xs font-medium text-ink-faint">
+                <div className="bg-surface rounded-2xl border border-line overflow-hidden shadow-none">
+                    <div className="hidden sm:grid grid-cols-12 gap-2 px-3 sm:px-5 py-3 bg-surface-2 border-b border-line text-xs font-medium text-ink-faint">
                         <div className="col-span-5">Company</div>
                         <div className="col-span-5 sm:col-span-3 text-right">Price</div>
                         <div className="col-span-2 text-right" title="Compared with the previous market close">Day change</div>
                         <div className="col-span-2 text-right">Action</div>
                     </div>
-                    <div id="top-stocks-list" className="divide-y divide-[#222c3a]/60">
+                    <div id="top-stocks-list" className="divide-y divide-line">
                         {TOP_STOCKS.map((stock, index) => {
                             const q = resolveQuote(quotes, stock.symbol);
                             const isUp = (q?.change ?? 0) >= 0;

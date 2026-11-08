@@ -97,12 +97,12 @@ function WatchlistContent() {
                     <label className="block text-xs font-medium text-ink-faint mb-2">Add a stock</label>
                     <input type="text" value={addInput} onChange={e => setAddInput(e.target.value)}
                         placeholder="Search by name or symbol (e.g. HDFC, Infosys)"
-                        className="w-full px-4 py-2.5 border border-white/10 rounded-xl text-sm text-ink placeholder-[var(--text-faint)] bg-surface-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors" />
+                        className="w-full px-4 py-2.5 border border-line rounded-xl text-sm text-ink placeholder-[var(--text-faint)] bg-surface-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors" />
                     {searchResults.length > 0 && (
-                        <div className="absolute top-full left-5 right-5 mt-1 bg-surface rounded-xl shadow-none border border-white/10 overflow-hidden z-50">
+                        <div className="absolute top-full left-5 right-5 mt-1 bg-surface rounded-xl shadow-none border border-line overflow-hidden z-50">
                             {searchResults.map((r: any, i) => (
                                 <div key={`${r.symbol}-${i}`}
-                                    className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-surface-3 cursor-pointer border-b border-white/10/50 last:border-0 transition-colors"
+                                    className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-surface-3 cursor-pointer border-b border-line last:border-0 transition-colors"
                                     onClick={() => addToWatchlist(r.symbol, r.shortname || r.symbol)}>
                                     <div className="flex min-w-0 items-center gap-2">
                                         <CompanyLogo symbol={r.symbol} className="h-8 w-8" />
@@ -121,16 +121,16 @@ function WatchlistContent() {
                 </div>
 
                 {/* Watchlist */}
-                <div className="bg-surface rounded-2xl border border-white/10 overflow-hidden shadow-none">
+                <div className="bg-surface rounded-2xl border border-line overflow-hidden shadow-none">
                     {watchlist.length === 0 ? (
                         <div className="p-14 text-center">
                             <div className="w-16 h-16 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                <Star className="w-8 h-8 text-primary/40" />
+                                <Star className="w-8 h-8 text-primary" />
                             </div>
                             <p className="text-ink-faint text-sm">Your watchlist is empty. Add stocks above.</p>
                         </div>
                     ) : (
-                        <div className="divide-y divide-[#222c3a]/60">
+                        <div className="divide-y divide-line">
                             {watchlist.map(item => {
                                 const q = quotes[item.symbol];
                                 const isUp = (q?.change ?? 0) >= 0;

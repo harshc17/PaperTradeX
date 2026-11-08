@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+    darkMode: 'class',
     content: [
         './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
         './src/components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -9,26 +10,26 @@ module.exports = {
         extend: {
             colors: {
                 primary: {
-                    DEFAULT: '#20b4c5',
-                    dark: '#168594',
-                    light: '#a6e3e9',
+                    DEFAULT: 'rgb(var(--primary-rgb) / <alpha-value>)',
+                    dark: 'rgb(var(--primary-dark-rgb) / <alpha-value>)',
+                    light: 'rgb(var(--primary-light-rgb) / <alpha-value>)',
                 },
-                up: '#62c39e',
-                down: '#ed9b96',
+                up: 'rgb(var(--up-rgb) / <alpha-value>)',
+                down: 'rgb(var(--down-rgb) / <alpha-value>)',
                 surface: {
-                    DEFAULT: '#19191b',
-                    2: '#232325',
-                    3: '#2b2b2e',
+                    DEFAULT: 'rgb(var(--surface-rgb) / <alpha-value>)',
+                    2: 'rgb(var(--surface-2-rgb) / <alpha-value>)',
+                    3: 'rgb(var(--surface-3-rgb) / <alpha-value>)',
                 },
                 line: {
-                    DEFAULT: 'rgba(255,255,255,0.06)',
-                    strong: 'rgba(255,255,255,0.12)',
+                    DEFAULT: 'rgb(var(--line-rgb) / 0.10)',
+                    strong: 'rgb(var(--line-rgb) / 0.20)',
                 },
                 ink: {
-                    DEFAULT: '#ededed',
-                    heading: '#ededed',
-                    muted: '#b1b1b7',
-                    faint: '#909097',
+                    DEFAULT: 'rgb(var(--text-rgb) / <alpha-value>)',
+                    heading: 'rgb(var(--text-rgb) / <alpha-value>)',
+                    muted: 'rgb(var(--text-muted-rgb) / <alpha-value>)',
+                    faint: 'rgb(var(--text-faint-rgb) / <alpha-value>)',
                 },
             },
             fontFamily: {

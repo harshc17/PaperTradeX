@@ -108,7 +108,7 @@ export default function AINewsPanel({ symbol, companyName }: AINewsPanelProps) {
                 </h4>
 
                 {/* Summary */}
-                <p className="text-sm font-normal text-ink-muted mb-5 pb-4 border-b border-white/10 leading-relaxed">
+                <p className="text-sm font-normal text-ink-muted mb-5 pb-4 border-b border-line leading-relaxed">
                     {news.summary}
                 </p>
 
@@ -120,13 +120,13 @@ export default function AINewsPanel({ symbol, companyName }: AINewsPanelProps) {
                 </div>
 
                 {/* Footer */}
-                <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between">
+                <div className="mt-5 pt-4 border-t border-line flex items-center justify-between">
                     <p className="text-xs text-ink-faint flex items-center gap-1">
 
                         AI-generated · Updated daily
                     </p>
                     {news.cached && (
-                        <span className="text-xs text-ink-faint bg-surface-3 border border-white/10 px-2 py-0.5 rounded-lg">cached</span>
+                        <span className="text-xs text-ink-faint bg-surface-3 border border-line px-2 py-0.5 rounded-lg">cached</span>
                     )}
                 </div>
             </div>

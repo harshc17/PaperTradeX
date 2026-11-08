@@ -6,7 +6,7 @@ export default function PortfolioSummary() {
  const {balance}=useAuth();
  const {holdings,totalInvested,currentValue,totalReturns,totalReturnsPercent,todayReturns,todayReturnsPercent}=usePortfolio();
  const fmt=(n:number)=>n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
- return (<div className="bg-surface rounded-2xl border border-white/10 p-4 sm:p-6 shadow-none">
+ return (<div className="bg-surface rounded-2xl border border-line p-4 sm:p-6 shadow-none">
                 <div className="flex items-center justify-between mb-3 sm:mb-5">
                     <h3 className="text-base font-semibold text-ink-heading font-heading">Your portfolio</h3>
                     <Link href="/holdings" className="text-[12px] text-primary hover:underline font-medium">View all →</Link>
@@ -19,7 +19,7 @@ export default function PortfolioSummary() {
                 </div>
 
                 {holdings.length > 0 ? (
-                    <div className="space-y-3 pt-4 border-t border-white/10">
+                    <div className="space-y-3 pt-4 border-t border-line">
                         {[
                             { label: 'Market move (1D)', val: todayReturns, pct: todayReturnsPercent },
                             { label: 'Total returns', val: totalReturns, pct: totalReturnsPercent },
@@ -37,7 +37,7 @@ export default function PortfolioSummary() {
                         </div>
                     </div>
                 ) : (
-                    <div className="text-center py-2 sm:py-4 border-t border-white/10">
+                    <div className="text-center py-2 sm:py-4 border-t border-line">
                         <p className="text-sm text-ink-faint mb-3">No holdings yet</p>
                         <Link href="/dashboard" className="text-sm font-semibold text-primary hover:underline">Explore stocks →</Link>
                     </div>

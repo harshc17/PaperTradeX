@@ -249,7 +249,7 @@ export default function StockScreenerPage() {
                                 onClick={() => setSelectedCategory(cat)}
                                 className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                                     selectedCategory === cat
-                                        ? 'bg-surface-3 text-white shadow-none'
+                                        ? 'bg-surface-3 text-ink shadow-none'
                                         : 'bg-surface text-ink-muted border border-line hover:bg-surface-2'
                                 }`}
                             >
@@ -265,7 +265,7 @@ export default function StockScreenerPage() {
                     </div>
                 )}
 
-                <div className="bg-surface rounded-2xl border border-line/80 shadow-none overflow-hidden">
+                <div className="bg-surface rounded-2xl border border-line shadow-none overflow-hidden">
                     <div className="overflow-x-auto overscroll-x-contain">
                         <table className="w-full min-w-[680px] text-left">
                             <thead>
@@ -334,7 +334,7 @@ export default function StockScreenerPage() {
                                                 <td className="px-6 py-4 text-right">
                                                     <button
                                                         onClick={e => { e.stopPropagation(); router.push(`/stock/${encodeURIComponent(st.symbol)}`); }}
-                                                        className="px-4 py-1.5 text-sm font-semibold text-primary border border-primary rounded-xl hover:bg-primary hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+                                                        className="min-h-11 px-4 py-2 text-sm font-semibold text-primary border border-primary rounded-xl hover:bg-primary hover:text-[var(--primary-ink)] transition-colors opacity-100"
                                                     >
                                                         Trade
                                                     </button>

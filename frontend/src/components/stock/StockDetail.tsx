@@ -259,7 +259,7 @@ export default function StockDetail({ symbol }: { symbol: string }) {
                             Updated {timeAgo(lastUpdateTs)} · {marketOpen ? (isLive ? 'Live NSE Feed' : 'Delayed') : 'Market closed (LTP)'}
                         </p>
                         {!marketOpen && marketStatus && (
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-lg bg-surface-2 border border-white/10 text-ink-muted">
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-lg bg-surface-2 border border-line text-ink-muted">
                                 {marketStatus.sessionName} · Opens {marketStatus.nextOpenFormatted}
                             </span>
                         )}
@@ -267,10 +267,10 @@ export default function StockDetail({ symbol }: { symbol: string }) {
                 </div>
 
                 <div className="hidden shrink-0 sm:flex items-center gap-3 pt-1">
-                    <button className="w-12 h-12 rounded-full border border-white/10 bg-surface grid place-items-center text-ink-muted hover:text-primary">
+                    <button className="w-12 h-12 rounded-full border border-line bg-surface grid place-items-center text-ink-muted hover:text-primary">
                         <Link2 className="w-4 h-4" />
                     </button>
-                    <button className="w-12 h-12 rounded-full border border-white/10 bg-surface grid place-items-center text-ink-muted hover:text-primary">
+                    <button className="w-12 h-12 rounded-full border border-line bg-surface grid place-items-center text-ink-muted hover:text-primary">
                         <Bell className="w-4 h-4" />
                     </button>
                     <button
@@ -280,7 +280,7 @@ export default function StockDetail({ symbol }: { symbol: string }) {
                         className={`w-12 h-12 rounded-full border grid place-items-center transition-colors duration-200 ${
                             inWatchlist
                                 ? 'border-up bg-up/10 text-up shadow-none'
-                                : 'border-white/10 bg-surface text-ink-muted hover:text-up hover:border-up/40 hover:bg-up/5'
+                                : 'border-line bg-surface text-ink-muted hover:text-up hover:border-up/40 hover:bg-up/5'
                         }`}
                     >
                         <Bookmark className={`w-5 h-5 ${inWatchlist ? 'fill-current' : ''}`} />

@@ -31,7 +31,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
-        <html lang="en">
+        <html lang="en" data-theme="dark" className="dark" suppressHydrationWarning>
+            <head>
+                <script dangerouslySetInnerHTML={{ __html: "(()=>{try{const theme=localStorage.getItem('ptx_theme')==='light'?'light':'dark';document.documentElement.dataset.theme=theme;document.documentElement.classList.toggle('dark',theme==='dark')}catch(e){}})()" }} />
+            </head>
             <body className={`${hankenGrotesk.variable} ${jetbrainsMono.variable} font-sans`}>
                 {/* Google Identity Services — loaded only when GOOGLE_CLIENT_ID is set */}
                 {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (

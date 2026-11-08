@@ -27,7 +27,7 @@ export default function StockCard({ name, symbol, price, change, isPositive, log
             onClick={() => router.push(`/stock/${encodeURIComponent(symbol)}`)}
         >
             <button onClick={handleBuy}
-                className="absolute top-3 right-3 text-primary hover:bg-primary/10 p-1.5 rounded-full transition-colors opacity-0 group-hover:opacity-100 z-10"
+                className="absolute top-3 right-3 text-primary hover:bg-primary/10 p-1.5 rounded-full transition-colors opacity-100 z-10"
                 title="Buy Stock">
                 <Plus className="h-4 w-4" />
             </button>

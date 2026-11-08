@@ -68,7 +68,7 @@ export default function AIPortfolioAnalyst() {
 
                 {analysis && !loading && (
                     <div className="space-y-4">
-                        <div className="bg-white/5 border border-white/8 rounded-xl p-4">
+                        <div className="bg-surface-2 border border-line rounded-xl p-4">
                             <p className="text-sm text-[var(--text-main)] leading-relaxed">{analysis.summary}</p>
                         </div>
                         {[

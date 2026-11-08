@@ -14,7 +14,7 @@ export default function InvestmentCard() {
             <div className="space-y-6">
                 <div>
                     <p className="text-sm text-ink-muted dark:text-ink-faint mb-1">Current</p>
-                    <p className="text-3xl font-semibold text-ink dark:text-white">₹{fmt(currentValue)}</p>
+                    <p className="text-3xl font-semibold text-ink dark:text-ink">₹{fmt(currentValue)}</p>
                 </div>
 
                 <div className="space-y-3">
@@ -28,7 +28,7 @@ export default function InvestmentCard() {
 
                 <div className="pt-4 border-t border-dashed border-line dark:border-line flex items-center justify-between">
                     <span className="text-sm text-ink-muted dark:text-ink-faint">Invested</span>
-                    <span className="text-lg font-medium text-ink dark:text-white">₹{fmt(totalInvested)}</span>
+                    <span className="text-lg font-medium text-ink dark:text-ink">₹{fmt(totalInvested)}</span>
                 </div>
             </div>
         </div>

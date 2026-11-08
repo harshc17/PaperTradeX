@@ -91,7 +91,7 @@ export default function HoldingsPage() {
                         <button
                             onClick={handleManualRefresh}
                             disabled={isRefreshing}
-                            className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-3 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 border border-white/10 text-xs font-medium text-ink-muted hover:text-ink transition-colors active:scale-[0.98]"
+                            className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-3 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 border border-line text-xs font-medium text-ink-muted hover:text-ink transition-colors active:scale-[0.98]"
                         >
                             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
                             Refresh prices
@@ -134,10 +134,10 @@ export default function HoldingsPage() {
                 {/* KPI Metrics Summary Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                     {/* Card 1: Current Portfolio Value */}
-                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-none relative overflow-hidden group">
+                    <div className="rounded-2xl p-5 bg-surface border border-line shadow-none relative overflow-hidden group">
                         <div className="flex items-center justify-between text-xs text-ink-faint mb-2">
                             <span className="font-semibold text-xs">Portfolio Value</span>
-                            <PieChart className="w-4 h-4 text-primary/70" />
+                            <PieChart className="w-4 h-4 text-primary" />
                         </div>
                         <h2 className="text-[28px] font-medium text-ink-heading tabular-nums font-num mb-2">
                             ₹{fmt(currentValue)}
@@ -151,7 +151,7 @@ export default function HoldingsPage() {
                     </div>
 
                     {/* Card 2: Total returns */}
-                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-none relative overflow-hidden group">
+                    <div className="rounded-2xl p-5 bg-surface border border-line shadow-none relative overflow-hidden group">
                         <div className="flex items-center justify-between text-xs text-ink-faint mb-2">
                             <span className="font-semibold text-xs">Total returns</span>
                             {isProfit ? <TrendingUp className="w-4 h-4 text-up" /> : <TrendingDown className="w-4 h-4 text-down" />}
@@ -161,7 +161,7 @@ export default function HoldingsPage() {
                                 {isProfit ? '+' : '-'}₹{fmt(Math.abs(totalReturns))}
                             </h2>
                         </div>
-                        <div className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-lg bg-surface-2 border border-white/10">
+                        <div className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-lg bg-surface-2 border border-line">
                             <span className={`tabular-nums font-num ${isProfit ? 'text-up' : 'text-down'}`}>
                                 {isProfit ? '+' : '-'}{Math.abs(totalReturnsPercent).toFixed(2)}% Overall
                             </span>
@@ -169,7 +169,7 @@ export default function HoldingsPage() {
                     </div>
 
                     {/* Card 3: Invested Capital */}
-                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-none relative overflow-hidden group">
+                    <div className="rounded-2xl p-5 bg-surface border border-line shadow-none relative overflow-hidden group">
                         <div className="flex items-center justify-between text-xs text-ink-faint mb-2">
                             <span className="font-semibold text-xs">Total invested</span>
                             <Wallet className="w-4 h-4 text-ink-faint" />
@@ -183,7 +183,7 @@ export default function HoldingsPage() {
                     </div>
 
                     {/* Card 4: Available balance */}
-                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-none relative overflow-hidden group">
+                    <div className="rounded-2xl p-5 bg-surface border border-line shadow-none relative overflow-hidden group">
                         <div className="flex items-center justify-between text-xs text-ink-faint mb-2">
                             <span className="font-semibold text-xs">Available balance</span>
                             <span className="w-2 h-2 rounded-full bg-primary" />
@@ -199,9 +199,9 @@ export default function HoldingsPage() {
 
                 {/* Holdings Table Section */}
                 {holdings.length === 0 ? (
-                    <div className="rounded-2xl border border-white/10 bg-surface p-12 text-center shadow-none">
+                    <div className="rounded-2xl border border-line bg-surface p-12 text-center shadow-none">
                         <div className="w-16 h-16 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                            <Package className="w-8 h-8 text-primary/70" />
+                            <Package className="w-8 h-8 text-primary" />
                         </div>
                         <h3 className="text-lg font-medium text-ink-heading mb-2">No Holdings Yet</h3>
                         <p className="text-ink-faint text-sm max-w-md mx-auto mb-6">
@@ -213,7 +213,7 @@ export default function HoldingsPage() {
                                 <Link
                                     key={sym}
                                     href={`/stock/${sym}`}
-                                    className="px-3 py-1.5 rounded-xl bg-surface-2 hover:bg-surface-3 border border-white/10 text-xs font-semibold text-ink-muted hover:text-ink transition-colors flex items-center gap-1.5"
+                                    className="px-3 py-1.5 rounded-xl bg-surface-2 hover:bg-surface-3 border border-line text-xs font-semibold text-ink-muted hover:text-ink transition-colors flex items-center gap-1.5"
                                 >
                                     <span>{sym}</span>
                                     <ArrowUpRight className="w-3 h-3 text-primary" />
@@ -230,9 +230,9 @@ export default function HoldingsPage() {
                         </Link>
                     </div>
                 ) : (
-                    <div className="bg-surface rounded-2xl border border-white/10 shadow-none overflow-hidden">
+                    <div className="bg-surface rounded-2xl border border-line shadow-none overflow-hidden">
                         {/* Table Controls (Search & Tabs & View Mode) */}
-                        <div className="p-4 sm:p-5 border-b border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="p-4 sm:p-5 border-b border-line flex flex-col md:flex-row md:items-center justify-between gap-4">
                             {/* Search */}
                             <div className="relative w-full sm:w-72">
                                 <Search className="w-4 h-4 text-ink-faint absolute left-3 top-1/2 -translate-y-1/2" />
@@ -241,13 +241,13 @@ export default function HoldingsPage() {
                                     placeholder="Search your holdings..."
                                     value={searchQuery}
                                     onChange={e => setSearchQuery(e.target.value)}
-                                    className="w-full h-9 pl-9 pr-3 text-xs bg-surface-2 border border-white/10 rounded-xl outline-none focus:border-primary text-ink transition-colors"
+                                    className="w-full h-9 pl-9 pr-3 text-xs bg-surface-2 border border-line rounded-xl outline-none focus:border-primary text-ink transition-colors"
                                 />
                             </div>
 
                             <div className="flex flex-wrap items-center gap-2">
                                 {/* Filter Pills */}
-                                <div className="flex items-center gap-1.5 bg-surface-2 p-1 rounded-xl border border-white/10">
+                                <div className="flex items-center gap-1.5 bg-surface-2 p-1 rounded-xl border border-line">
                                     {(
                                         [
                                             { key: 'ALL', label: `All (${holdings.length})` },
@@ -277,7 +277,7 @@ export default function HoldingsPage() {
                         <div className="overflow-x-auto overscroll-x-contain">
                             <table className="w-full min-w-[700px] text-left">
                                 <thead>
-                                    <tr className="bg-surface-2/60 text-xs font-medium text-ink-faint border-b border-white/10">
+                                    <tr className="bg-surface-2/60 text-xs font-medium text-ink-faint border-b border-line">
                                         <th className="px-5 py-3.5">Asset / Company</th>
                                         <th className="px-5 py-3.5 text-right">Quantity</th>
                                         <th className="px-5 py-3.5 text-right">Average price</th>
@@ -287,7 +287,7 @@ export default function HoldingsPage() {
                                         <th className="px-5 py-3.5 text-center">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-white/[0.06]">
+                                <tbody className="divide-y divide-line">
                                     {filteredHoldings.map(h => {
                                         const isUp = (h.pnl ?? 0) >= 0;
                                         const isDayUp = (h.dayPnl ?? 0) >= 0;
@@ -310,7 +310,7 @@ export default function HoldingsPage() {
                                                                 <span className="text-sm font-medium text-ink-heading">
                                                                     {cleanSymbol}
                                                                 </span>
-                                                                <span className="text-xs font-semibold text-ink-faint px-1.5 py-0.2 rounded bg-white/5">
+                                                                <span className="text-xs font-semibold text-ink-faint px-1.5 py-0.2 rounded bg-surface-2">
                                                                     NSE
                                                                 </span>
                                                             </div>
@@ -318,7 +318,7 @@ export default function HoldingsPage() {
                                                                 <span className="text-xs text-ink-faint font-num">
                                                                     Alloc: {holdingWeight.toFixed(1)}%
                                                                 </span>
-                                                                <div className="w-12 h-1 bg-white/10 rounded-full overflow-hidden">
+                                                                <div className="w-12 h-1 bg-surface-2 rounded-full overflow-hidden">
                                                                     <div
                                                                         className="h-full bg-primary rounded-full"
                                                                         style={{ width: `${Math.min(100, holdingWeight)}%` }}
@@ -369,7 +369,7 @@ export default function HoldingsPage() {
                                                     <button
                                                         type="button"
                                                         onClick={() => router.push(`/stock/${encodeURIComponent(cleanSymbol)}`)}
-                                                        className="px-3 py-1.5 text-xs font-medium rounded-xl bg-surface-2 hover:bg-primary hover:text-[var(--primary-ink)] border border-white/10 transition-colors text-ink-muted active:scale-[0.98] inline-flex items-center gap-1"
+                                                        className="px-3 py-1.5 text-xs font-medium rounded-xl bg-surface-2 hover:bg-primary hover:text-[var(--primary-ink)] border border-line transition-colors text-ink-muted active:scale-[0.98] inline-flex items-center gap-1"
                                                     >
                                                         <span>Trade</span>
                                                         <ExternalLink className="w-3 h-3" />

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import BrandLogo from './BrandLogo';
+import ThemeToggle from './ThemeToggle';
 import { SUPPORT_EMAIL } from './SiteFooter';
 
 type Section = { title: string; text: string };
@@ -8,10 +9,13 @@ export default function InformationPage({ title, intro, sections, dated = true }
     title: string; intro: string; sections: Section[]; dated?: boolean;
 }) {
     return <div className="min-h-screen">
-        <header className="border-b border-white/10 px-4 py-5 sm:px-6">
+        <header className="border-b border-line px-4 py-5 sm:px-6">
             <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-4">
                 <Link href="/" aria-label="PaperTradeX home"><BrandLogo className="text-xl sm:text-2xl" /></Link>
-                <Link href="/dashboard" className="inline-flex min-h-11 items-center rounded-xl border border-white/15 px-4 text-sm hover:border-primary hover:text-primary">Open PaperTradeX →</Link>
+                <div className="flex items-center gap-3">
+                    <ThemeToggle />
+                    <Link href="/dashboard" className="inline-flex min-h-11 items-center rounded-xl border border-line px-4 text-sm hover:border-primary hover:text-primary">Open PaperTradeX →</Link>
+                </div>
             </div>
         </header>
         <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-16">
