@@ -175,8 +175,8 @@ export default function StockScreenerPage() {
 
     const categories = ['All', ...Array.from(new Set(STOCKS.map(e => e.category)))];
 
-    const filteredStocks = searchTerm.length >= 2 
-        ? searchResults 
+    const filteredStocks = searchTerm.length >= 2
+        ? searchResults
         : STOCKS.filter(st => {
             const matchesSearch = st.name.toLowerCase().includes(searchTerm.toLowerCase()) || st.symbol.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesCategory = selectedCategory === 'All' || st.category === selectedCategory;
@@ -186,12 +186,12 @@ export default function StockScreenerPage() {
     // Dynamic subscription for new symbols
     useEffect(() => {
         const s = getSocket();
-        
+
         filteredStocks.forEach(st => {
             if (!subbedRef.current.has(st.symbol)) {
                 subbedRef.current.add(st.symbol);
                 s.emit('subscribe', st.symbol);
-                
+
                 fetch(`http://localhost:3001/api/stock/${encodeURIComponent(st.symbol)}/realtime`)
                     .then(r => r.ok ? r.json() : null)
                     .then(d => {
@@ -218,22 +218,22 @@ export default function StockScreenerPage() {
         <div className="min-h-screen bg-transparent font-sans page-fade-in">
             <Header />
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
                     <div>
-                        <h1 className="text-[26px] font-semibold text-ink-heading font-heading">Stock Screener</h1>
+                        <h1 className="text-[28px] font-semibold text-ink-heading font-heading">Stock screener</h1>
                         <p className="text-ink-muted text-sm mt-1">Analyze and discover all equities in the Indian market</p>
                     </div>
 
                     <div className="flex items-center gap-3">
                         <div className="relative">
-                            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                            <Search className="w-4 h-4 text-ink-faint absolute left-3 top-1/2 -translate-y-1/2" />
                             <input
                                 type="text"
                                 placeholder="Search all stocks..."
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
-                                className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00b386]/20 focus:border-[#00b386] w-full md:w-64 transition-all"
+                                className="pl-9 pr-4 py-2 bg-surface border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00b386]/20 focus:border-primary w-full md:w-64 transition-colors"
                             />
                         </div>
                     </div>
@@ -242,15 +242,15 @@ export default function StockScreenerPage() {
                 {/* Categories - Only show when not searching globally */}
                 {searchTerm.length < 2 && (
                     <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
-                        <Filter className="w-4 h-4 text-gray-400 mr-2" />
+                        <Filter className="w-4 h-4 text-ink-faint mr-2" />
                         {categories.map(cat => (
                             <button
                                 key={cat}
                                 onClick={() => setSelectedCategory(cat)}
                                 className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                                     selectedCategory === cat
-                                        ? 'bg-[#3b4252] text-white shadow-sm'
-                                        : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                                        ? 'bg-surface-3 text-white shadow-none'
+                                        : 'bg-surface text-ink-muted border border-line hover:bg-surface-2'
                                 }`}
                             >
                                 {cat}
@@ -260,17 +260,17 @@ export default function StockScreenerPage() {
                 )}
 
                 {searchTerm.length >= 2 && (
-                    <div className="mb-4 text-sm text-gray-500">
-                        Showing global search results for <span className="font-semibold text-gray-900">"{searchTerm}"</span>
+                    <div className="mb-4 text-sm text-ink-muted">
+                        Showing global search results for <span className="font-semibold text-ink">"{searchTerm}"</span>
                     </div>
                 )}
 
-                <div className="bg-white rounded-[16px] border border-gray-200/80 shadow-sm overflow-hidden">
+                <div className="bg-surface rounded-2xl border border-line/80 shadow-none overflow-hidden">
                     <div className="overflow-x-auto overscroll-x-contain">
                         <table className="w-full min-w-[680px] text-left">
                             <thead>
-                                <tr className="bg-gray-50 border-b border-gray-100 text-[12px] font-semibold text-gray-500 uppercase tracking-wider">
-                                    <th className="px-6 py-4">Company Name</th>
+                                <tr className="bg-surface-2 border-b border-line text-[12px] font-semibold text-ink-muted">
+                                    <th className="px-6 py-4">Company</th>
                                     <th className="px-6 py-4">Sector</th>
                                     <th className="px-6 py-4 text-right">LTP</th>
                                     <th className="px-6 py-4 text-right">Change</th>
@@ -288,53 +288,53 @@ export default function StockScreenerPage() {
                                         return (
                                             <tr
                                                 key={st.symbol}
-                                                className="hover:bg-gray-50/60 transition-colors cursor-pointer group"
+                                                className="hover:bg-surface-2/60 transition-colors cursor-pointer group"
                                                 onClick={() => router.push(`/stock/${encodeURIComponent(st.symbol)}`)}
                                             >
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
                                                         <CompanyLogo symbol={st.symbol} />
                                                         <div>
-                                                            <p className="text-[14px] font-semibold text-[#3b4252] group-hover:text-[#00b386] transition-colors">{st.name}</p>
-                                                            <p className="text-[12px] text-gray-400">{st.symbol.replace('.NS', '')}</p>
+                                                            <p className="text-[14px] font-semibold text-ink group-hover:text-primary transition-colors">{st.name}</p>
+                                                            <p className="text-[12px] text-ink-faint">{st.symbol.replace('.NS', '')}</p>
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <span className="px-2.5 py-1 bg-gray-100 text-gray-600 text-[11px] font-medium rounded-lg">
+                                                    <span className="px-2.5 py-1 bg-surface-2 text-ink-muted text-xs font-medium rounded-lg">
                                                         {st.category}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
                                                     {q ? (
-                                                        <p className="text-[14px] font-bold text-[#3b4252]">₹{fmt(q.price)}</p>
+                                                        <p className="text-[14px] font-medium text-ink">₹{fmt(q.price)}</p>
                                                     ) : (
-                                                        <div className="w-16 h-4 bg-gray-100 rounded animate-pulse ml-auto" />
+                                                        <div className="w-16 h-4 bg-surface-2 rounded animate-pulse ml-auto" />
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
                                                     {q ? (
-                                                        <div className={`flex items-center justify-end gap-1 ${isUp ? 'text-[#00b386]' : 'text-[#eb5b3c]'}`}>
+                                                        <div className={`flex items-center justify-end gap-1 ${isUp ? 'text-primary' : 'text-down'}`}>
                                                             {isUp ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                                                            <span className="text-[13px] font-semibold">{isUp ? '+' : ''}{fmt(q.change)}</span>
+                                                            <span className="text-sm font-semibold">{isUp ? '+' : ''}{fmt(q.change)}</span>
                                                         </div>
                                                     ) : (
-                                                        <div className="w-12 h-4 bg-gray-100 rounded animate-pulse ml-auto" />
+                                                        <div className="w-12 h-4 bg-surface-2 rounded animate-pulse ml-auto" />
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
                                                     {q ? (
-                                                        <span className={`text-[12px] font-bold px-2.5 py-1.5 rounded-lg ${isUp ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>
+                                                        <span className={`text-[12px] font-medium px-2.5 py-1.5 rounded-lg ${isUp ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>
                                                             {isUp ? '+' : ''}{q.dayChange.toFixed(2)}%
                                                         </span>
                                                     ) : (
-                                                        <div className="w-14 h-6 bg-gray-100 rounded-lg animate-pulse ml-auto" />
+                                                        <div className="w-14 h-6 bg-surface-2 rounded-lg animate-pulse ml-auto" />
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
                                                     <button
                                                         onClick={e => { e.stopPropagation(); router.push(`/stock/${encodeURIComponent(st.symbol)}`); }}
-                                                        className="px-4 py-1.5 text-[13px] font-semibold text-[#00b386] border border-[#00b386] rounded-xl hover:bg-[#00b386] hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                                                        className="px-4 py-1.5 text-sm font-semibold text-primary border border-primary rounded-xl hover:bg-primary hover:text-white transition-colors opacity-0 group-hover:opacity-100"
                                                     >
                                                         Trade
                                                     </button>
@@ -344,7 +344,7 @@ export default function StockScreenerPage() {
                                     })
                                 ) : (
                                     <tr>
-                                        <td colSpan={6} className="px-6 py-12 text-center text-gray-400 text-sm">
+                                        <td colSpan={6} className="px-6 py-12 text-center text-ink-faint text-sm">
                                             {searchTerm.length >= 2 ? `No stocks found matching "${searchTerm}".` : "No stocks found matching your criteria."}
                                         </td>
                                     </tr>

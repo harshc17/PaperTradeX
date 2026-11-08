@@ -1,6 +1,6 @@
 import './globals.css'
 import type { Metadata } from 'next'
-import { EB_Garamond, Hanken_Grotesk, JetBrains_Mono } from 'next/font/google'
+import { Hanken_Grotesk, JetBrains_Mono } from 'next/font/google'
 import Script from 'next/script'
 import AppProviders from './providers'
 import SiteFooter from '@/components/SiteFooter'
@@ -14,15 +14,6 @@ const hankenGrotesk = Hanken_Grotesk({
     adjustFontFallback: true,
 })
 
-const ebGaramond = EB_Garamond({
-    subsets: ['latin'],
-    weight: ['400', '500', '600', '700'],
-    display: 'swap',
-    variable: '--font-heading',
-    preload: true,
-    adjustFontFallback: true,
-})
-
 const jetbrainsMono = JetBrains_Mono({
     subsets: ['latin'],
     weight: ['400', '500', '600', '700'],
@@ -32,8 +23,8 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-    title: 'PaperTradeX — Paper Trading with Real Indian Stock Prices',
-    description: 'Practice trading Indian stocks on NSE & BSE with ₹1 Lakh virtual money. Real-time prices, zero real risk.',
+    title: 'PaperTradeX — Practise Trading Indian Stocks',
+    description: 'Practise trading NSE and BSE stocks with ₹1,00,000 in virtual funds. Track simulated orders, holdings and returns.',
     icons: { icon: [{ url: '/brand/icon.svg', type: 'image/svg+xml' }, { url: '/favicon.ico', sizes: 'any' }], apple: '/apple-touch-icon.png' },
     keywords: 'paper trading, NSE, BSE, Indian stocks, virtual trading, stock market simulator',
 }
@@ -41,7 +32,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
         <html lang="en">
-            <body className={`${hankenGrotesk.variable} ${ebGaramond.variable} ${jetbrainsMono.variable} font-[var(--font-body)]`}>
+            <body className={`${hankenGrotesk.variable} ${jetbrainsMono.variable} font-sans`}>
                 {/* Google Identity Services — loaded only when GOOGLE_CLIENT_ID is set */}
                 {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
                     <Script src="https://accounts.google.com/gsi/client" strategy="beforeInteractive" />

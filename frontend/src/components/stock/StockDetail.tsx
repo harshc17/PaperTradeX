@@ -165,7 +165,7 @@ export default function StockDetail({ symbol }: { symbol: string }) {
     /* ─── Loading skeleton ─────────────────────────────────────────────────── */
     if (loading) {
         return (
-            <div className="terminal-card p-6 shadow-soft space-y-4">
+            <div className="terminal-card p-6 shadow-none space-y-4">
                 <div className="animate-pulse space-y-4">
                     <div className="h-5 w-48 shimmer rounded-lg" />
                     <div className="h-10 w-36 shimmer rounded-lg" />
@@ -181,7 +181,7 @@ export default function StockDetail({ symbol }: { symbol: string }) {
 
     if (!stockData) {
         return (
-            <div className="terminal-card p-6 shadow-soft text-center py-12">
+            <div className="terminal-card p-6 shadow-none text-center py-12">
                 <p className="text-down font-medium">Failed to load stock data. Please try again.</p>
             </div>
         );
@@ -230,10 +230,10 @@ export default function StockDetail({ symbol }: { symbol: string }) {
         <div className="bg-transparent">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0 flex-1 basis-72">
-                    <div className="text-[20px] text-ink-muted leading-6 mb-1 tracking-tight">
+                    <div className="text-[20px] text-ink-muted leading-6 mb-1">
                         {prettySymbol} · {stockData.exchange}
                     </div>
-                    <h1 className="flex items-center gap-3 text-[24px] sm:text-[26px] font-semibold text-ink-heading leading-[1.15] mb-2.5">
+                    <h1 className="flex items-center gap-3 text-[24px] sm:text-[28px] font-semibold text-ink-heading leading-[1.15] mb-2.5">
                         <CompanyLogo symbol={symbol} />
                         <span className="min-w-0 break-words">{stockData.shortName}</span>
                     </h1>
@@ -241,14 +241,14 @@ export default function StockDetail({ symbol }: { symbol: string }) {
                     <div className={`flex flex-wrap items-baseline gap-2 transition-colors duration-300 ${
                         flash === 'up' ? 'text-up' : flash === 'down' ? 'text-down' : 'text-ink-heading'
                     }`}>
-                        <span className="text-[24px] sm:text-[26px] font-semibold tabular-nums tracking-tight">
+                        <span className="text-[24px] sm:text-[28px] font-semibold tabular-nums">
                             ₹{currentPrice.toLocaleString('en-IN', {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                             })}
                         </span>
                         <span className={`text-sm sm:text-base font-semibold ${changeClass} inline-flex items-center gap-1`}>
-                            {isUp ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
+                            {isUp ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                             {change.toFixed(2)} ({Math.abs(changePercent).toFixed(2)}%)
                         </span>
                         <span className="text-sm sm:text-base text-ink-faint font-normal">1D</span>
@@ -256,10 +256,10 @@ export default function StockDetail({ symbol }: { symbol: string }) {
 
                     <div className="flex flex-wrap items-center gap-2 mt-2">
                         <p className="text-xs text-ink-faint">
-                            Updated {timeAgo(lastUpdateTs)} · {marketOpen ? (isLive ? 'Live NSE Feed' : 'Delayed') : 'Market Closed (LTP)'}
+                            Updated {timeAgo(lastUpdateTs)} · {marketOpen ? (isLive ? 'Live NSE Feed' : 'Delayed') : 'Market closed (LTP)'}
                         </p>
                         {!marketOpen && marketStatus && (
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-surface-2 border border-white/10 text-ink-muted">
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-lg bg-surface-2 border border-white/10 text-ink-muted">
                                 {marketStatus.sessionName} · Opens {marketStatus.nextOpenFormatted}
                             </span>
                         )}
@@ -268,18 +268,18 @@ export default function StockDetail({ symbol }: { symbol: string }) {
 
                 <div className="hidden shrink-0 sm:flex items-center gap-3 pt-1">
                     <button className="w-12 h-12 rounded-full border border-white/10 bg-surface grid place-items-center text-ink-muted hover:text-primary">
-                        <Link2 className="w-5 h-5" />
+                        <Link2 className="w-4 h-4" />
                     </button>
                     <button className="w-12 h-12 rounded-full border border-white/10 bg-surface grid place-items-center text-ink-muted hover:text-primary">
-                        <Bell className="w-5 h-5" />
+                        <Bell className="w-4 h-4" />
                     </button>
                     <button
                         type="button"
                         onClick={addToWatchlistAndOpen}
                         title={inWatchlist ? 'Open watchlist' : 'Add to watchlist'}
-                        className={`w-12 h-12 rounded-full border grid place-items-center transition-all duration-200 ${
+                        className={`w-12 h-12 rounded-full border grid place-items-center transition-colors duration-200 ${
                             inWatchlist
-                                ? 'border-up bg-up/10 text-up shadow-sm'
+                                ? 'border-up bg-up/10 text-up shadow-none'
                                 : 'border-white/10 bg-surface text-ink-muted hover:text-up hover:border-up/40 hover:bg-up/5'
                         }`}
                     >

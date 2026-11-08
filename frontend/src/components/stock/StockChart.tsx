@@ -16,7 +16,7 @@ import {
     ChartData,
 } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
-import { TrendingUp, TrendingDown, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { RefreshCw, WifiOff } from 'lucide-react';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Filler);
 
@@ -210,8 +210,8 @@ export default function StockChart({ symbol }: { symbol: string }) {
         : 0;
     const isPositive = priceChange >= 0;
 
-    const color = isPositive ? '#10b981' : '#ef4444';
-    const colorBg = isPositive ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.10)';
+    const color = isPositive ? '#62c39e' : '#ed9b96';
+    const colorBg = isPositive ? 'rgba(98,195,158,0.12)' : 'rgba(237,155,150,0.10)';
 
     const labels = displayHistory.map(h => formatLabel(h.date, activePeriod.fmt));
     const closes = displayHistory.map(h => h.close);
@@ -245,13 +245,13 @@ export default function StockChart({ symbol }: { symbol: string }) {
                 if (!chartArea) return colorBg;
                 const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
                 if (isPositive) {
-                    g.addColorStop(0, 'rgba(16,185,129,0.22)');
-                    g.addColorStop(0.5, 'rgba(16,185,129,0.08)');
-                    g.addColorStop(1, 'rgba(16,185,129,0.00)');
+                    g.addColorStop(0, 'rgba(98,195,158,0.22)');
+                    g.addColorStop(0.5, 'rgba(98,195,158,0.08)');
+                    g.addColorStop(1, 'rgba(98,195,158,0.00)');
                 } else {
-                    g.addColorStop(0, 'rgba(239,68,68,0.18)');
-                    g.addColorStop(0.5, 'rgba(239,68,68,0.06)');
-                    g.addColorStop(1, 'rgba(239,68,68,0.00)');
+                    g.addColorStop(0, 'rgba(237,155,150,0.18)');
+                    g.addColorStop(0.5, 'rgba(237,155,150,0.06)');
+                    g.addColorStop(1, 'rgba(237,155,150,0.00)');
                 }
                 return g;
             },
@@ -276,11 +276,11 @@ export default function StockChart({ symbol }: { symbol: string }) {
         plugins: {
             legend: { display: false },
             tooltip: {
-                backgroundColor: '#0f172a',
-                titleColor: '#64748b',
-                bodyColor: '#f8fafc',
+                backgroundColor: '#232325',
+                titleColor: '#b1b1b7',
+                bodyColor: '#ededed',
                 padding: 14,
-                borderColor: '#1e293b',
+                borderColor: '#3b3b40',
                 borderWidth: 1,
                 cornerRadius: 10,
                 displayColors: false,
@@ -305,8 +305,8 @@ export default function StockChart({ symbol }: { symbol: string }) {
                 display: true,
                 grid: { display: false },
                 ticks: {
-                    color: '#94a3b8',
-                    font: { size: 10, family: 'Inter, sans-serif' },
+                    color: '#909097',
+                    font: { size: 12, family: 'monospace' },
                     maxTicksLimit: activePeriod.maxTicks,
                     maxRotation: 0,
                     autoSkip: true,
@@ -318,8 +318,8 @@ export default function StockChart({ symbol }: { symbol: string }) {
                 position: 'right' as const,
                 grid: { color: 'rgba(148,163,184,0.08)', drawTicks: false },
                 ticks: {
-                    color: '#94a3b8',
-                    font: { size: 10, family: 'Inter, sans-serif' },
+                    color: '#909097',
+                    font: { size: 12, family: 'monospace' },
                     padding: 8,
                     callback: (v: any) => formatINR(Number(v), 0),
                 },
@@ -336,7 +336,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
             data: volumes,
             backgroundColor: volumes.map((_, i) => {
                 const isGreen = i === 0 || closes[i] >= closes[i - 1];
-                return isGreen ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.30)';
+                return isGreen ? 'rgba(177,177,183,0.30)' : 'rgba(177,177,183,0.18)';
             }),
             borderRadius: 2,
             borderSkipped: false,
@@ -404,7 +404,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
                     <button
                         key={p.value}
                         onClick={() => setActivePeriod(p)}
-                        className={`h-9 min-w-[48px] px-3.5 rounded-full border text-xs sm:text-sm font-medium transition-all ${
+                        className={`h-9 min-w-[48px] px-3.5 rounded-full border text-xs sm:text-sm font-medium transition-colors ${
                             activePeriod.value === p.value
                                 ? 'bg-surface-3 border-primary/40 text-primary'
                                 : 'bg-surface-2 border-white/10 text-ink-muted hover:text-ink hover:border-white/20'
@@ -425,7 +425,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
             </div>
 
             {hoverPt && (
-                <div className="mt-2 text-[11px] text-ink-muted flex items-center gap-2.5 flex-wrap">
+                <div className="mt-2 text-xs text-ink-muted flex items-center gap-2.5 flex-wrap">
                     <span>O {formatINR(hoverPt.open ?? hoverPt.close)}</span>
                     <span>H {formatINR(hoverPt.high ?? hoverPt.close)}</span>
                     <span>L {formatINR(hoverPt.low ?? hoverPt.close)}</span>
@@ -434,8 +434,8 @@ export default function StockChart({ symbol }: { symbol: string }) {
                 </div>
             )}
 
-            <div className="mt-1 text-[10px] text-ink-faint">
-                {isLive ? 'Live updates on' : 'Live updates delayed'} · {displayHistory.length} points · {activePeriod.value === '1d' ? 'NSE intraday' : 'Yahoo OHLCV'}
+            <div className="mt-1 text-xs text-ink-faint">
+                {isLive ? 'Chart feed connected' : 'Chart feed delayed'} · {displayHistory.length} points · {activePeriod.value === '1d' ? 'NSE intraday' : 'Yahoo OHLCV'}
             </div>
         </div>
     );

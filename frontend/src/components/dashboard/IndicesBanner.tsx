@@ -51,7 +51,7 @@ export default function IndicesBanner() {
     const fmt = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     return (
-        <div className="border-b border-white/10 overflow-hidden" style={{ background: 'rgba(13, 19, 28, 0.80)' }}>
+        <div className="border-b border-line overflow-hidden" style={{ background: 'var(--bg)' }}>
             <div className="flex items-center divide-x divide-[#222c3a] overflow-x-auto no-scrollbar">
                 {INDICES.map(({ symbol, label }) => {
                     const q = quotes[symbol];
@@ -59,10 +59,10 @@ export default function IndicesBanner() {
                     return (
                         <Link href={`/stock/${encodeURIComponent(symbol)}`} key={symbol}
                             className="flex-shrink-0 px-6 py-2.5 flex items-center gap-4 hover:bg-surface-3 cursor-pointer transition-colors group">
-                            <span className="text-[10px] font-bold text-ink-faint uppercase tracking-widest group-hover:text-ink-muted transition-colors">{label}</span>
+                            <span className="text-xs font-medium text-ink-faint group-hover:text-ink-muted transition-colors">{label}</span>
                             {q ? (
                                 <div className="flex items-baseline gap-2">
-                                    <span className="text-sm font-bold text-ink tabular-nums font-num">{fmt(q.price)}</span>
+                                    <span className="text-sm font-medium text-ink tabular-nums font-num">{fmt(q.price)}</span>
                                     <span className={`text-xs font-semibold flex items-center gap-0.5 tabular-nums font-num ${isUp ? 'text-up' : 'text-down'}`}>
                                         {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                         {isUp ? '+' : ''}{q.dayChange.toFixed(2)}%

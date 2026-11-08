@@ -6,21 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { usePortfolio } from '@/context/PortfolioContext';
 import Header from '@/components/dashboard/Header';
-import {
-    ClipboardList,
-    X,
-    Loader2,
-    Search,
-    CheckCircle2,
-    Clock,
-    XCircle,
-    RefreshCw,
-    ExternalLink,
-    Filter,
-    ArrowUpRight,
-    ArrowDownRight,
-    Zap
-} from 'lucide-react';
+import { ClipboardList, X, Loader2, Search, CheckCircle2, Clock, XCircle, RefreshCw, ExternalLink, Filter, ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react';
 
 export default function OrdersPage() {
     const { user, loading: authLoading } = useAuth();
@@ -82,10 +68,10 @@ export default function OrdersPage() {
 
             {toast && (
                 <div
-                    className={`fixed top-20 right-4 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl text-xs font-semibold shadow-float border animate-in slide-in-from-top-2 fade-in duration-200 ${
+                    className={`fixed top-20 right-4 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl text-xs font-semibold shadow-none border fade-in duration-200 ${
                         toast.type === 'success'
-                            ? 'bg-up/15 border-up/30 text-up shadow-[0_0_15px_rgba(38,208,124,0.25)]'
-                            : 'bg-down/15 border-down/30 text-down shadow-[0_0_15px_rgba(255,92,108,0.25)]'
+                            ? 'bg-up/15 border-up/30 text-up shadow-none'
+                            : 'bg-down/15 border-down/30 text-down shadow-none'
                     }`}
                 >
                     {toast.type === 'success' ? (
@@ -97,20 +83,20 @@ export default function OrdersPage() {
                 </div>
             )}
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Title Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-7">
                     <div>
                         <div className="flex flex-wrap items-center gap-2 mb-1">
-                            <h1 className="text-[26px] font-bold text-ink-heading tracking-tight font-heading">
-                                Order Book
+                            <h1 className="text-[28px] font-medium text-ink-heading font-heading">
+                                Orders
                             </h1>
-                            <span className="whitespace-nowrap text-xs font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                            <span className="whitespace-nowrap text-xs font-medium px-2 py-0.5 rounded-lg bg-primary/10 text-primary border border-primary/20">
                                 {orders.length} Total
                             </span>
                         </div>
                         <p className="text-xs text-ink-faint">
-                            Live history of all executed market orders and queued limit orders.
+                            Executed market orders and queued limit orders
                         </p>
                     </div>
 
@@ -118,14 +104,14 @@ export default function OrdersPage() {
                         <button
                             onClick={handleManualRefresh}
                             disabled={isRefreshing}
-                            className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-3 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 border border-white/10 text-xs font-medium text-ink-muted hover:text-ink transition-all active:scale-95"
+                            className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-3 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 border border-white/10 text-xs font-medium text-ink-muted hover:text-ink transition-colors active:scale-[0.98]"
                         >
                             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
-                            Sync Orders
+                            Refresh orders
                         </button>
                         <Link
                             href="/holdings"
-                            className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-primary text-[#003829] hover:brightness-110 transition-all shadow-[0_0_15px_rgba(51,201,221,0.25)]"
+                            className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-4 py-2 rounded-xl text-xs font-medium bg-primary text-[var(--primary-ink)] hover:brightness-110 transition-colors shadow-none"
                         >
                             <Zap className="w-3.5 h-3.5" />
                             View Holdings
@@ -135,34 +121,34 @@ export default function OrdersPage() {
 
                 {/* Quick Metric Tiles */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-soft">
+                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-none">
                         <div className="flex items-center justify-between text-xs text-ink-faint mb-2">
-                            <span className="uppercase tracking-wider font-semibold text-[11px]">Open Limit Orders</span>
+                            <span className="font-semibold text-xs">Open Limit Orders</span>
                             <Clock className="w-4 h-4 text-primary" />
                         </div>
-                        <h2 className="text-[26px] font-bold text-primary tabular-nums font-num">
+                        <h2 className="text-[28px] font-medium text-primary tabular-nums font-num">
                             {openCount}
                         </h2>
                         <p className="text-xs text-ink-faint mt-1">Pending target fill price</p>
                     </div>
 
-                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-soft">
+                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-none">
                         <div className="flex items-center justify-between text-xs text-ink-faint mb-2">
-                            <span className="uppercase tracking-wider font-semibold text-[11px]">Filled Trades</span>
+                            <span className="font-semibold text-xs">Filled Trades</span>
                             <CheckCircle2 className="w-4 h-4 text-up" />
                         </div>
-                        <h2 className="text-[26px] font-bold text-up tabular-nums font-num">
+                        <h2 className="text-[28px] font-medium text-up tabular-nums font-num">
                             {filledCount}
                         </h2>
                         <p className="text-xs text-ink-faint mt-1">Settled into portfolio</p>
                     </div>
 
-                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-soft">
+                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-none">
                         <div className="flex items-center justify-between text-xs text-ink-faint mb-2">
-                            <span className="uppercase tracking-wider font-semibold text-[11px]">Cancelled</span>
+                            <span className="font-semibold text-xs">Cancelled</span>
                             <XCircle className="w-4 h-4 text-ink-faint" />
                         </div>
-                        <h2 className="text-[26px] font-bold text-ink-muted tabular-nums font-num">
+                        <h2 className="text-[28px] font-medium text-ink-muted tabular-nums font-num">
                             {cancelledCount}
                         </h2>
                         <p className="text-xs text-ink-faint mt-1">Withdrawn orders</p>
@@ -171,24 +157,24 @@ export default function OrdersPage() {
 
                 {/* Orders Content */}
                 {orders.length === 0 ? (
-                    <div className="rounded-2xl border border-white/10 bg-surface p-14 text-center shadow-soft">
+                    <div className="rounded-2xl border border-white/10 bg-surface p-14 text-center shadow-none">
                         <div className="w-16 h-16 bg-surface-2 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
                             <ClipboardList className="w-8 h-8 text-ink-faint" />
                         </div>
-                        <h3 className="text-base font-bold text-ink-heading mb-2">No Orders Placed</h3>
+                        <h3 className="text-base font-medium text-ink-heading mb-2">No Orders Placed</h3>
                         <p className="text-ink-faint text-sm max-w-sm mx-auto mb-6">
                             When you place market or limit trades on any stock, your order history will appear here.
                         </p>
                         <Link
                             href="/dashboard"
-                            className="inline-flex px-6 py-2.5 text-[#003829] rounded-xl font-bold text-sm transition-all shadow-[0_0_20px_rgba(51,201,221,0.3)]"
-                            style={{ background: 'linear-gradient(135deg, #33c9dd, #22a9bc)' }}
+                            className="inline-flex px-6 py-2.5 text-[var(--primary-ink)] rounded-xl font-medium text-sm transition-colors shadow-none"
+                            style={{ background: 'var(--primary)', color: 'var(--primary-ink)' }}
                         >
                             Explore Stocks
                         </Link>
                     </div>
                 ) : (
-                    <div className="bg-surface rounded-2xl border border-white/10 shadow-soft overflow-hidden">
+                    <div className="bg-surface rounded-2xl border border-white/10 shadow-none overflow-hidden">
                         {/* Filter Toolbar */}
                         <div className="p-4 sm:p-5 border-b border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             {/* Search */}
@@ -217,9 +203,9 @@ export default function OrdersPage() {
                                         key={t.key}
                                         type="button"
                                         onClick={() => setStatusFilter(t.key)}
-                                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
                                             statusFilter === t.key
-                                                ? 'bg-primary text-[#003829] shadow-sm'
+                                                ? 'bg-primary text-[var(--primary-ink)] shadow-none'
                                                 : 'text-ink-faint hover:text-ink'
                                         }`}
                                     >
@@ -233,7 +219,7 @@ export default function OrdersPage() {
                         <div className="overflow-x-auto overscroll-x-contain">
                             <table className="w-full min-w-[700px] text-left">
                                 <thead>
-                                    <tr className="bg-surface-2/60 text-[10px] font-bold text-ink-faint uppercase tracking-wider border-b border-white/10">
+                                    <tr className="bg-surface-2/60 text-xs font-medium text-ink-faint border-b border-white/10">
                                         <th className="px-6 py-3.5">Time & Date</th>
                                         <th className="px-6 py-3.5">Side</th>
                                         <th className="px-6 py-3.5">Symbol</th>
@@ -263,7 +249,7 @@ export default function OrdersPage() {
                                                     <p className="font-semibold text-ink">
                                                         {date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                                                     </p>
-                                                    <p className="text-[10px] text-ink-faint">
+                                                    <p className="text-xs text-ink-faint">
                                                         {date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                                                     </p>
                                                 </td>
@@ -271,7 +257,7 @@ export default function OrdersPage() {
                                                 {/* Side */}
                                                 <td className="px-6 py-4">
                                                     <span
-                                                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${
+                                                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium   border ${
                                                             isBuy
                                                                 ? 'bg-up/10 text-up border-up/20'
                                                                 : 'bg-down/10 text-down border-down/20'
@@ -287,10 +273,10 @@ export default function OrdersPage() {
                                                     <div className="flex items-center gap-2.5">
                                                         <CompanyLogo symbol={cleanSymbol} className="h-8 w-8" />
                                                         <div>
-                                                            <p className="text-sm font-bold text-ink-heading">
+                                                            <p className="text-sm font-medium text-ink-heading">
                                                                 {cleanSymbol}
                                                             </p>
-                                                            <div className="flex items-center gap-1.5 text-[10px] text-ink-faint">
+                                                            <div className="flex items-center gap-1.5 text-xs text-ink-faint">
                                                                 <span className="font-semibold">{order.orderType}</span>
                                                                 <span>&bull;</span>
                                                                 <span className="font-mono">{order.id}</span>
@@ -310,14 +296,14 @@ export default function OrdersPage() {
                                                 </td>
 
                                                 {/* Total */}
-                                                <td className="px-6 py-4 text-right text-sm font-bold text-ink tabular-nums font-num">
+                                                <td className="px-6 py-4 text-right text-sm font-medium text-ink tabular-nums font-num">
                                                     ₹{fmt(total)}
                                                 </td>
 
                                                 {/* Status Badge */}
                                                 <td className="px-6 py-4 text-center">
                                                     <span
-                                                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                                                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium   border ${
                                                             order.status === 'FILLED'
                                                                 ? 'bg-up/10 text-up border-up/20'
                                                                 : order.status === 'OPEN'
@@ -338,7 +324,7 @@ export default function OrdersPage() {
                                                         <button
                                                             onClick={() => handleCancel(order.id.toString())}
                                                             disabled={cancellingId === order.id.toString()}
-                                                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-down border border-down/25 rounded-xl hover:bg-down/10 transition-colors disabled:opacity-50 active:scale-95"
+                                                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-down border border-down/25 rounded-xl hover:bg-down/10 transition-colors disabled:opacity-50 active:scale-[0.98]"
                                                         >
                                                             {cancellingId === order.id.toString() ? (
                                                                 <Loader2 className="w-3 h-3 animate-spin" />

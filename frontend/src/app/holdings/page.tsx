@@ -6,23 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { usePortfolio } from '@/context/PortfolioContext';
 import Header from '@/components/dashboard/Header';
-import {
-    TrendingUp,
-    TrendingDown,
-    Package,
-    Search,
-    Clock,
-    ArrowUpRight,
-    ArrowDownRight,
-    ExternalLink,
-    Wallet,
-    PieChart,
-    Sparkles,
-    RefreshCw,
-    Filter,
-    ArrowUpDown,
-    Activity
-} from 'lucide-react';
+import { TrendingUp, TrendingDown, Package, Search, Clock, ArrowUpRight, ExternalLink, Wallet, PieChart, RefreshCw, Filter } from 'lucide-react';
 
 export default function HoldingsPage() {
     const { user, balance, loading: authLoading } = useAuth();
@@ -86,20 +70,20 @@ export default function HoldingsPage() {
         <div className="min-h-screen bg-transparent font-sans page-fade-in pb-16">
             <Header />
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Header Title & Refresh */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-7">
                     <div>
                         <div className="flex flex-wrap items-center gap-2 mb-1">
-                            <h1 className="text-[26px] font-bold text-ink-heading tracking-tight font-heading">
-                                Portfolio & Holdings
+                            <h1 className="text-[28px] font-medium text-ink-heading font-heading">
+                                Holdings
                             </h1>
-                            <span className="whitespace-nowrap text-xs font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                            <span className="whitespace-nowrap text-xs font-medium px-2 py-0.5 rounded-lg bg-primary/10 text-primary border border-primary/20">
                                 {holdings.length} Positions
                             </span>
                         </div>
                         <p className="text-xs text-ink-faint">
-                            Real-time tracking of your paper assets, performance, and allocations.
+                            Track your virtual holdings, returns and allocation
                         </p>
                     </div>
 
@@ -107,16 +91,16 @@ export default function HoldingsPage() {
                         <button
                             onClick={handleManualRefresh}
                             disabled={isRefreshing}
-                            className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-3 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 border border-white/10 text-xs font-medium text-ink-muted hover:text-ink transition-all active:scale-95"
+                            className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-3 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 border border-white/10 text-xs font-medium text-ink-muted hover:text-ink transition-colors active:scale-[0.98]"
                         >
                             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
-                            Sync Live Prices
+                            Refresh prices
                         </button>
                         <Link
                             href="/dashboard"
-                            className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-primary text-[#003829] hover:brightness-110 transition-all shadow-[0_0_15px_rgba(51,201,221,0.25)]"
+                            className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-4 py-2 rounded-xl text-xs font-medium bg-primary text-[var(--primary-ink)] hover:brightness-110 transition-colors shadow-none"
                         >
-                            <Sparkles className="w-3.5 h-3.5" />
+
                             Discover Stocks
                         </Link>
                     </div>
@@ -124,23 +108,23 @@ export default function HoldingsPage() {
 
                 {/* Open Orders Notification Banner */}
                 {openOrders.length > 0 && (
-                    <div className="mb-7 p-4 rounded-2xl bg-gradient-to-r from-[#172236] to-[#121b2b] border border-primary/30 flex items-center justify-between shadow-soft">
+                    <div className="mb-7 p-4 rounded-2xl bg-surface border border-primary/30 flex items-center justify-between shadow-none">
                         <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center text-primary">
                                 <Clock className="w-4 h-4 animate-pulse" />
                             </div>
                             <div>
-                                <p className="text-xs font-bold text-ink-heading">
+                                <p className="text-xs font-medium text-ink-heading">
                                     {openOrders.length} Pending Limit Order{openOrders.length > 1 ? 's' : ''}
                                 </p>
-                                <p className="text-[11px] text-ink-faint">
+                                <p className="text-xs text-ink-faint">
                                     Limit orders execute automatically once the target price is reached.
                                 </p>
                             </div>
                         </div>
                         <Link
                             href="/orders"
-                            className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1"
+                            className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1"
                         >
                             View Open Orders &rarr;
                         </Link>
@@ -150,12 +134,12 @@ export default function HoldingsPage() {
                 {/* KPI Metrics Summary Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                     {/* Card 1: Current Portfolio Value */}
-                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-soft relative overflow-hidden group">
+                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-none relative overflow-hidden group">
                         <div className="flex items-center justify-between text-xs text-ink-faint mb-2">
-                            <span className="uppercase tracking-wider font-semibold text-[11px]">Portfolio Value</span>
+                            <span className="font-semibold text-xs">Portfolio Value</span>
                             <PieChart className="w-4 h-4 text-primary/70" />
                         </div>
-                        <h2 className="text-[26px] font-bold text-ink-heading tabular-nums font-num mb-2">
+                        <h2 className="text-[28px] font-medium text-ink-heading tabular-nums font-num mb-2">
                             ₹{fmt(currentValue)}
                         </h2>
                         <div className="flex items-center gap-1.5 text-xs font-medium">
@@ -166,18 +150,18 @@ export default function HoldingsPage() {
                         </div>
                     </div>
 
-                    {/* Card 2: Total Returns */}
-                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-soft relative overflow-hidden group">
+                    {/* Card 2: Total returns */}
+                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-none relative overflow-hidden group">
                         <div className="flex items-center justify-between text-xs text-ink-faint mb-2">
-                            <span className="uppercase tracking-wider font-semibold text-[11px]">Total Returns</span>
+                            <span className="font-semibold text-xs">Total returns</span>
                             {isProfit ? <TrendingUp className="w-4 h-4 text-up" /> : <TrendingDown className="w-4 h-4 text-down" />}
                         </div>
                         <div className="flex items-baseline gap-2 mb-2">
-                            <h2 className={`text-[26px] font-bold tabular-nums font-num ${isProfit ? 'text-up' : 'text-down'}`}>
+                            <h2 className={`text-[28px] font-medium tabular-nums font-num ${isProfit ? 'text-up' : 'text-down'}`}>
                                 {isProfit ? '+' : '-'}₹{fmt(Math.abs(totalReturns))}
                             </h2>
                         </div>
-                        <div className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-lg bg-surface-2 border border-white/10">
+                        <div className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-lg bg-surface-2 border border-white/10">
                             <span className={`tabular-nums font-num ${isProfit ? 'text-up' : 'text-down'}`}>
                                 {isProfit ? '+' : '-'}{Math.abs(totalReturnsPercent).toFixed(2)}% Overall
                             </span>
@@ -185,12 +169,12 @@ export default function HoldingsPage() {
                     </div>
 
                     {/* Card 3: Invested Capital */}
-                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-soft relative overflow-hidden group">
+                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-none relative overflow-hidden group">
                         <div className="flex items-center justify-between text-xs text-ink-faint mb-2">
-                            <span className="uppercase tracking-wider font-semibold text-[11px]">Total Invested</span>
+                            <span className="font-semibold text-xs">Total invested</span>
                             <Wallet className="w-4 h-4 text-ink-faint" />
                         </div>
-                        <h2 className="text-[26px] font-bold text-ink-heading tabular-nums font-num mb-2">
+                        <h2 className="text-[28px] font-medium text-ink-heading tabular-nums font-num mb-2">
                             ₹{fmt(totalInvested)}
                         </h2>
                         <p className="text-xs text-ink-faint">
@@ -198,13 +182,13 @@ export default function HoldingsPage() {
                         </p>
                     </div>
 
-                    {/* Card 4: Available Balance */}
-                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-soft relative overflow-hidden group">
+                    {/* Card 4: Available balance */}
+                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-none relative overflow-hidden group">
                         <div className="flex items-center justify-between text-xs text-ink-faint mb-2">
-                            <span className="uppercase tracking-wider font-semibold text-[11px]">Available Balance</span>
+                            <span className="font-semibold text-xs">Available balance</span>
                             <span className="w-2 h-2 rounded-full bg-primary" />
                         </div>
-                        <h2 className="text-[26px] font-bold text-primary tabular-nums font-num mb-2">
+                        <h2 className="text-[28px] font-medium text-primary tabular-nums font-num mb-2">
                             ₹{fmt(balance)}
                         </h2>
                         <p className="text-xs text-ink-faint">
@@ -215,11 +199,11 @@ export default function HoldingsPage() {
 
                 {/* Holdings Table Section */}
                 {holdings.length === 0 ? (
-                    <div className="rounded-2xl border border-white/10 bg-surface p-12 text-center shadow-soft">
+                    <div className="rounded-2xl border border-white/10 bg-surface p-12 text-center shadow-none">
                         <div className="w-16 h-16 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
                             <Package className="w-8 h-8 text-primary/70" />
                         </div>
-                        <h3 className="text-lg font-bold text-ink-heading mb-2">No Holdings Yet</h3>
+                        <h3 className="text-lg font-medium text-ink-heading mb-2">No Holdings Yet</h3>
                         <p className="text-ink-faint text-sm max-w-md mx-auto mb-6">
                             Start building your paper trading portfolio. Buy your first shares in top companies with zero risk.
                         </p>
@@ -239,14 +223,14 @@ export default function HoldingsPage() {
 
                         <Link
                             href="/dashboard"
-                            className="inline-flex px-6 py-2.5 text-[#003829] rounded-xl font-bold text-sm transition-all active:scale-95 shadow-[0_0_20px_rgba(51,201,221,0.3)]"
-                            style={{ background: 'linear-gradient(135deg, #33c9dd, #22a9bc)' }}
+                            className="inline-flex px-6 py-2.5 text-[var(--primary-ink)] rounded-xl font-medium text-sm transition-colors active:scale-[0.98] shadow-none"
+                            style={{ background: 'var(--primary)', color: 'var(--primary-ink)' }}
                         >
                             Explore Stocks on Dashboard
                         </Link>
                     </div>
                 ) : (
-                    <div className="bg-surface rounded-2xl border border-white/10 shadow-soft overflow-hidden">
+                    <div className="bg-surface rounded-2xl border border-white/10 shadow-none overflow-hidden">
                         {/* Table Controls (Search & Tabs & View Mode) */}
                         <div className="p-4 sm:p-5 border-b border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                             {/* Search */}
@@ -276,9 +260,9 @@ export default function HoldingsPage() {
                                             key={t.key}
                                             type="button"
                                             onClick={() => setFilterTab(t.key)}
-                                            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                            className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                                                 filterTab === t.key
-                                                    ? 'bg-primary text-[#003829] shadow-sm'
+                                                    ? 'bg-primary text-[var(--primary-ink)] shadow-none'
                                                     : 'text-ink-faint hover:text-ink'
                                             }`}
                                         >
@@ -293,13 +277,13 @@ export default function HoldingsPage() {
                         <div className="overflow-x-auto overscroll-x-contain">
                             <table className="w-full min-w-[700px] text-left">
                                 <thead>
-                                    <tr className="bg-surface-2/60 text-[10px] font-bold text-ink-faint uppercase tracking-wider border-b border-white/10">
+                                    <tr className="bg-surface-2/60 text-xs font-medium text-ink-faint border-b border-white/10">
                                         <th className="px-5 py-3.5">Asset / Company</th>
                                         <th className="px-5 py-3.5 text-right">Quantity</th>
-                                        <th className="px-5 py-3.5 text-right">Avg. Price</th>
-                                        <th className="px-5 py-3.5 text-right">Current Value</th>
+                                        <th className="px-5 py-3.5 text-right">Average price</th>
+                                        <th className="px-5 py-3.5 text-right">Current value</th>
                                         <th className="px-5 py-3.5 text-right" title="Stock movement from previous close, not profit since purchase">Market Move (1D)</th>
-                                        <th className="px-5 py-3.5 text-right">Total Returns</th>
+                                        <th className="px-5 py-3.5 text-right">Total returns</th>
                                         <th className="px-5 py-3.5 text-center">Action</th>
                                     </tr>
                                 </thead>
@@ -323,15 +307,15 @@ export default function HoldingsPage() {
                                                         <CompanyLogo symbol={h.symbol} />
                                                         <div>
                                                             <div className="flex items-center gap-1.5">
-                                                                <span className="text-sm font-bold text-ink-heading">
+                                                                <span className="text-sm font-medium text-ink-heading">
                                                                     {cleanSymbol}
                                                                 </span>
-                                                                <span className="text-[10px] font-semibold text-ink-faint px-1.5 py-0.2 rounded bg-white/5">
+                                                                <span className="text-xs font-semibold text-ink-faint px-1.5 py-0.2 rounded bg-white/5">
                                                                     NSE
                                                                 </span>
                                                             </div>
                                                             <div className="flex items-center gap-2 mt-0.5">
-                                                                <span className="text-[11px] text-ink-faint font-num">
+                                                                <span className="text-xs text-ink-faint font-num">
                                                                     Alloc: {holdingWeight.toFixed(1)}%
                                                                 </span>
                                                                 <div className="w-12 h-1 bg-white/10 rounded-full overflow-hidden">
@@ -356,26 +340,26 @@ export default function HoldingsPage() {
                                                 </td>
 
                                                 {/* Current Total Value */}
-                                                <td className="px-5 py-4 text-right text-sm font-bold text-ink-heading tabular-nums font-num">
+                                                <td className="px-5 py-4 text-right text-sm font-medium text-ink-heading tabular-nums font-num">
                                                     ₹{fmt(h.currentValue ?? 0)}
                                                 </td>
 
                                                 {/* Today's Gain Column */}
                                                 <td className="px-5 py-4 text-right">
-                                                    <p className={`text-sm font-bold tabular-nums font-num ${isDayUp ? 'text-up' : 'text-down'}`}>
+                                                    <p className={`text-sm font-medium tabular-nums font-num ${isDayUp ? 'text-up' : 'text-down'}`}>
                                                         {isDayUp ? '+' : '-'}₹{fmt(Math.abs(h.dayPnl ?? 0))}
                                                     </p>
-                                                    <span className={`inline-block text-[11px] font-semibold tabular-nums font-num mt-0.5 ${isDayUp ? 'text-up' : 'text-down'}`}>
+                                                    <span className={`inline-block text-xs font-semibold tabular-nums font-num mt-0.5 ${isDayUp ? 'text-up' : 'text-down'}`}>
                                                         {isDayUp ? '+' : '-'}{Math.abs(h.dayPnlPercent ?? 0).toFixed(2)}%
                                                     </span>
                                                 </td>
 
-                                                {/* Total Returns (Unrealized P&L Column) */}
+                                                {/* Total returns (Unrealized P&L Column) */}
                                                 <td className="px-5 py-4 text-right">
-                                                    <p className={`text-sm font-bold tabular-nums font-num ${isUp ? 'text-up' : 'text-down'}`}>
+                                                    <p className={`text-sm font-medium tabular-nums font-num ${isUp ? 'text-up' : 'text-down'}`}>
                                                         {isUp ? '+' : '-'}₹{fmt(Math.abs(h.pnl ?? 0))}
                                                     </p>
-                                                    <span className={`inline-block text-[11px] font-semibold tabular-nums font-num mt-0.5 ${isUp ? 'text-up' : 'text-down'}`}>
+                                                    <span className={`inline-block text-xs font-semibold tabular-nums font-num mt-0.5 ${isUp ? 'text-up' : 'text-down'}`}>
                                                         {isUp ? '+' : '-'}{Math.abs(h.pnlPercent ?? 0).toFixed(2)}%
                                                     </span>
                                                 </td>
@@ -385,7 +369,7 @@ export default function HoldingsPage() {
                                                     <button
                                                         type="button"
                                                         onClick={() => router.push(`/stock/${encodeURIComponent(cleanSymbol)}`)}
-                                                        className="px-3 py-1.5 text-xs font-bold rounded-xl bg-surface-2 hover:bg-primary hover:text-[#003829] border border-white/10 transition-all text-ink-muted active:scale-95 inline-flex items-center gap-1"
+                                                        className="px-3 py-1.5 text-xs font-medium rounded-xl bg-surface-2 hover:bg-primary hover:text-[var(--primary-ink)] border border-white/10 transition-colors text-ink-muted active:scale-[0.98] inline-flex items-center gap-1"
                                                     >
                                                         <span>Trade</span>
                                                         <ExternalLink className="w-3 h-3" />

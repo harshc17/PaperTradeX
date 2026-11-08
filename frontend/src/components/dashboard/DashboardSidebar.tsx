@@ -1,69 +1,32 @@
 'use client';
 import Link from 'next/link';
-import PortfolioSummary from './PortfolioSummary';
-
 import { ChevronRight, BarChart3, Search, Bot, Trophy } from 'lucide-react';
+import PortfolioSummary from './PortfolioSummary';
 import AIPortfolioAnalyst from './AIPortfolioAnalyst';
 
 export default function DashboardSidebar() {
     const tools = [
-        { name: 'Ask AI', icon: <Bot className="w-4 h-4 text-[#c084fc]" />, href: '/ask-ai', badge: 'New' },
-        { name: 'Stock Screener', icon: <Search className="w-4 h-4 text-[#60a5fa]" />, href: '/stock-screener' },
-        { name: 'ETF Screener', icon: <BarChart3 className="w-4 h-4 text-[#a78bfa]" />, href: '/etf-screener' },
+        { name: 'Ask AI', icon: Bot, href: '/ask-ai' },
+        { name: 'Stock screener', icon: Search, href: '/stock-screener' },
+        { name: 'ETF screener', icon: BarChart3, href: '/etf-screener' },
     ];
-
-    return (
-        <div className="space-y-5">
-            {/* Portfolio Card */}
-            <div className="hidden lg:block"><PortfolioSummary /></div>
-
-            {/* Products & Tools */}
-            <div className="bg-surface rounded-[14px] border border-white/10 p-5 shadow-soft">
-                <h3 className="text-[15px] font-semibold text-ink-heading mb-4 font-heading">Products & Tools</h3>
-                <div className="space-y-1">
-                    {tools.map(tool => (
-                        <Link key={tool.name} href={tool.href}
-                            className="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-surface-3 transition-colors group cursor-pointer">
-                            <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-surface-3 border border-white/10 group-hover:border-white/20 flex items-center justify-center transition-all group-hover:scale-105">
-                                    {tool.icon}
-                                </div>
-                                <span className="text-[13px] font-medium text-ink-muted group-hover:text-ink transition-colors">{tool.name}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                {tool.badge && (
-                                    <span className="px-1.5 py-0.5 rounded-full bg-[#c084fc]/15 text-[10px] font-bold text-[#c084fc] uppercase border border-[#c084fc]/20">{tool.badge}</span>
-                                )}
-                                <ChevronRight className="w-4 h-4 text-ink-faint group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
-                            </div>
-                        </Link>
-                    ))}
-                </div>
+    return <div className="space-y-6">
+        <div className="hidden lg:block"><PortfolioSummary /></div>
+        <section className="rounded-2xl border border-line bg-surface p-5">
+            <h3 className="mb-4 text-base font-medium text-ink">Tools</h3>
+            <div className="space-y-1">
+                {tools.map(({ name, icon: Icon, href }) => <Link key={href} href={href} className="group flex min-h-11 items-center gap-3 rounded-lg px-2 py-2 text-sm text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink">
+                    <Icon className="h-4 w-4" />
+                    <span className="flex-1">{name}</span>
+                    <ChevronRight className="h-4 w-4 text-ink-faint" />
+                </Link>)}
             </div>
-
-            {/* Weekly Challenge */}
-            <Link href="/challenge" className="block group">
-                <div className="rounded-[14px] p-6 relative overflow-hidden transition-transform group-hover:-translate-y-1"
-                    style={{ background: 'linear-gradient(135deg, #1a1040 0%, #2d1b69 50%, #1e1050 100%)', border: '1px solid rgba(139,92,246,0.25)' }}>
-                    <div className="absolute top-0 right-0 w-32 h-32 rounded-full blur-[30px] -mr-10 -mt-10 pointer-events-none"
-                        style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.25) 0%, transparent 70%)' }} />
-                    <div className="relative z-10 flex items-center justify-between">
-                        <div>
-                            <div className="flex items-center gap-2 mb-1">
-                                <Trophy className="w-4 h-4 text-[#a78bfa]" />
-                                <h3 className="text-[15px] font-bold text-white font-heading">Weekly Challenge</h3>
-                            </div>
-                            <p className="text-[12px] text-[#a78bfa]/80">Compete & test your strategy!</p>
-                        </div>
-                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white group-hover:bg-white/20 transition-colors">
-                            <ChevronRight className="w-4 h-4" />
-                        </div>
-                    </div>
-                </div>
-            </Link>
-
-            {/* AI Portfolio Analyst */}
-            <AIPortfolioAnalyst />
-        </div>
-    );
+        </section>
+        <Link href="/challenge" className="group flex items-start gap-3 rounded-2xl border border-line bg-surface p-5 transition-colors hover:bg-surface-2">
+            <Trophy className="mt-1 h-4 w-4 text-ink-muted" />
+            <div className="min-w-0 flex-1"><h3 className="text-base font-medium text-ink">Weekly challenge</h3><p className="mt-2 text-sm leading-5 text-ink-muted">Practise a strategy over seven days</p></div>
+            <ChevronRight className="mt-1 h-4 w-4 text-ink-faint" />
+        </Link>
+        <AIPortfolioAnalyst />
+    </div>;
 }

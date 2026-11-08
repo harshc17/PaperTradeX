@@ -3,7 +3,7 @@ import BrandLogo from '@/components/BrandLogo';
 import CompanyLogo from '@/components/CompanyLogo';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Search, Bell, TrendingUp, LogOut, ChevronDown, X, History, Clock, Calendar, Zap, Info, ShieldCheck } from 'lucide-react';
+import { Search, Bell, LogOut, ChevronDown, Menu, X, History, Clock, Info } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { usePortfolio } from '@/context/PortfolioContext';
@@ -127,6 +127,7 @@ export default function Header() {
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [showResults, setShowResults] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
+    const [showMobileNav, setShowMobileNav] = useState(false);
     const [showMarketModal, setShowMarketModal] = useState(false);
     const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
     const [localResults, setLocalResults] = useState<any[]>([]);
@@ -207,20 +208,20 @@ export default function Header() {
         { name: 'Orders', href: '/orders' },
         { name: 'Transactions', href: '/transactions' },
         { name: 'Watchlist', href: '/watchlist' },
-        { name: 'Weekly Challenge', href: '/challenge' },
+        { name: 'Weekly challenge', href: '/challenge' },
     ];
 
-    const fmtBalance = (n: number) => n.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+    const fmtBalance = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     return (
         <header className="sticky top-0 z-40 flex flex-col border-b border-white/10"
-            style={{ background: 'rgba(10, 14, 20, 0.88)', backdropFilter: 'saturate(160%) blur(18px)', WebkitBackdropFilter: 'saturate(160%) blur(18px)' }}>
+            style={{ background: 'var(--surface)' }}>
 
             {/* Top row */}
             <div className="flex items-center justify-between flex-wrap lg:flex-nowrap px-3 sm:px-4 lg:px-6 py-3 gap-3">
                 {/* Logo */}
                 <Link href="/dashboard" className="flex items-center gap-2.5 flex-shrink-0 group">
-                    <BrandLogo compact className="text-[26px]" />
+                    <BrandLogo compact className="text-[28px]" />
                 </Link>
 
                 {/* Search */}
@@ -234,7 +235,7 @@ export default function Header() {
                             onChange={e => setSearchQuery(e.target.value)}
                             onFocus={() => setShowResults(true)}
                             placeholder="Search stocks, ETFs, indices..."
-                            className="w-full pl-10 pr-10 py-2.5 border border-white/10 rounded-xl bg-surface text-ink placeholder-[#5c6675] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
+                            className="w-full pl-10 pr-10 py-2.5 border border-white/10 rounded-xl bg-surface text-ink placeholder-[var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-sm"
                         />
                         {searchQuery && (
                             <button onClick={() => { setSearchQuery(''); setSearchResults([]); }}
@@ -246,7 +247,7 @@ export default function Header() {
 
                     {/* Search dropdown */}
                     {showResults && searchQuery.length >= 1 && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-surface rounded-xl shadow-xl border border-white/10 overflow-hidden max-h-80 overflow-y-auto z-50">
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-surface rounded-xl shadow-none border border-white/10 overflow-hidden max-h-80 overflow-y-auto z-50">
                             {(() => {
                                 const seen = new Set<string>();
                                 const combined: any[] = [];
@@ -263,7 +264,7 @@ export default function Header() {
                                 return (
                                     <>
                                         <div className="px-3 py-2 bg-surface-2 border-b border-white/10">
-                                            <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-widest">Search Results</p>
+                                            <p className="text-xs font-semibold text-ink-faint">Search Results</p>
                                         </div>
                                         {combined.slice(0, 10).map((result: any, i: number) => (
                                             <div key={`${result.symbol}-${i}`}
@@ -274,7 +275,7 @@ export default function Header() {
                                                     <div className="min-w-0">
                                                     <div className="truncate font-semibold text-ink text-sm" title={result.shortname || result.name || result.symbol}>{result.shortname || result.name || result.symbol}</div>
                                                     <div className="text-xs text-ink-faint flex items-center gap-2 mt-0.5">
-                                                        {result.exchange && <span className="bg-surface-3 text-ink-muted px-1.5 py-0.5 rounded text-[10px] font-medium">{result.exchange}</span>}
+                                                        {result.exchange && <span className="bg-surface-3 text-ink-muted px-1.5 py-0.5 rounded text-xs font-medium">{result.exchange}</span>}
                                                         <span>{result.symbol}</span>
                                                     </div>
                                                     </div>
@@ -295,9 +296,9 @@ export default function Header() {
                     <button
                         type="button"
                         onClick={() => setShowMarketModal(true)}
-                        className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                        className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-colors ${
                             marketStatus?.isOpen
-                                ? 'bg-up/10 text-up border-up/30 hover:bg-up/15 shadow-[0_0_12px_rgba(38,208,124,0.15)]'
+                                ? 'bg-up/10 text-up border-up/30 hover:bg-up/15 shadow-none'
                                 : marketStatus?.session === 'PRE_MARKET'
                                 ? 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/15'
                                 : 'bg-surface-2 text-ink-muted border-white/10 hover:border-white/20 hover:text-ink'
@@ -305,25 +306,22 @@ export default function Header() {
                         title="View NSE/BSE Trading Hours & Schedule"
                     >
                         <span className="relative flex h-2 w-2">
-                            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                                marketStatus?.isOpen ? 'bg-up' : marketStatus?.session === 'PRE_MARKET' ? 'bg-amber-400' : 'bg-primary'
-                            }`} />
                             <span className={`relative inline-flex rounded-full h-2 w-2 ${
-                                marketStatus?.isOpen ? 'bg-up' : marketStatus?.session === 'PRE_MARKET' ? 'bg-amber-400' : 'bg-primary'
+                                marketStatus?.isOpen ? 'bg-up' : marketStatus?.session === 'PRE_MARKET' ? 'bg-amber-400' : 'bg-ink-faint'
                             }`} />
                         </span>
-                        <span className="font-bold tracking-tight">
-                            {marketStatus?.isOpen ? 'NSE LIVE' : marketStatus?.session === 'PRE_MARKET' ? 'PRE-OPEN' : 'NSE CLOSED'}
+                        <span className="font-medium">
+                            {marketStatus?.isOpen ? 'NSE open' : marketStatus?.session === 'PRE_MARKET' ? 'Pre-open' : 'NSE closed'}
                         </span>
-                        <span className="hidden xl:inline text-[10px] opacity-75 font-num tabular-nums border-l border-white/10 pl-1.5">
+                        <span className="hidden xl:inline text-xs opacity-75 font-num tabular-nums border-l border-white/10 pl-1.5">
                             {marketStatus?.isOpen ? `Closes ${formatRemaining(secondsLeft)}` : `Opens in ${formatRemaining(secondsLeft)}`}
                         </span>
                     </button>
 
                     {/* Balance pill */}
                     {user && (
-                        <div className="flex items-center gap-1.5 bg-[#0e2a30] border border-primary/20 text-primary px-2 sm:px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold tabular-nums font-num"
-                            style={{ boxShadow: '0 0 12px rgba(51,201,221,0.10)' }}>
+                        <div className="flex items-center gap-1.5 bg-surface-2 border border-line text-ink px-2 sm:px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold tabular-nums font-num"
+                            >
                             <span className="text-xs opacity-70">₹</span>
                             {fmtBalance(balance)}
                         </div>
@@ -331,28 +329,28 @@ export default function Header() {
 
                     <button className="relative text-ink-faint hover:text-ink-muted p-2 rounded-lg hover:bg-surface-3 transition-colors">
                         <Bell className="h-5 w-5" />
-                        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-down rounded-full ring-2 ring-[#0a0e14]" />
+                        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-down rounded-full ring-2 ring-[var(--bg)]" />
                     </button>
 
                     {/* User menu */}
                     {user ? (
                         <div className="relative" ref={userMenuRef}>
-                            <button id="user-menu-btn" onClick={() => setShowUserMenu(!showUserMenu)}
+                            <button id="user-menu-btn" aria-label="Account menu" aria-expanded={showUserMenu} onClick={() => setShowUserMenu(!showUserMenu)}
                                 className="flex items-center gap-2 p-1 rounded-xl hover:bg-surface-3 transition-colors">
-                                <div className="w-8 h-8 rounded-full flex items-center justify-center text-[#003829] font-bold text-sm"
-                                    style={{ background: 'linear-gradient(135deg, #33c9dd, #22a9bc)' }}>
+                                <div className="w-8 h-8 rounded-full flex items-center justify-center text-[var(--primary-ink)] font-medium text-sm"
+                                    style={{ background: 'var(--primary)', color: 'var(--primary-ink)' }}>
                                     {user.name?.[0]?.toUpperCase() || 'U'}
                                 </div>
-                                <ChevronDown className={`w-4 h-4 text-ink-faint transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+                                <ChevronDown className={`w-4 h-4 text-ink-faint transition-colors ${showUserMenu ? 'rotate-180' : ''}`} />
                             </button>
                             {showUserMenu && (
-                                <div className="absolute right-0 top-full mt-2 w-56 bg-surface rounded-xl shadow-xl border border-white/10 overflow-hidden z-50">
+                                <div className="absolute right-0 top-full mt-2 w-56 bg-surface rounded-xl shadow-none border border-white/10 overflow-hidden z-50">
                                     <div className="px-4 py-3 border-b border-white/10">
                                         <p className="font-semibold text-ink-heading text-sm">{user.name}</p>
                                         <p className="text-xs text-ink-faint">{user.email}</p>
-                                        <div className="mt-2 bg-[#0e2a30] rounded-lg px-2 py-1.5 flex items-center justify-between border border-primary/15">
+                                        <div className="mt-2 bg-[var(--surface-2)] rounded-lg px-2 py-1.5 flex items-center justify-between border border-primary/15">
                                             <span className="text-xs text-ink-faint">Balance</span>
-                                            <span className="text-sm font-bold text-primary font-num">₹{fmtBalance(balance)}</span>
+                                            <span className="text-sm font-medium text-primary font-num">₹{fmtBalance(balance)}</span>
                                         </div>
                                     </div>
                                     <Link
@@ -361,7 +359,7 @@ export default function Header() {
                                         className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-ink-muted hover:text-ink hover:bg-surface-3 transition-colors border-b border-white/10"
                                     >
                                         <History className="w-4 h-4 text-primary" />
-                                        Transaction History
+                                        Transactions
                                     </Link>
                                     <button onClick={handleLogout}
                                         className="w-full flex items-center gap-3 px-4 py-3 text-sm text-down hover:bg-down/10 transition-colors">
@@ -372,8 +370,8 @@ export default function Header() {
                             )}
                         </div>
                     ) : (
-                        <Link href="/login" className="px-4 py-2 text-[#003829] text-sm font-bold rounded-lg transition-colors"
-                            style={{ background: 'linear-gradient(135deg, #33c9dd, #22a9bc)' }}>
+                        <Link href="/login" className="px-4 py-2 text-[var(--primary-ink)] text-sm font-medium rounded-lg transition-colors"
+                            style={{ background: 'var(--primary)', color: 'var(--primary-ink)' }}>
                             Login
                         </Link>
                     )}
@@ -382,19 +380,19 @@ export default function Header() {
 
             {/* Market Schedule Modal */}
             {showMarketModal && (
-                <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
                     <div
                         ref={marketModalRef}
-                        className="max-h-[85dvh] overflow-y-auto max-w-lg w-full bg-[#0e1624] border border-white/15 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                        className="max-h-[85dvh] overflow-y-auto max-w-lg w-full bg-surface-2 border border-white/15 rounded-2xl shadow-none overflow-hidden animate-in fade-in zoom-in-95 duration-200"
                     >
                         {/* Header */}
-                        <div className="p-5 border-b border-white/10 flex items-center justify-between bg-[#141f30]">
+                        <div className="p-5 border-b border-white/10 flex items-center justify-between bg-[var(--surface-2)]">
                             <div className="flex items-center gap-2.5">
                                 <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
                                     <Clock className="w-4 h-4" />
                                 </div>
                                 <div>
-                                    <h3 className="text-base font-bold text-ink-heading font-heading">
+                                    <h3 className="text-base font-medium text-ink-heading font-heading">
                                         NSE & BSE Trading Hours
                                     </h3>
                                     <p className="text-xs text-ink-faint">
@@ -418,20 +416,20 @@ export default function Header() {
                                     ? 'bg-up/10 border-up/30 text-up'
                                     : marketStatus?.session === 'PRE_MARKET'
                                     ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
-                                    : 'bg-[#182234] border-white/10 text-ink'
+                                    : 'bg-surface-2 border-white/10 text-ink'
                             }`}>
                                 <div>
                                     <div className="flex items-center gap-2 mb-1">
                                         <span className="relative flex h-2.5 w-2.5">
-                                            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                                                marketStatus?.isOpen ? 'bg-up' : marketStatus?.session === 'PRE_MARKET' ? 'bg-amber-400' : 'bg-primary'
-                                            }`} />
+                                            <span className={` absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                                                marketStatus?.isOpen ? 'bg-up' : marketStatus?.session === 'PRE_MARKET' ? 'bg-amber-400' : 'bg-ink-faint'
+                            }`} />
                                             <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-                                                marketStatus?.isOpen ? 'bg-up' : marketStatus?.session === 'PRE_MARKET' ? 'bg-amber-400' : 'bg-primary'
-                                            }`} />
+                                                marketStatus?.isOpen ? 'bg-up' : marketStatus?.session === 'PRE_MARKET' ? 'bg-amber-400' : 'bg-ink-faint'
+                            }`} />
                                         </span>
-                                        <span className="font-bold text-xs uppercase tracking-wider">
-                                            {marketStatus?.sessionName || 'Market Closed'}
+                                        <span className="font-medium text-xs">
+                                            {marketStatus?.sessionName || 'Market closed'}
                                         </span>
                                     </div>
                                     <p className="text-xs text-ink-muted">
@@ -440,10 +438,10 @@ export default function Header() {
                                 </div>
 
                                 <div className="text-right">
-                                    <span className="text-[10px] font-semibold text-ink-faint uppercase block">
+                                    <span className="text-xs font-semibold text-ink-faint block">
                                         {marketStatus?.isOpen ? 'Closes In' : 'Opens In'}
                                     </span>
-                                    <span className="text-sm font-bold text-ink-heading font-num">
+                                    <span className="text-sm font-medium text-ink-heading font-num">
                                         {formatRemaining(secondsLeft)}
                                     </span>
                                 </div>
@@ -451,7 +449,7 @@ export default function Header() {
 
                             {/* Schedule Timetable */}
                             <div className="space-y-2">
-                                <span className="text-[11px] font-bold text-ink-faint uppercase tracking-wider block px-1">
+                                <span className="text-xs font-medium text-ink-faint block px-1">
                                     Standard Trading Schedule (Mon – Fri)
                                 </span>
 
@@ -463,10 +461,10 @@ export default function Header() {
                                             <span className="w-2 h-2 rounded-full bg-amber-400" />
                                             <div>
                                                 <div className="font-semibold text-ink">Pre-Market Session</div>
-                                                <div className="text-[11px] text-ink-faint">Order collection & price equilibrium discovery</div>
+                                                <div className="text-xs text-ink-faint">Order collection & price equilibrium discovery</div>
                                             </div>
                                         </div>
-                                        <span className="font-num font-bold text-ink">09:00 – 09:15 AM</span>
+                                        <span className="font-num font-medium text-ink">09:00 – 09:15 AM</span>
                                     </div>
 
                                     <div className={`p-3 rounded-xl border flex items-center justify-between text-xs transition-colors ${
@@ -476,10 +474,10 @@ export default function Header() {
                                             <span className="w-2 h-2 rounded-full bg-up animate-pulse" />
                                             <div>
                                                 <div className="font-semibold text-ink">Regular Trading Session</div>
-                                                <div className="text-[11px] text-ink-faint">Continuous real-time order matching</div>
+                                                <div className="text-xs text-ink-faint">Continuous real-time order matching</div>
                                             </div>
                                         </div>
-                                        <span className="font-num font-bold text-ink">09:15 AM – 03:30 PM</span>
+                                        <span className="font-num font-medium text-ink">09:15 AM – 03:30 PM</span>
                                     </div>
 
                                     <div className={`p-3 rounded-xl border flex items-center justify-between text-xs transition-colors ${
@@ -489,23 +487,23 @@ export default function Header() {
                                             <span className="w-2 h-2 rounded-full bg-orange-400" />
                                             <div>
                                                 <div className="font-semibold text-ink">Post-Market Closing Run</div>
-                                                <div className="text-[11px] text-ink-faint">Execution at final closing price</div>
+                                                <div className="text-xs text-ink-faint">Execution at final closing price</div>
                                             </div>
                                         </div>
-                                        <span className="font-num font-bold text-ink">03:30 – 04:00 PM</span>
+                                        <span className="font-num font-medium text-ink">03:30 – 04:00 PM</span>
                                     </div>
 
                                     <div className={`p-3 rounded-xl border flex items-center justify-between text-xs transition-colors ${
-                                        marketStatus?.session === 'CLOSED' ? 'bg-[#182638] border-primary/30 text-primary' : 'bg-surface-2 border-white/5 text-ink-muted'
+                                        marketStatus?.session === 'CLOSED' ? 'bg-surface-2 border-primary/30 text-primary' : 'bg-surface-2 border-white/5 text-ink-muted'
                                     }`}>
                                         <div className="flex items-center gap-2.5">
                                             <span className="w-2 h-2 rounded-full bg-primary" />
                                             <div>
                                                 <div className="font-semibold text-ink">After-Market Orders (AMO)</div>
-                                                <div className="text-[11px] text-ink-faint">Orders queued for the next market session</div>
+                                                <div className="text-xs text-ink-faint">Orders queued for the next market session</div>
                                             </div>
                                         </div>
-                                        <span className="font-num font-bold text-ink">04:00 PM – 09:00 AM</span>
+                                        <span className="font-num font-medium text-ink">04:00 PM – 09:00 AM</span>
                                     </div>
                                 </div>
                             </div>
@@ -513,15 +511,15 @@ export default function Header() {
                             {/* Next Session & Exchange Info */}
                             <div className="grid grid-cols-2 gap-3 pt-1">
                                 <div className="bg-surface-2 rounded-xl p-3 border border-white/5">
-                                    <span className="text-[10px] uppercase font-bold text-ink-faint block">Next Regular Open</span>
-                                    <span className="text-xs font-bold text-ink-heading font-num">
+                                    <span className="text-xs font-medium text-ink-faint block">Next Regular Open</span>
+                                    <span className="text-xs font-medium text-ink-heading font-num">
                                         {marketStatus?.nextOpenFormatted || 'Mon, 09:15 AM IST'}
                                     </span>
                                 </div>
 
                                 <div className="bg-surface-2 rounded-xl p-3 border border-white/5">
-                                    <span className="text-[10px] uppercase font-bold text-ink-faint block">Current Time (IST)</span>
-                                    <span className="text-xs font-bold text-primary font-num">
+                                    <span className="text-xs font-medium text-ink-faint block">Current Time (IST)</span>
+                                    <span className="text-xs font-medium text-primary font-num">
                                         {marketStatus?.currentTimeIST || 'Asia/Kolkata'}
                                     </span>
                                 </div>
@@ -529,11 +527,11 @@ export default function Header() {
                         </div>
 
                         {/* Footer */}
-                        <div className="p-4 border-t border-white/10 bg-[#141f30] flex justify-end">
+                        <div className="p-4 border-t border-white/10 bg-[var(--surface-2)] flex justify-end">
                             <button
                                 onClick={() => setShowMarketModal(false)}
-                                className="px-4 py-2 rounded-xl text-xs font-bold text-[#003829] transition-all hover:brightness-110"
-                                style={{ background: 'linear-gradient(135deg, #33c9dd, #22a9bc)' }}
+                                className="px-4 py-2 rounded-xl text-xs font-medium text-[var(--primary-ink)] transition-colors hover:brightness-110"
+                                style={{ background: 'var(--primary)', color: 'var(--primary-ink)' }}
                             >
                                 Close
                             </button>
@@ -543,24 +541,32 @@ export default function Header() {
             )}
 
             {/* Bottom nav */}
-            <div className="px-4 lg:px-6 border-t border-white/10/60">
-                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+            <nav aria-label="Main navigation" className="px-4 lg:px-6 border-t border-line">
+                <button type="button" aria-expanded={showMobileNav} aria-controls="mobile-navigation" onClick={() => setShowMobileNav(v => !v)} className="flex min-h-11 w-full items-center justify-between text-sm text-ink sm:hidden">
+                    <span>{navItems.find(item => pathname === item.href)?.name || 'Navigation'}</span>
+                    {showMobileNav ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+                </button>
+                {showMobileNav && <div id="mobile-navigation" className="grid grid-cols-2 gap-1 border-t border-line py-2 sm:hidden">
+                    {navItems.map(item => <Link key={item.href} href={item.href} onClick={() => setShowMobileNav(false)} aria-current={pathname === item.href ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm transition-colors ${pathname === item.href ? 'bg-surface-2 text-primary' : 'text-ink-muted hover:bg-surface-2 hover:text-ink'}`}>{item.name}</Link>)}
+                </div>}
+                <div className="hidden sm:flex items-center gap-1 overflow-x-auto no-scrollbar">
                     {navItems.map(item => {
                         const isActive = pathname === item.href;
                         return (
                             <Link key={item.name} href={item.href}
-                                className={`relative text-xs font-semibold uppercase tracking-wider whitespace-nowrap px-3.5 py-3 transition-colors ${
+                                aria-current={isActive ? 'page' : undefined}
+                                className={`relative text-sm font-medium whitespace-nowrap px-3 py-3 transition-colors ${
                                     isActive ? 'text-primary' : 'text-ink-faint hover:text-ink-muted'
                                 }`}>
                                 {item.name}
-                                <span className={`absolute left-2 right-2 -bottom-px h-[2px] rounded-full bg-primary transition-all duration-300 ${
+                                <span className={`absolute left-2 right-2 -bottom-px h-[2px] rounded-full bg-primary transition-colors duration-300 ${
                                     isActive ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
-                                }`} style={{ boxShadow: isActive ? '0 0 8px rgba(51,201,221,0.6)' : 'none' }} />
+                                }`}  />
                             </Link>
                         );
                     })}
                 </div>
-            </div>
+            </nav>
         </header>
     );
 }

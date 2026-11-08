@@ -4,20 +4,7 @@ import { getSocket } from '@/lib/socket';
 import { useAuth } from '@/context/AuthContext';
 import { usePortfolio } from '@/context/PortfolioContext';
 import { API_URL } from '@/lib/config';
-import {
-    CheckCircle2,
-    XCircle,
-    Loader2,
-    Clock,
-    Sparkles,
-    ArrowUpRight,
-    ArrowDownRight,
-    Zap,
-    Minus,
-    Plus,
-    ShieldCheck,
-    Coins,
-} from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, Clock, ArrowUpRight, ArrowDownRight, Minus, Plus, Coins } from 'lucide-react';
 
 type Toast = { type: 'success' | 'error'; message: string };
 
@@ -147,24 +134,14 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
     const isUp = priceChange >= 0;
 
     return (
-        <div className="relative rounded-2xl bg-[#0f1724]/95 backdrop-blur-xl border border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.45)] overflow-hidden transition-all sticky top-20">
-            {/* Ambient edge glow */}
-            <div
-                className="absolute -top-24 -right-24 w-48 h-48 rounded-full blur-[80px] pointer-events-none transition-all duration-500"
-                style={{
-                    background: isBuy
-                        ? 'radial-gradient(circle, rgba(38,208,124,0.25) 0%, transparent 70%)'
-                        : 'radial-gradient(circle, rgba(255,92,108,0.25) 0%, transparent 70%)'
-                }}
-            />
-
+        <div className="relative rounded-2xl bg-surface border border-white/10 shadow-none overflow-hidden transition-colors sticky top-20">
             {/* Notification Toast */}
             {toast && (
                 <div
-                    className={`mx-5 mt-4 mb-1 z-50 flex items-center gap-2.5 p-3.5 rounded-xl text-xs font-semibold shadow-lg border animate-in slide-in-from-top-2 fade-in duration-200 ${
+                    className={`mx-5 mt-4 mb-1 z-50 flex items-center gap-2.5 p-4 rounded-xl text-xs font-semibold shadow-none border fade-in duration-200 ${
                         toast.type === 'success'
-                            ? 'bg-up/15 border-up/30 text-up shadow-[0_0_15px_rgba(38,208,124,0.2)]'
-                            : 'bg-down/15 border-down/30 text-down shadow-[0_0_15px_rgba(255,92,108,0.2)]'
+                            ? 'bg-up/15 border-up/30 text-up shadow-none'
+                            : 'bg-down/15 border-down/30 text-down shadow-none'
                     }`}
                 >
                     {toast.type === 'success' ? (
@@ -180,24 +157,24 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
             <div className="px-5 pt-5 pb-4 border-b border-white/[0.08]">
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                     <div className="flex min-w-0 items-center gap-2">
-                        <span className="break-all text-[19px] font-black tracking-tight text-ink-heading font-heading">
+                        <span className="break-all text-[19px] font-medium text-ink-heading font-heading">
                             {bare}
                         </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-ink-faint">
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-ink-faint">
                             EQ
                         </span>
                     </div>
 
                     {/* Exchange Switcher */}
-                    <div className="shrink-0 flex items-center gap-1 bg-[#151f30] border border-white/10 rounded-lg p-0.5">
+                    <div className="shrink-0 flex items-center gap-1 bg-[var(--surface-2)] border border-white/10 rounded-lg p-0.5">
                         {(['NSE', 'BSE'] as const).map(ex => (
                             <button
                                 key={ex}
                                 type="button"
                                 onClick={() => setExchange(ex)}
-                                className={`px-2.5 py-0.5 text-[11px] font-bold rounded-md transition-all ${
+                                className={`px-2.5 py-0.5 text-xs font-medium rounded-md transition-colors ${
                                     exchange === ex
-                                        ? 'bg-primary text-[#002f23] shadow-sm'
+                                        ? 'bg-primary text-[var(--primary-ink)] shadow-none'
                                         : 'text-ink-faint hover:text-ink'
                                 }`}
                             >
@@ -210,7 +187,7 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                 {/* Price & Day Change */}
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-2">
                     <div className="flex min-w-0 flex-wrap items-baseline gap-2">
-                        <span className="whitespace-nowrap text-[22px] font-bold text-ink-heading tabular-nums font-num">
+                        <span className="whitespace-nowrap text-[22px] font-medium text-ink-heading tabular-nums font-num">
                             ₹{fmt(displayPrice)}
                         </span>
                         <span className={`inline-flex items-center text-xs font-semibold tabular-nums font-num ${isUp ? 'text-up' : 'text-down'}`}>
@@ -221,9 +198,9 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
 
                     {/* Market Status Badge */}
                     <div
-                        className={`shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border transition-all ${
+                        className={`shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 text-xs font-medium   px-2.5 py-1 rounded-full border transition-colors ${
                             marketStatus?.isOpen
-                                ? 'bg-up/10 text-up border-up/25 shadow-[0_0_10px_rgba(38,208,124,0.15)]'
+                                ? 'bg-up/10 text-up border-up/25 shadow-none'
                                 : marketStatus?.session === 'PRE_MARKET'
                                 ? 'bg-amber-500/10 text-amber-300 border-amber-500/25'
                                 : 'bg-surface-2 text-ink-muted border-white/10'
@@ -233,7 +210,7 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                         {marketStatus?.isOpen ? (
                             <>
                                 <span className="w-1.5 h-1.5 rounded-full bg-up animate-pulse" />
-                                Live Market
+                                Market open
                             </>
                         ) : marketStatus?.session === 'PRE_MARKET' ? (
                             <>
@@ -243,19 +220,19 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                         ) : (
                             <>
                                 <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                                Market Closed
+                                Market closed
                             </>
                         )}
                     </div>
                 </div>
 
                 {!marketStatus?.isOpen && (
-                    <div className="mt-2.5 px-3 py-1.5 rounded-lg bg-surface-2 border border-white/5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] text-ink-faint">
+                    <div className="mt-2.5 px-3 py-1.5 rounded-lg bg-surface-2 border border-white/5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-ink-faint">
                         <span className="flex min-w-0 items-center gap-1.5">
                             <span className="w-1.5 h-1.5 rounded-full bg-slate-400 flex-shrink-0" />
-                            <span className="truncate">{marketStatus?.sessionName || 'Market Closed'}</span>
+                            <span className="truncate">{marketStatus?.sessionName || 'Market closed'}</span>
                         </span>
-                        <span className="font-num text-ink-muted text-[10px] font-semibold flex-shrink-0">
+                        <span className="font-num text-ink-muted text-xs font-semibold flex-shrink-0">
                             {marketStatus?.nextOpenFormatted ? `Opens ${marketStatus.nextOpenFormatted}` : ''}
                         </span>
                     </div>
@@ -263,14 +240,14 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
             </div>
 
             {/* Segmented Buy / Sell Control */}
-            <div className="p-3 bg-[#131d2e]/80 border-b border-white/[0.08]">
-                <div className="grid grid-cols-2 p-1 rounded-xl bg-[#0a101d] border border-white/10">
+            <div className="p-3 bg-[var(--surface-2)]/80 border-b border-white/[0.08]">
+                <div className="grid grid-cols-2 p-1 rounded-xl bg-[var(--surface-3)] border border-white/10">
                     <button
                         type="button"
                         onClick={() => setSide('BUY')}
-                        className={`py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center ${
+                        className={`py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center ${
                             isBuy
-                                ? 'bg-up text-[#003829] shadow-[0_0_16px_rgba(38,208,124,0.35)] scale-[1.02]'
+                                ? 'bg-up text-[var(--primary-ink)] shadow-none scale-[1.02]'
                                 : 'text-ink-faint hover:text-ink'
                         }`}
                     >
@@ -279,9 +256,9 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                     <button
                         type="button"
                         onClick={() => setSide('SELL')}
-                        className={`py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center ${
+                        className={`py-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center ${
                             !isBuy
-                                ? 'bg-down text-white shadow-[0_0_16px_rgba(255,92,108,0.35)] scale-[1.02]'
+                                ? 'bg-down text-white shadow-none scale-[1.02]'
                                 : 'text-ink-faint hover:text-ink'
                         }`}
                     >
@@ -292,25 +269,25 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
 
             {/* Trading Form */}
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
-                {/* Order Type Tabs */}
+                {/* Order type Tabs */}
                 <div>
                     <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-[11px] font-semibold text-ink-faint uppercase tracking-wider">
-                            Order Type
+                        <label className="text-xs font-semibold text-ink-faint">
+                            Order type
                         </label>
-                        <span className="text-[11px] text-primary/80 font-medium">Delivery (CNC)</span>
+                        <span className="text-xs text-primary/80 font-medium">Delivery (CNC)</span>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                         <button
                             type="button"
                             onClick={() => setOrderType('MARKET')}
-                            className={`h-9 rounded-xl text-xs font-bold border transition-all ${
+                            className={`h-9 rounded-xl text-xs font-medium border transition-colors ${
                                 orderType === 'MARKET'
-                                    ? 'bg-primary/15 border-primary text-primary shadow-[0_0_12px_rgba(51,201,221,0.2)]'
-                                    : 'bg-[#151f30] border-white/10 text-ink-muted hover:border-white/20'
+                                    ? 'bg-primary/15 border-primary text-primary shadow-none'
+                                    : 'bg-[var(--surface-2)] border-white/10 text-ink-muted hover:border-white/20'
                             }`}
                         >
-                            Market Price
+                            Market price
                         </button>
                         <button
                             type="button"
@@ -318,13 +295,13 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                                 setOrderType('LIMIT');
                                 if (!limitPrice && currentPrice) setLimitPrice(currentPrice.toFixed(2));
                             }}
-                            className={`h-9 rounded-xl text-xs font-bold border transition-all ${
+                            className={`h-9 rounded-xl text-xs font-medium border transition-colors ${
                                 orderType === 'LIMIT'
-                                    ? 'bg-primary/15 border-primary text-primary shadow-[0_0_12px_rgba(51,201,221,0.2)]'
-                                    : 'bg-[#151f30] border-white/10 text-ink-muted hover:border-white/20'
+                                    ? 'bg-primary/15 border-primary text-primary shadow-none'
+                                    : 'bg-[var(--surface-2)] border-white/10 text-ink-muted hover:border-white/20'
                             }`}
                         >
-                            Limit Price
+                            Limit price
                         </button>
                     </div>
                 </div>
@@ -332,7 +309,7 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                 {/* Quantity Input with Quick Chips */}
                 <div>
                     <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-[11px] font-semibold text-ink-faint uppercase tracking-wider">
+                        <label className="text-xs font-semibold text-ink-faint">
                             Quantity
                         </label>
                         <div className="flex items-center gap-1.5">
@@ -341,7 +318,7 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                                     key={q}
                                     type="button"
                                     onClick={() => setQtyPreset(q)}
-                                    className="px-2 py-0.5 text-[10px] font-semibold rounded bg-[#151f30] hover:bg-white/10 text-ink-faint hover:text-ink transition-colors border border-white/5"
+                                    className="px-2 py-0.5 text-xs font-semibold rounded bg-[var(--surface-2)] hover:bg-white/10 text-ink-faint hover:text-ink transition-colors border border-white/5"
                                 >
                                     +{q}
                                 </button>
@@ -350,7 +327,7 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                                 <button
                                     type="button"
                                     onClick={setMaxQty}
-                                    className="px-2 py-0.5 text-[10px] font-bold rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors border border-primary/20"
+                                    className="px-2 py-0.5 text-xs font-medium rounded bg-primary/15 text-primary hover:bg-primary/25 transition-colors border border-primary/20"
                                 >
                                     MAX
                                 </button>
@@ -373,7 +350,7 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                             value={quantity}
                             onChange={e => setQuantity(e.target.value)}
                             required
-                            className="w-full h-11 px-11 text-center font-bold text-ink-heading text-base bg-[#151f30] border border-white/10 rounded-xl outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 tabular-nums font-num transition-all"
+                            className="w-full h-11 px-11 text-center font-medium text-ink-heading text-base bg-[var(--surface-2)] border border-white/10 rounded-xl outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 tabular-nums font-num transition-colors"
                             placeholder="Shares qty"
                         />
                         <button
@@ -386,32 +363,32 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                     </div>
                 </div>
 
-                {/* Limit Price Input (Only for LIMIT orders) */}
+                {/* Limit price Input (Only for LIMIT orders) */}
                 {orderType === 'LIMIT' && (
-                    <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <div className="space-y-1.5 animate-in fade-in duration-150">
                         <div className="flex items-center justify-between">
-                            <label className="text-[11px] font-semibold text-ink-faint uppercase tracking-wider">
-                                Limit Price (₹)
+                            <label className="text-xs font-semibold text-ink-faint">
+                                Limit price (₹)
                             </label>
                             <div className="flex items-center gap-1">
                                 <button
                                     type="button"
                                     onClick={() => adjustLimitPrice(-1)}
-                                    className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-[#151f30] text-down hover:bg-down/10 border border-down/20"
+                                    className="px-1.5 py-0.5 text-xs font-medium rounded bg-[var(--surface-2)] text-down hover:bg-down/10 border border-down/20"
                                 >
                                     -1%
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => adjustLimitPrice(0)}
-                                    className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-[#151f30] text-ink-muted hover:bg-white/10 border border-white/10"
+                                    className="px-1.5 py-0.5 text-xs font-medium rounded bg-[var(--surface-2)] text-ink-muted hover:bg-white/10 border border-white/10"
                                 >
                                     LTP
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => adjustLimitPrice(1)}
-                                    className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-[#151f30] text-up hover:bg-up/10 border border-up/20"
+                                    className="px-1.5 py-0.5 text-xs font-medium rounded bg-[var(--surface-2)] text-up hover:bg-up/10 border border-up/20"
                                 >
                                     +1%
                                 </button>
@@ -424,36 +401,36 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                             value={limitPrice}
                             onChange={e => setLimitPrice(e.target.value)}
                             required
-                            className="w-full h-11 px-3.5 font-bold text-ink-heading text-sm bg-[#151f30] border border-white/10 rounded-xl outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 tabular-nums font-num transition-all"
+                            className="w-full h-11 px-3.5 font-medium text-ink-heading text-sm bg-[var(--surface-2)] border border-white/10 rounded-xl outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 tabular-nums font-num transition-colors"
                             placeholder="Set target price"
                         />
                     </div>
                 )}
 
                 {/* Order Summary Tile */}
-                <div className="p-3.5 rounded-xl bg-[#141e2e]/70 border border-white/[0.08] space-y-2">
+                <div className="p-4 rounded-xl bg-surface-2 border border-white/[0.08] space-y-2">
                     <div className="flex items-center justify-between text-xs font-medium text-ink-faint">
-                        <span>Order Value:</span>
-                        <span className="font-bold text-ink-heading tabular-nums font-num">
+                        <span>Order value:</span>
+                        <span className="font-medium text-ink-heading tabular-nums font-num">
                             ₹{fmt(estimatedTotal)}
                         </span>
                     </div>
                     <div className="flex items-center justify-between text-xs font-medium text-ink-faint">
-                        <span>Available Balance:</span>
+                        <span>Available balance:</span>
                         <span className="text-ink font-semibold tabular-nums font-num">
                             ₹{fmt(balance)}
                         </span>
                     </div>
                     {isBuy && (
                         <div className="flex items-center justify-between text-xs font-medium text-ink-faint pt-1.5 border-t border-white/[0.06]">
-                            <span>Remaining Balance:</span>
+                            <span>Remaining balance:</span>
                             <span className={`font-semibold tabular-nums font-num ${balanceRemaining < 0 ? 'text-down' : 'text-primary'}`}>
                                 ₹{fmt(balanceRemaining)}
                             </span>
                         </div>
                     )}
-                    <div className="flex items-center justify-end text-[11px] text-ink-faint pt-1">
-                        <span className="text-ink-muted">Paper Simulation</span>
+                    <div className="flex items-center justify-end text-xs text-ink-faint pt-1">
+                        <span className="text-ink-muted">Paper simulation</span>
                     </div>
                 </div>
 
@@ -462,10 +439,10 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                     id="place-order-btn"
                     type="submit"
                     disabled={loading || !marketStatus?.isOpen || !currentPrice || (isBuy && balance < estimatedTotal)}
-                    className={`w-full h-12 rounded-xl font-bold text-sm tracking-wide transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] shadow-lg flex items-center justify-center gap-2 ${
+                    className={`w-full h-12 rounded-xl font-medium text-sm  transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] shadow-none flex items-center justify-center gap-2 ${
                         isBuy
-                            ? 'bg-gradient-to-r from-[#26d07c] to-[#1cb569] text-[#003829] hover:brightness-110 shadow-[0_4px_20px_rgba(38,208,124,0.35)]'
-                            : 'bg-gradient-to-r from-[#ff5c6c] to-[#e64656] text-white hover:brightness-110 shadow-[0_4px_20px_rgba(255,92,108,0.35)]'
+                            ? 'bg-up text-[#103327] hover:brightness-110'
+                            : 'bg-down text-[#3b201e] hover:brightness-110'
                     }`}
                 >
                     {loading ? (
@@ -474,7 +451,7 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                             <span>Processing Trade...</span>
                         </>
                     ) : !marketStatus?.isOpen ? (
-                        <span>{marketStatus ? 'Market Closed' : 'Checking Market Hours...'}</span>
+                        <span>{marketStatus ? 'Market closed' : 'Checking Market Hours...'}</span>
                     ) : isBuy && balance < estimatedTotal ? (
                         <span>Insufficient Balance</span>
                     ) : (
@@ -484,9 +461,9 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
 
                 {/* Footer notes */}
                 <div className="text-center">
-                    <p className="text-[11px] text-ink-faint flex items-center justify-center gap-1.5">
+                    <p className="text-xs text-ink-faint flex items-center justify-center gap-1.5">
                         <Coins className="w-3 h-3 text-primary" />
-                        Virtual funds only &bull; Real-time market execution
+                        Virtual funds only &bull; Simulated execution
                     </p>
                 </div>
             </form>

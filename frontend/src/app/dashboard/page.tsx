@@ -8,13 +8,13 @@ import Header from '@/components/dashboard/Header';
 import AppLoader from '@/components/ui/AppLoader';
 
 const IndicesBanner = dynamic(() => import('@/components/dashboard/IndicesBanner'), {
-    loading: () => <div className="h-12 bg-white/80 border-b border-gray-100 animate-pulse" />,
+    loading: () => <div className="h-12 bg-surface/80 border-b border-line animate-pulse" />,
 });
 const DashboardMarket = dynamic(() => import('@/components/dashboard/DashboardMarket'), {
-    loading: () => <div className="h-[620px] rounded-2xl bg-white border border-gray-100 shadow-[0_10px_24px_rgba(15,23,42,0.06)] animate-pulse" />,
+    loading: () => <div className="h-[620px] rounded-2xl bg-surface border border-line shadow-none animate-pulse" />,
 });
 const DashboardSidebar = dynamic(() => import('@/components/dashboard/DashboardSidebar'), {
-    loading: () => <div className="h-[620px] rounded-2xl bg-white border border-gray-100 shadow-[0_10px_24px_rgba(15,23,42,0.06)] animate-pulse" />,
+    loading: () => <div className="h-[620px] rounded-2xl bg-surface border border-line shadow-none animate-pulse" />,
 });
 
 export default function DashboardPage() {
@@ -37,15 +37,15 @@ export default function DashboardPage() {
         <div className="min-h-screen bg-transparent font-sans page-fade-in">
             <Header />
             <IndicesBanner />
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="lg:hidden mb-5"><PortfolioSummary /></div>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 xl:gap-8 stagger-children">
+                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-6">
                     {/* Main Content */}
-                    <div className="min-w-0 lg:col-span-2">
+                    <div className="min-w-0">
                         <DashboardMarket />
                     </div>
                     {/* Sidebar */}
-                    <div className="min-w-0 lg:col-span-1">
+                    <div className="min-w-0">
                         <DashboardSidebar />
                     </div>
                 </div>

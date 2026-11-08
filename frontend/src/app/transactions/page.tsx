@@ -6,20 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { usePortfolio } from '@/context/PortfolioContext';
 import Header from '@/components/dashboard/Header';
-import {
-    History,
-    Search,
-    ArrowUpRight,
-    ArrowDownRight,
-    RefreshCw,
-    Download,
-    ExternalLink,
-    Wallet,
-    TrendingUp,
-    TrendingDown,
-    Activity,
-    Zap
-} from 'lucide-react';
+import { History, Search, ArrowUpRight, ArrowDownRight, RefreshCw, Download, ExternalLink, TrendingUp, TrendingDown, Activity, Zap } from 'lucide-react';
 
 export default function TransactionsPage() {
     const { user, loading: authLoading } = useAuth();
@@ -95,15 +82,15 @@ export default function TransactionsPage() {
         <div className="min-h-screen bg-transparent font-sans page-fade-in pb-16">
             <Header />
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Header Title & Actions */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-7">
                     <div>
                         <div className="flex flex-wrap items-center gap-2 mb-1">
-                            <h1 className="text-[26px] font-bold text-ink-heading tracking-tight font-heading">
-                                Transaction History
+                            <h1 className="text-[28px] font-medium text-ink-heading font-heading">
+                                Transactions
                             </h1>
-                            <span className="whitespace-nowrap text-xs font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                            <span className="whitespace-nowrap text-xs font-medium px-2 py-0.5 rounded-lg bg-primary/10 text-primary border border-primary/20">
                                 {transactions.length} Records
                             </span>
                         </div>
@@ -116,15 +103,15 @@ export default function TransactionsPage() {
                         <button
                             onClick={handleManualRefresh}
                             disabled={isRefreshing}
-                            className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-3 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 border border-white/10 text-xs font-medium text-ink-muted hover:text-ink transition-all active:scale-95"
+                            className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-3 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 border border-white/10 text-xs font-medium text-ink-muted hover:text-ink transition-colors active:scale-[0.98]"
                         >
                             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
-                            Sync Ledger
+                            Refresh trades
                         </button>
                         {transactions.length > 0 && (
                             <button
                                 onClick={exportCSV}
-                                className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-3.5 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 border border-white/10 text-xs font-bold text-ink-heading transition-all active:scale-95 shadow-sm"
+                                className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-3.5 py-2 rounded-xl bg-surface-2 hover:bg-surface-3 border border-white/10 text-xs font-medium text-ink-heading transition-colors active:scale-[0.98] shadow-none"
                             >
                                 <Download className="w-3.5 h-3.5 text-primary" />
                                 Export CSV
@@ -132,7 +119,7 @@ export default function TransactionsPage() {
                         )}
                         <Link
                             href="/holdings"
-                            className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-primary text-[#003829] hover:brightness-110 transition-all shadow-[0_0_15px_rgba(51,201,221,0.25)]"
+                            className="inline-flex min-h-11 items-center whitespace-nowrap gap-1.5 px-4 py-2 rounded-xl text-xs font-medium bg-primary text-[var(--primary-ink)] hover:brightness-110 transition-colors shadow-none"
                         >
                             <Zap className="w-3.5 h-3.5" />
                             View Holdings
@@ -143,36 +130,36 @@ export default function TransactionsPage() {
                 {/* Ledger Metrics Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                     {/* Total Transactions */}
-                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-soft">
+                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-none">
                         <div className="flex items-center justify-between text-xs text-ink-faint mb-2">
-                            <span className="uppercase tracking-wider font-semibold text-[11px]">Total Executions</span>
+                            <span className="font-semibold text-xs">Total Executions</span>
                             <Activity className="w-4 h-4 text-primary" />
                         </div>
-                        <h2 className="text-[26px] font-bold text-ink-heading tabular-nums font-num">
+                        <h2 className="text-[28px] font-medium text-ink-heading tabular-nums font-num">
                             {transactions.length}
                         </h2>
                         <p className="text-xs text-ink-faint mt-1">Lifetime simulated orders</p>
                     </div>
 
-                    {/* Total Buy Volume */}
-                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-soft">
+                    {/* Total buy volume */}
+                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-none">
                         <div className="flex items-center justify-between text-xs text-ink-faint mb-2">
-                            <span className="uppercase tracking-wider font-semibold text-[11px]">Total Buy Volume</span>
+                            <span className="font-semibold text-xs">Total buy volume</span>
                             <TrendingUp className="w-4 h-4 text-up" />
                         </div>
-                        <h2 className="text-[26px] font-bold text-up tabular-nums font-num">
+                        <h2 className="text-[28px] font-medium text-up tabular-nums font-num">
                             ₹{fmt(totalBuyVolume)}
                         </h2>
                         <p className="text-xs text-ink-faint mt-1">Capital invested in equities</p>
                     </div>
 
                     {/* Total Sell Volume */}
-                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-soft">
+                    <div className="rounded-2xl p-5 bg-surface border border-white/10 shadow-none">
                         <div className="flex items-center justify-between text-xs text-ink-faint mb-2">
-                            <span className="uppercase tracking-wider font-semibold text-[11px]">Total Sell Realized</span>
+                            <span className="font-semibold text-xs">Total sell realised</span>
                             <TrendingDown className="w-4 h-4 text-down" />
                         </div>
-                        <h2 className="text-[26px] font-bold text-ink-heading tabular-nums font-num">
+                        <h2 className="text-[28px] font-medium text-ink-heading tabular-nums font-num">
                             ₹{fmt(totalSellVolume)}
                         </h2>
                         <p className="text-xs text-ink-faint mt-1">Liquidated proceeds</p>
@@ -181,24 +168,24 @@ export default function TransactionsPage() {
 
                 {/* Ledger Table Section */}
                 {transactions.length === 0 ? (
-                    <div className="rounded-2xl border border-white/10 bg-surface p-14 text-center shadow-soft">
+                    <div className="rounded-2xl border border-white/10 bg-surface p-14 text-center shadow-none">
                         <div className="w-16 h-16 bg-surface-2 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
                             <History className="w-8 h-8 text-ink-faint" />
                         </div>
-                        <h3 className="text-base font-bold text-ink-heading mb-2">No Transactions Yet</h3>
+                        <h3 className="text-base font-medium text-ink-heading mb-2">No Transactions Yet</h3>
                         <p className="text-ink-faint text-sm max-w-sm mx-auto mb-6">
                             Every time a buy or sell trade is filled, a permanent immutable record is saved to your ledger.
                         </p>
                         <Link
                             href="/dashboard"
-                            className="inline-flex px-6 py-2.5 text-[#003829] rounded-xl font-bold text-sm transition-all shadow-[0_0_20px_rgba(51,201,221,0.3)]"
-                            style={{ background: 'linear-gradient(135deg, #33c9dd, #22a9bc)' }}
+                            className="inline-flex px-6 py-2.5 text-[var(--primary-ink)] rounded-xl font-medium text-sm transition-colors shadow-none"
+                            style={{ background: 'var(--primary)', color: 'var(--primary-ink)' }}
                         >
                             Make Your First Trade
                         </Link>
                     </div>
                 ) : (
-                    <div className="bg-surface rounded-2xl border border-white/10 shadow-soft overflow-hidden">
+                    <div className="bg-surface rounded-2xl border border-white/10 shadow-none overflow-hidden">
                         {/* Filter Toolbar */}
                         <div className="p-4 sm:p-5 border-b border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             {/* Search */}
@@ -226,9 +213,9 @@ export default function TransactionsPage() {
                                         key={t.key}
                                         type="button"
                                         onClick={() => setSideFilter(t.key)}
-                                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
                                             sideFilter === t.key
-                                                ? 'bg-primary text-[#003829] shadow-sm'
+                                                ? 'bg-primary text-[var(--primary-ink)] shadow-none'
                                                 : 'text-ink-faint hover:text-ink'
                                         }`}
                                     >
@@ -242,7 +229,7 @@ export default function TransactionsPage() {
                         <div className="overflow-x-auto overscroll-x-contain">
                             <table className="w-full min-w-[700px] text-left">
                                 <thead>
-                                    <tr className="bg-surface-2/60 text-[10px] font-bold text-ink-faint uppercase tracking-wider border-b border-white/10">
+                                    <tr className="bg-surface-2/60 text-xs font-medium text-ink-faint border-b border-white/10">
                                         <th className="px-6 py-3.5">Date & Time</th>
                                         <th className="px-6 py-3.5">Type</th>
                                         <th className="px-6 py-3.5">Symbol</th>
@@ -268,7 +255,7 @@ export default function TransactionsPage() {
                                                     <p className="font-semibold text-ink">
                                                         {date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                                     </p>
-                                                    <p className="text-[10px] text-ink-faint">
+                                                    <p className="text-xs text-ink-faint">
                                                         {date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                     </p>
                                                 </td>
@@ -276,7 +263,7 @@ export default function TransactionsPage() {
                                                 {/* Type */}
                                                 <td className="px-6 py-4">
                                                     <span
-                                                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${
+                                                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium   border ${
                                                             isBuy
                                                                 ? 'bg-up/10 text-up border-up/20'
                                                                 : 'bg-down/10 text-down border-down/20'
@@ -292,10 +279,10 @@ export default function TransactionsPage() {
                                                     <div className="flex items-center gap-2.5">
                                                         <CompanyLogo symbol={cleanSymbol} className="h-8 w-8" />
                                                         <div>
-                                                            <p className="text-sm font-bold text-ink-heading">
+                                                            <p className="text-sm font-medium text-ink-heading">
                                                                 {cleanSymbol}
                                                             </p>
-                                                            <p className="text-[10px] text-ink-faint font-mono">
+                                                            <p className="text-xs text-ink-faint font-mono">
                                                                 ID: {txn.id.slice(-6)}
                                                             </p>
                                                         </div>
@@ -313,7 +300,7 @@ export default function TransactionsPage() {
                                                 </td>
 
                                                 {/* Total Value */}
-                                                <td className="px-6 py-4 text-right text-sm font-bold text-ink-heading tabular-nums font-num">
+                                                <td className="px-6 py-4 text-right text-sm font-medium text-ink-heading tabular-nums font-num">
                                                     ₹{fmt(txn.totalAmount || txn.price * txn.quantity)}
                                                 </td>
 
@@ -321,7 +308,7 @@ export default function TransactionsPage() {
                                                 <td className="px-6 py-4 text-center">
                                                     <Link
                                                         href={`/stock/${cleanSymbol}`}
-                                                        className="px-2.5 py-1 text-xs font-bold rounded-lg bg-surface-2 hover:bg-primary hover:text-[#003829] border border-white/10 transition-all text-ink-muted inline-flex items-center gap-1"
+                                                        className="px-2.5 py-1 text-xs font-medium rounded-lg bg-surface-2 hover:bg-primary hover:text-[var(--primary-ink)] border border-white/10 transition-colors text-ink-muted inline-flex items-center gap-1"
                                                     >
                                                         <span>Trade</span>
                                                         <ExternalLink className="w-3 h-3" />

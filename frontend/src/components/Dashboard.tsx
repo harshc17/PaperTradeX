@@ -18,16 +18,16 @@ export default function Dashboard({ balance, holdings, marketData }: any) {
     }, [holdings, marketData]);
 
     return (
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-            <h2 className="text-lg font-semibold mb-4">You have <span className="text-gray-500 ml-2 text-sm">₹{balance.toFixed(2)} available</span></h2>
+        <div className="bg-surface p-6 rounded-lg shadow-none border border-line">
+            <h2 className="text-lg font-semibold mb-4">You have <span className="text-ink-muted ml-2 text-sm">₹{balance.toFixed(2)} available</span></h2>
             <div className="flex gap-12 mb-8">
                 <div>
-                    <p className="text-sm text-gray-500 mb-1">Current Value</p>
-                    <h3 className="text-3xl font-bold">₹{totalValue.toFixed(2)}</h3>
+                    <p className="text-sm text-ink-muted mb-1">Current value</p>
+                    <h3 className="text-3xl font-medium">₹{totalValue.toFixed(2)}</h3>
                 </div>
                 <div>
-                    <p className="text-sm text-gray-500 mb-1">Total Returns</p>
-                    <h3 className={`text-3xl font-bold ${todaysGain >= 0 ? 'text-primary' : 'text-red-500'}`}>
+                    <p className="text-sm text-ink-muted mb-1">Total returns</p>
+                    <h3 className={`text-3xl font-medium ${todaysGain >= 0 ? 'text-primary' : 'text-red-500'}`}>
                         {todaysGain >= 0 ? '+' : ''}₹{Math.abs(todaysGain).toFixed(2)}
                     </h3>
                 </div>
@@ -42,7 +42,7 @@ export default function Dashboard({ balance, holdings, marketData }: any) {
                         <div key={item.symbol} className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0">
                             <div>
                                 <p className="font-semibold">{item.symbol}</p>
-                                <p className="text-xs text-gray-500">{item.quantity} shares • Avg ₹{item.averagePrice.toFixed(2)}</p>
+                                <p className="text-xs text-ink-muted">{item.quantity} shares • Avg ₹{item.averagePrice.toFixed(2)}</p>
                             </div>
                             <div className="text-right">
                                 <p className="font-medium">₹{(price * item.quantity).toFixed(2)}</p>

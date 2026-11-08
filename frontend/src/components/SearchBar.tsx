@@ -68,10 +68,10 @@ export default function SearchBar() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search stocks, ETFs, mutual funds..."
-                className="w-full px-4 py-2 pl-10 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 pl-10 border border-gray-300 dark:border-line rounded-lg bg-surface dark:bg-surface-2 text-ink dark:text-ink focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <svg
-                className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
+                className="absolute left-3 top-2.5 h-5 w-5 text-ink-faint"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -80,23 +80,23 @@ export default function SearchBar() {
             </svg>
 
             {showResults && (results.length > 0 || loading) && (
-                <div className="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-96 overflow-y-auto">
+                <div className="absolute z-50 w-full mt-2 bg-surface dark:bg-surface-2 border border-line dark:border-line rounded-lg shadow-none max-h-96 overflow-y-auto">
                     {loading ? (
-                        <div className="p-4 text-center text-gray-500">Searching...</div>
+                        <div className="p-4 text-center text-ink-muted">Searching...</div>
                     ) : results.length > 0 ? (
                         <div className="py-2">
                             {results.slice(0, 10).map((result, idx) => (
                                 <button
                                     key={idx}
                                     onClick={() => handleSelect(result.symbol)}
-                                    className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-0"
+                                    className="w-full px-4 py-3 text-left hover:bg-surface-2 dark:hover:bg-gray-700 transition-colors border-b border-line dark:border-line last:border-0"
                                 >
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+                                            <p className="font-semibold text-sm text-ink dark:text-ink">
                                                 {result.symbol}
                                             </p>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                            <p className="text-xs text-ink-muted dark:text-ink-faint">
                                                 {result.shortname || result.symbol}
                                             </p>
                                         </div>
@@ -110,7 +110,7 @@ export default function SearchBar() {
                             ))}
                         </div>
                     ) : (
-                        <div className="p-4 text-center text-gray-500">No results found</div>
+                        <div className="p-4 text-center text-ink-muted">No results found</div>
                     )}
                 </div>
             )}

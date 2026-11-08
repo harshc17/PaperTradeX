@@ -23,7 +23,7 @@ export default function StockCard({ name, symbol, price, change, isPositive, log
 
     return (
         <div
-            className="terminal-card p-4 hover:shadow-glow hover:-translate-y-1 transition-all duration-200 cursor-pointer group relative"
+            className="terminal-card p-4 hover:shadow-none transition-colors duration-200 cursor-pointer group relative"
             onClick={() => router.push(`/stock/${encodeURIComponent(symbol)}`)}
         >
             <button onClick={handleBuy}
@@ -34,7 +34,7 @@ export default function StockCard({ name, symbol, price, change, isPositive, log
             <CompanyLogo symbol={symbol} className="h-10 w-10 mb-4" />
             <div className="space-y-1">
                 <h3 className="text-sm font-medium text-ink truncate pr-6" title={name}>{name}</h3>
-                <p className="text-xl font-bold text-ink-heading tabular-nums font-num">₹{price}</p>
+                <p className="text-xl font-medium text-ink-heading tabular-nums font-num">₹{price}</p>
                 <div className={`text-xs font-semibold tabular-nums font-num ${isPositive ? 'text-up' : 'text-down'}`}>
                     {change}
                 </div>

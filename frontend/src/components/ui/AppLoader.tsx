@@ -9,7 +9,7 @@ export default function AppLoader({ label = 'Loading PaperTradeX' }: { label?: s
                     <div className="loader-ring" />
                     <BrandIcon className="loader-tile absolute inset-0 h-full w-full" />
                 </div>
-                <p className="text-ink-muted text-sm font-medium tracking-tight mb-2">{label}</p>
+                <p className="text-ink-muted text-sm font-medium mb-2">{label}</p>
                 <div className="loader-dots" aria-hidden="true">
                     <span /><span /><span />
                 </div>

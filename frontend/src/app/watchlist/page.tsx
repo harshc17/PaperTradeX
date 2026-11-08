@@ -89,17 +89,17 @@ function WatchlistContent() {
                     <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
                         <Star className="w-4 h-4 text-primary" />
                     </div>
-                    <h1 className="text-[24px] font-bold text-ink-heading font-heading">My Watchlist</h1>
+                    <h1 className="text-[24px] font-medium text-ink-heading font-heading">Watchlist</h1>
                 </div>
 
                 {/* Add stock */}
                 <div className="terminal-card p-5 mb-5 relative">
-                    <label className="block text-[11px] font-bold text-ink-faint uppercase tracking-widest mb-2">Add a stock</label>
+                    <label className="block text-xs font-medium text-ink-faint mb-2">Add a stock</label>
                     <input type="text" value={addInput} onChange={e => setAddInput(e.target.value)}
                         placeholder="Search by name or symbol (e.g. HDFC, Infosys)"
-                        className="w-full px-4 py-2.5 border border-white/10 rounded-xl text-sm text-ink placeholder-[#5c6675] bg-surface-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" />
+                        className="w-full px-4 py-2.5 border border-white/10 rounded-xl text-sm text-ink placeholder-[var(--text-faint)] bg-surface-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors" />
                     {searchResults.length > 0 && (
-                        <div className="absolute top-full left-5 right-5 mt-1 bg-surface rounded-xl shadow-xl border border-white/10 overflow-hidden z-50">
+                        <div className="absolute top-full left-5 right-5 mt-1 bg-surface rounded-xl shadow-none border border-white/10 overflow-hidden z-50">
                             {searchResults.map((r: any, i) => (
                                 <div key={`${r.symbol}-${i}`}
                                     className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-surface-3 cursor-pointer border-b border-white/10/50 last:border-0 transition-colors"
@@ -121,7 +121,7 @@ function WatchlistContent() {
                 </div>
 
                 {/* Watchlist */}
-                <div className="bg-surface rounded-[14px] border border-white/10 overflow-hidden shadow-soft">
+                <div className="bg-surface rounded-2xl border border-white/10 overflow-hidden shadow-none">
                     {watchlist.length === 0 ? (
                         <div className="p-14 text-center">
                             <div className="w-16 h-16 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -152,13 +152,13 @@ function WatchlistContent() {
                                             {q ? (
                                                 <>
                                                     <div className="text-right">
-                                                        <p className="text-sm font-bold text-ink-heading tabular-nums font-num">₹{fmt(q.price)}</p>
+                                                        <p className="text-sm font-medium text-ink-heading tabular-nums font-num">₹{fmt(q.price)}</p>
                                                         <div className={`flex items-center gap-1 justify-end text-xs font-semibold tabular-nums font-num ${isUp ? 'text-up' : 'text-down'}`}>
                                                             {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                                             {isUp ? '+' : ''}{q.dayChange.toFixed(2)}%
                                                         </div>
                                                     </div>
-                                                    <span className={`text-xs font-bold px-2 py-1 rounded-lg tabular-nums font-num border ${isUp ? 'bg-up/10 text-up border-up/20' : 'bg-down/10 text-down border-down/20'}`}>
+                                                    <span className={`text-xs font-medium px-2 py-1 rounded-lg tabular-nums font-num border ${isUp ? 'bg-up/10 text-up border-up/20' : 'bg-down/10 text-down border-down/20'}`}>
                                                         {isUp ? '+' : ''}{q.change.toFixed(2)}
                                                     </span>
                                                 </>
@@ -167,7 +167,7 @@ function WatchlistContent() {
                                             )}
                                             <button onClick={() => removeFromWatchlist(item.symbol)}
                                                 aria-label={`Remove ${item.symbol} from watchlist`}
-                                                className="shrink-0 min-h-11 min-w-11 grid place-items-center p-1.5 rounded-lg text-ink-muted hover:text-down hover:bg-down/10 opacity-100 transition-all">
+                                                className="shrink-0 min-h-11 min-w-11 grid place-items-center p-1.5 rounded-lg text-ink-muted hover:text-down hover:bg-down/10 opacity-100 transition-colors">
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
                                         </div>

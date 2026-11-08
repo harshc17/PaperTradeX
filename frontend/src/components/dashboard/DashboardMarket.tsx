@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getSocket } from '@/lib/socket';
 import { API_URL } from '@/lib/config';
+import { usePortfolio } from '@/context/PortfolioContext';
 import { TrendingUp, TrendingDown, ArrowUpRight, Loader2 } from 'lucide-react';
 import MarketMovers from './MarketMovers';
 import DashboardNews from './DashboardNews';
@@ -46,6 +47,7 @@ function resolveQuote(quotes: Record<string, QuoteData>, symbol: string): QuoteD
 
 export default function DashboardMarket() {
     const router = useRouter();
+    const { marketStatus } = usePortfolio();
     const [showAllStocks, setShowAllStocks] = useState(false);
     const [openingSymbol, setOpeningSymbol] = useState<string | null>(null);
     const [isNavigating, startNavigation] = useTransition();
@@ -133,12 +135,12 @@ export default function DashboardMarket() {
         <div className="space-y-8">
             {/* Market Indices */}
             <section>
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-[16px] font-semibold text-ink-heading font-heading">Market Overview</h2>
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <h2 className="text-base font-medium text-ink-heading">Market overview</h2>
                     {lastUpdated && (
                         <div className="flex items-center gap-2 text-xs text-ink-faint">
-                            <span className="live-dot w-1.5 h-1.5 bg-up rounded-full" />
-                            Live · {lastUpdated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            <span className={`w-1.5 h-1.5 rounded-full ${marketStatus?.isOpen ? 'bg-up' : 'bg-ink-faint'}`} />
+                            <span>{marketStatus ? (marketStatus.isOpen ? 'NSE open' : 'NSE closed') : 'Market snapshot'} · Updated {lastUpdated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })} IST</span>
                         </div>
                     )}
                 </div>
@@ -149,11 +151,11 @@ export default function DashboardMarket() {
                         return (
                             <Link href={`/stock/${encodeURIComponent(sym)}`} key={sym} className="block group">
                                 <div className="card-interactive terminal-card p-4 h-full cursor-pointer flex flex-col justify-center">
-                                    <p className="text-[10px] font-bold text-ink-faint uppercase tracking-widest mb-2 group-hover:text-primary transition-colors">{INDEX_LABELS[sym]}</p>
+                                    <p className="text-xs font-medium text-ink-faint mb-2 group-hover:text-primary transition-colors">{INDEX_LABELS[sym]}</p>
                                     {q ? (
                                         <>
-                                            <p className="text-[19px] font-bold text-ink-heading tracking-tight tabular-nums font-num">{fmt(q.price)}</p>
-                                            <div className={`flex items-center gap-1 mt-1 text-[11px] font-semibold tabular-nums font-num ${isUp ? 'text-up' : 'text-down'}`}>
+                                            <p className="text-lg sm:text-xl font-medium text-ink-heading tabular-nums font-num">{fmt(q.price)}</p>
+                                            <div className={`flex flex-wrap items-center gap-1 mt-2 text-xs font-normal tabular-nums font-num ${isUp ? 'text-up' : 'text-down'}`}>
                                                 {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                                 {isUp ? '+' : ''}{fmt(q.change)} ({isUp ? '+' : ''}{q.dayChange.toFixed(2)}%)
                                             </div>
@@ -174,14 +176,14 @@ export default function DashboardMarket() {
             {/* Top Stocks */}
             <section>
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-[16px] font-semibold text-ink-heading font-heading">Top Stocks</h2>
+                    <h2 className="text-base font-medium text-ink-heading">Top stocks</h2>
                     <button type="button" aria-expanded={showAllStocks} aria-controls="top-stocks-list" onClick={() => setShowAllStocks(v => !v)} className="lg:hidden min-h-11 text-[12px] text-primary hover:underline font-medium">{showAllStocks ? 'Show fewer' : 'View all 10'}</button>
                 </div>
-                <div className="bg-surface rounded-[14px] border border-white/10 overflow-hidden shadow-soft">
-                    <div className="hidden sm:grid grid-cols-12 gap-2 px-3 sm:px-5 py-3 bg-surface-2 border-b border-white/10 text-[10px] font-bold text-ink-faint uppercase tracking-widest">
+                <div className="bg-surface rounded-2xl border border-white/10 overflow-hidden shadow-none">
+                    <div className="hidden sm:grid grid-cols-12 gap-2 px-3 sm:px-5 py-3 bg-surface-2 border-b border-white/10 text-xs font-medium text-ink-faint">
                         <div className="col-span-5">Company</div>
                         <div className="col-span-5 sm:col-span-3 text-right">Price</div>
-                        <div className="col-span-2 text-right">Change</div>
+                        <div className="col-span-2 text-right" title="Compared with the previous market close">Day change</div>
                         <div className="col-span-2 text-right">Action</div>
                     </div>
                     <div id="top-stocks-list" className="divide-y divide-[#222c3a]/60">
@@ -197,16 +199,16 @@ export default function DashboardMarket() {
                                         <CompanyLogo symbol={stock.symbol} className="h-8 w-8 sm:h-9 sm:w-9" />
                                         <div className="min-w-0">
                                             <p className="truncate text-xs sm:text-sm font-semibold text-ink group-hover:text-primary transition-colors" title={stock.name}>{stock.name}</p>
-                                            <p className="text-[11px] text-ink-faint">{stock.symbol.replace('.NS', '')} · NSE</p>
+                                            <p className="text-xs text-ink-faint">{stock.symbol.replace('.NS', '')} · NSE</p>
                                         </div>
                                     </div>
                                     <div className="col-span-3 text-right">
-                                        {q ? <p className="text-xs sm:text-sm whitespace-nowrap font-bold text-ink-heading tabular-nums font-num">₹{fmt(q.price)}</p>
+                                        {q ? <p className="text-xs sm:text-sm whitespace-nowrap font-medium text-ink-heading tabular-nums font-num">₹{fmt(q.price)}</p>
                                             : <div className="w-16 h-4 shimmer rounded ml-auto" />}
                                     </div>
                                     <div className="col-span-7 sm:col-span-2 text-left sm:text-right">
                                         {q ? (
-                                            <span className={`text-[10px] sm:text-xs font-bold px-1 sm:px-2 py-1 rounded-lg tabular-nums font-num ${isUp ? 'text-up bg-up/10 border border-up/20' : 'text-down bg-down/10 border border-down/20'}`}>
+                                            <span className={`text-xs sm:text-xs font-medium px-1 sm:px-2 py-1 rounded-lg tabular-nums font-num ${isUp ? 'text-up bg-up/10 border border-up/20' : 'text-down bg-down/10 border border-down/20'}`}>
                                                 {isUp ? '+' : ''}{q.dayChange.toFixed(2)}%
                                             </span>
                                         ) : <div className="w-12 h-5 shimmer rounded ml-auto" />}
@@ -218,8 +220,8 @@ export default function DashboardMarket() {
                                             disabled={isNavigating}
                                             aria-label={`Buy ${stock.name}`}
                                             aria-busy={isNavigating && openingSymbol === stock.symbol}
-                                            className="min-h-11 min-w-11 inline-flex items-center justify-center gap-1.5 px-2 sm:px-2 py-2 text-xs font-bold text-[#003829] rounded-lg transition-all duration-150 hover:brightness-110 hover:shadow-[0_0_16px_rgba(51,201,221,0.35)] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60 disabled:cursor-wait"
-                                            style={{ background: 'linear-gradient(135deg, #33c9dd, #22a9bc)' }}>
+                                            className="min-h-11 min-w-11 inline-flex items-center justify-center gap-1.5 px-2 sm:px-2 py-2 text-xs font-medium text-[var(--primary-ink)] rounded-lg transition-colors duration-150 hover:brightness-110 shadow-none active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60 disabled:cursor-wait"
+                                            style={{ background: 'var(--surface-2)', color: 'var(--text-main)', border: '1px solid var(--surface-border-strong)' }}>
                                             {isNavigating && openingSymbol === stock.symbol ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /><span className="sm:sr-only">Opening…</span></> : <><span>Buy</span><ArrowUpRight className="w-3.5 h-3.5" /></>}
                                         </button>
                                     </div>
