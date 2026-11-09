@@ -219,10 +219,10 @@ export default function Header() {
             style={{ background: 'var(--surface)' }}>
 
             {/* Top row */}
-            <div className="flex items-center justify-between flex-wrap xl:flex-nowrap px-3 sm:px-4 lg:px-6 py-3 gap-3">
+            <div className="mx-auto w-full max-w-[1280px] flex items-center justify-between flex-wrap xl:flex-nowrap px-4 sm:px-6 lg:px-8 py-4 gap-4">
                 {/* Logo */}
                 <Link href="/dashboard" className="flex items-center gap-2.5 flex-shrink-0 group">
-                    <BrandLogo compact className="text-[28px]" />
+                    <BrandLogo compact className="text-[24px]" />
                 </Link>
 
                 {/* Search */}
@@ -236,7 +236,7 @@ export default function Header() {
                             onChange={e => setSearchQuery(e.target.value)}
                             onFocus={() => setShowResults(true)}
                             placeholder="Search stocks, ETFs, indices..."
-                            className="w-full pl-10 pr-10 py-2.5 border border-line rounded-xl bg-surface text-ink placeholder-[var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-sm"
+                            className="w-full pl-10 pr-10 py-3 border border-transparent rounded-xl bg-surface-2 text-ink placeholder-[var(--text-faint)] focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-sm"
                         />
                         {searchQuery && (
                             <button onClick={() => { setSearchQuery(''); setSearchResults([]); }}
@@ -329,7 +329,7 @@ export default function Header() {
                         </div>
                     )}
 
-                    <button className="relative text-ink-faint hover:text-ink-muted p-2 rounded-lg hover:bg-surface-3 transition-colors">
+                    <button aria-label="Notifications" className="relative text-ink-faint hover:text-ink-muted p-2 rounded-lg hover:bg-surface-3 transition-colors">
                         <Bell className="h-5 w-5" />
                         <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-down rounded-full ring-2 ring-[var(--bg)]" />
                     </button>
@@ -543,7 +543,7 @@ export default function Header() {
             )}
 
             {/* Bottom nav */}
-            <nav aria-label="Main navigation" className="px-4 lg:px-6 border-t border-line">
+            <nav aria-label="Main navigation" className="mx-auto w-full max-w-[1280px] px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center gap-3 sm:hidden">
                 <button type="button" aria-expanded={showMobileNav} aria-controls="mobile-navigation" onClick={() => setShowMobileNav(v => !v)} className="flex min-h-11 min-w-0 flex-1 items-center justify-between text-sm text-ink">
                     <span>{navItems.find(item => pathname === item.href)?.name || 'Navigation'}</span>
@@ -554,13 +554,13 @@ export default function Header() {
                 {showMobileNav && <div id="mobile-navigation" className="grid grid-cols-2 gap-1 border-t border-line py-2 sm:hidden">
                     {navItems.map(item => <Link key={item.href} href={item.href} onClick={() => setShowMobileNav(false)} aria-current={pathname === item.href ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm transition-colors ${pathname === item.href ? 'bg-surface-2 text-primary' : 'text-ink-muted hover:bg-surface-2 hover:text-ink'}`}>{item.name}</Link>)}
                 </div>}
-                <div className="hidden sm:flex items-center gap-1 overflow-x-auto no-scrollbar">
+                <div className="hidden sm:flex items-center gap-5 overflow-x-auto no-scrollbar">
                     {navItems.map(item => {
                         const isActive = pathname === item.href;
                         return (
                             <Link key={item.name} href={item.href}
                                 aria-current={isActive ? 'page' : undefined}
-                                className={`relative text-sm font-medium whitespace-nowrap px-3 py-3 transition-colors ${
+                                className={`relative text-sm font-semibold whitespace-nowrap px-1 py-4 transition-colors ${
                                     isActive ? 'text-primary' : 'text-ink-faint hover:text-ink-muted'
                                 }`}>
                                 {item.name}

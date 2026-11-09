@@ -95,7 +95,7 @@ export default function AuthPage() {
     return (
         <div className="min-h-[100svh] min-w-0 flex font-sans bg-[var(--bg)]">
             {/* Practice account preview */}
-            <section className="auth-intro-panel hidden lg:flex lg:w-[48%] xl:w-[52%] flex-col justify-between gap-12 border-r border-line bg-surface p-8 xl:p-16">
+            <section className="auth-intro-panel hidden lg:flex lg:w-[48%] xl:w-[52%] flex-col justify-between gap-12 border-r border-line bg-surface-2 p-8 xl:p-16">
                 <BrandLogo className="text-[32px]" />
                 <div className="max-w-lg">
                     <p className="mb-4 text-sm text-ink-muted">NSE / BSE · Paper trading</p>
@@ -187,7 +187,7 @@ export default function AuthPage() {
                         </>}
                         <button type="submit" id="auth-submit-btn" disabled={loading}
                             className="min-h-12 w-full px-3 py-3.5 text-sm font-medium rounded-xl transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group mt-2 text-[var(--primary-ink)]"
-                            style={{ background: 'var(--text-main)', color: 'var(--bg)' }}>
+                            style={{ background: 'var(--primary)', color: 'var(--primary-ink)' }}>
                             {loading ? (
                                 <span className="flex items-center gap-2">
                                     <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">

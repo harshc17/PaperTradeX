@@ -54,12 +54,12 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1 } = {})
                 cache = { RELIANCE: { price: 1300 } };
                 startPolling() { polling = true; }
             };
-            if (name === './services/NSEClient') return { constructor: { isMarketHours: () => true } };
+            if (name === './services/NSEClient') return { getMarketStatus: () => ({ isOpen: false }), constructor: { isMarketHours: () => true, HOLIDAYS: {} } };
             if (name === './services/TradeEngine') return {
                 assertMarketOpen() {},
                 executeTrade: async (user, type, symbol, quantity, price) => ({ success: true, price }),
             };
-            if (name === './services/PasswordReset' || name === './services/SignupVerification') return realRequire(name);
+            if (['./services/PasswordReset', './services/SignupVerification', './services/ReturnSession'].includes(name)) return realRequire(name);
             if (name.startsWith('./services/')) return {};
             return realRequire(name);
         },
@@ -75,6 +75,8 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1 } = {})
 test('health follows database readiness; API and Socket.IO enforce frontend origin', async t => {
     const app = await boot(t);
     assert.equal(app.polling, true);
+    const marketStatus = await fetch(app.url + '/api/market-status').then(r => r.json());
+    assert.match(marketStatus.returnSessionDate, /^\d{4}-\d{2}-\d{2}$/);
     const origin = 'https://papertradex.vercel.app';
     for (const endpoint of ['/health', '/socket.io/?EIO=4&transport=polling']) {
         const allowed = await fetch(app.url + endpoint, { headers: { Origin: origin } });

@@ -213,10 +213,10 @@ export default function StockChart({ symbol }: { symbol: string }) {
     const isPositive = priceChange >= 0;
 
     const light = theme === 'light';
-    const color = isPositive ? (light ? '#157a50' : '#62c39e') : (light ? '#b93e3a' : '#ed9b96');
-    const lineRgb = isPositive ? (light ? '21,122,80' : '98,195,158') : (light ? '185,62,58' : '237,155,150');
+    const color = isPositive ? (light ? '#007b5e' : '#4cc9a4') : (light ? '#ca394b' : '#ff8b90');
+    const lineRgb = isPositive ? (light ? '0,123,94' : '76,201,164') : (light ? '202,57,75' : '255,139,144');
     const colorBg = `rgba(${lineRgb},0.10)`;
-    const axisColor = light ? '#64646e' : '#909097';
+    const axisColor = light ? '#6d7485' : '#97a1ad';
 
     const labels = displayHistory.map(h => formatLabel(h.date, activePeriod.fmt));
     const closes = displayHistory.map(h => h.close);
@@ -275,11 +275,11 @@ export default function StockChart({ symbol }: { symbol: string }) {
         plugins: {
             legend: { display: false },
             tooltip: {
-                backgroundColor: light ? '#ffffff' : '#232325',
-                titleColor: light ? '#52525b' : '#b1b1b7',
-                bodyColor: light ? '#171717' : '#ededed',
+                backgroundColor: light ? '#ffffff' : '#22272c',
+                titleColor: light ? '#61697b' : '#b2bbc5',
+                bodyColor: light ? '#363b4d' : '#eef2f6',
                 padding: 14,
-                borderColor: light ? '#d4d4d8' : '#3b3b40',
+                borderColor: light ? '#e8e9ec' : '#3d454e',
                 borderWidth: 1,
                 cornerRadius: 10,
                 displayColors: false,

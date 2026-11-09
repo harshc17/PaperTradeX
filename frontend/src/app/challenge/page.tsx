@@ -368,16 +368,16 @@ export default function ChallengePage() {
                             <div className="relative z-10 max-w-3xl">
                                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-medium mb-5">
                                     <Trophy className="w-3.5 h-3.5" />
-                                    7-Day Trading Sprint
+                                    Weekly paper trading challenge
                                 </div>
 
-                                <h1 className="text-2xl sm:text-5xl font-medium text-ink-heading leading-[1.15] mb-4">
-                                    Turn <span className="text-primary font-num">₹10,000</span> into <span className="text-up font-num">₹15,000</span> in 7 Days
+                                <h1 className="text-2xl sm:text-4xl font-medium text-ink-heading leading-[1.2] mb-4">
+                                    Start with <span className="text-primary font-num">₹10,000</span>. Aim for <span className="text-up font-num">₹15,000</span> in 7 days.
                                 </h1>
 
                                 <p className="text-base sm:text-lg text-ink-muted leading-relaxed mb-8">
-                                    Put your trading skills to the ultimate test against authentic, live Indian stock market movements.
-                                    Trade with a dedicated virtual challenge wallet — zero risk to your main portfolio.
+                                    Test a strategy with a separate virtual wallet and tracked market prices.
+                                    Your main paper portfolio stays separate. The target is a practice goal, not a guaranteed return.
                                 </p>
 
                                 <div className="flex flex-wrap items-center gap-4">
@@ -429,8 +429,8 @@ export default function ChallengePage() {
 
                         {/* Rules Blueprint */}
                         <div className="rounded-3xl bg-surface border border-line p-8 shadow-none">
-                            <h2 className="text-xl font-medium text-ink-heading mb-2">Challenge Rules & Guidelines</h2>
-                            <p className="text-sm text-ink-muted mb-6">Designed to simulate real institutional swing trading conditions:</p>
+                            <h2 className="text-xl font-medium text-ink-heading mb-2">How the challenge works</h2>
+                            <p className="text-sm text-ink-muted mb-6">Seven calendar days, a separate virtual balance, and orders during market hours.</p>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="p-5 rounded-2xl bg-surface-2 border border-line flex gap-4 items-start">

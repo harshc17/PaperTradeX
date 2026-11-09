@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import Link from 'next/link';
 import { getSocket } from '@/lib/socket';
+import { API_URL } from '@/lib/config';
 
 const INDICES = [
     { symbol: '^NSEI',       label: 'NIFTY 50'   },
@@ -31,7 +32,7 @@ export default function IndicesBanner() {
         s.on('price_tick', onPriceTick);
 
         const fetchIndices = () =>
-            fetch('http://localhost:3001/api/indices').then(r => r.ok ? r.json() : null)
+            fetch(`${API_URL}/api/indices`).then(r => r.ok ? r.json() : null)
                 .then(data => {
                     if (!data) return;
                     setQuotes(prev => {

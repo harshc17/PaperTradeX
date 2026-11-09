@@ -12,7 +12,7 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-    const [theme, updateTheme] = useState<Theme>('dark');
+    const [theme, updateTheme] = useState<Theme>('light');
 
     useEffect(() => {
         // The head script applies the saved theme before the page paints.
@@ -20,7 +20,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         updateTheme(initial);
         const sync = (event: StorageEvent) => {
             if (event.key !== THEME_KEY) return;
-            const next = event.newValue === 'light' ? 'light' : 'dark';
+            const next = event.newValue === 'dark' ? 'dark' : 'light';
             applyTheme(next);
             updateTheme(next);
         };

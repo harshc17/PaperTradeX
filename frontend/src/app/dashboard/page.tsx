@@ -37,9 +37,9 @@ export default function DashboardPage() {
         <div className="min-h-screen bg-transparent font-sans page-fade-in">
             <Header />
             <IndicesBanner />
-            <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="lg:hidden mb-5"><PortfolioSummary /></div>
-                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6 xl:gap-10">
                     {/* Main Content */}
                     <div className="min-w-0">
                         <DashboardMarket />

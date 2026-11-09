@@ -218,7 +218,7 @@ export default function StockScreenerPage() {
         <div className="min-h-screen bg-transparent font-sans page-fade-in">
             <Header />
 
-            <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
                     <div>
                         <h1 className="text-[28px] font-semibold text-ink-heading font-heading">Stock screener</h1>

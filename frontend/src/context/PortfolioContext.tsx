@@ -1,8 +1,9 @@
 'use client';
-import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { getSocket } from '@/lib/socket';
 import { API_URL as API } from '@/lib/config';
 import { useAuth } from './AuthContext';
+import { calculateDailyReturn } from '@/lib/dailyReturn';
 
 function normalizeSymbol(symbol: string) {
     return symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
@@ -19,6 +20,7 @@ export interface PortfolioItem {
     dayChange?: number;
     dayPnl?: number;
     dayPnlPercent?: number;
+    dayPnlReady?: boolean;
 }
 
 interface Order {
@@ -45,6 +47,7 @@ export interface Transaction {
 }
 
 export interface MarketStatusInfo {
+    returnSessionDate?: string;
     isOpen: boolean;
     session: 'REGULAR' | 'PRE_MARKET' | 'POST_MARKET' | 'CLOSED';
     sessionName: string;
@@ -72,6 +75,7 @@ interface PortfolioContextType {
     totalReturnsPercent: number;
     todayReturns: number;
     todayReturnsPercent: number;
+    todayReturnsReady: boolean;
     livePrices: Record<string, number>;
     liveChanges: Record<string, number>;
     marketOpen: boolean | null;
@@ -104,12 +108,13 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     const [holdings, setHoldings] = useState<PortfolioItem[]>([]);
     const [orders, setOrders] = useState<Order[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [holdingsLoaded, setHoldingsLoaded] = useState(false);
+    const [transactionsLoaded, setTransactionsLoaded] = useState(false);
     const [livePrices, setLivePrices] = useState<Record<string, number>>({});
     const [liveChanges, setLiveChanges] = useState<Record<string, number>>({});
     const [livePreviousClose, setLivePreviousClose] = useState<Record<string, number>>({});
     const [marketOpen, setMarketOpen] = useState<boolean | null>(null);
     const [marketStatus, setMarketStatus] = useState<MarketStatusInfo | null>(null);
-    const closedSnapshotKey = useRef('');
 
     const getToken = () => localStorage.getItem('ptx_token') || localStorage.getItem('token') || '';
 
@@ -132,6 +137,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
                     averagePrice: item.averagePrice,
                 }));
                 setHoldings(h);
+                setHoldingsLoaded(true);
                 // Subscribe to live prices for holdings
                 const s = getSocket();
                 h.forEach(item => s.emit('subscribe', item.symbol));
@@ -171,6 +177,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
             if (res.ok) {
                 const data = await res.json();
                 setTransactions(data.transactions || []);
+                setTransactionsLoaded(true);
             }
         } catch (e) { /* silent */ }
     }, []);
@@ -322,10 +329,23 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     const user = authContext?.user;
 
     useEffect(() => {
+        setHoldingsLoaded(false);
+        setTransactionsLoaded(false);
         if (user) {
             refreshPortfolio();
             refreshOrders();
             refreshTransactions();
+            const timer = setInterval(() => {
+                refreshPortfolio();
+                refreshTransactions();
+            }, 30000);
+            return () => clearInterval(timer);
+        } else {
+            setHoldings([]);
+            setTransactions([]);
+            setOrders([]);
+            setLivePrices({});
+            setLivePreviousClose({});
         }
     }, [refreshPortfolio, refreshOrders, refreshTransactions, user]);
 
@@ -352,11 +372,12 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
 
     // Fallback: refresh held-symbol prices periodically via REST in case socket ticks are missed.
     useEffect(() => {
-        if (holdings.length === 0) return;
-
         let isCancelled = false;
-        const symbols = holdings.map(h => normalizeSymbol(h.symbol));
-        const snapshotKey = symbols.slice().sort().join('|');
+        const sessionDate = marketStatus?.returnSessionDate;
+        const soldToday = transactions.filter(t => t.type === 'SELL' && sessionDate && Number.isFinite(Date.parse(t.createdAt)) &&
+            new Date(Date.parse(t.createdAt) + 330 * 60000).toISOString().slice(0, 10) === sessionDate);
+        const symbols = [...new Set([...holdings.map(h => normalizeSymbol(h.symbol)), ...soldToday.map(t => normalizeSymbol(t.symbol))])];
+        if (!symbols.length) return;
 
         const refreshHeldPrices = async () => {
             const responses = await Promise.allSettled(
@@ -416,34 +437,25 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
             }
         };
 
-        if (marketOpen === false) {
-            if (closedSnapshotKey.current !== snapshotKey) {
-                closedSnapshotKey.current = snapshotKey;
-                refreshHeldPrices();
-            }
-
-            return () => {
-                isCancelled = true;
-            };
-        }
-
-        closedSnapshotKey.current = '';
         refreshHeldPrices();
 
-        if (marketOpen !== true) {
+        if (marketOpen === null) {
             return () => {
                 isCancelled = true;
             };
         }
 
-        const pollId = setInterval(refreshHeldPrices, 5000);
+        // Closed-session endpoints return frozen prices; retry missing quotes slowly.
+        const pollId = setInterval(refreshHeldPrices, marketOpen ? 5000 : 60000);
 
         return () => {
             isCancelled = true;
             clearInterval(pollId);
         };
-    }, [holdings, marketOpen]);
+    }, [holdings, transactions, marketOpen, marketStatus?.returnSessionDate]);
 
+    const dailyReturn = calculateDailyReturn(holdings, transactions, livePrices, livePreviousClose, marketStatus?.returnSessionDate);
+    const todayReturnsReady = holdingsLoaded && transactionsLoaded && dailyReturn.ready;
     // Compute derived values with live prices
     const enrichedHoldings = holdings.map(h => {
         const normalizedSymbol = normalizeSymbol(h.symbol);
@@ -458,13 +470,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         const dayChange = typeof change === 'number' && Number.isFinite(change)
             ? change
             : (typeof prevClose === 'number' && prevClose > 0 ? (ltp - prevClose) : 0);
-        const dayPnl = h.quantity * dayChange;
-        const yesterdayHoldingValue = typeof prevClose === 'number' && prevClose > 0
-            ? (h.quantity * prevClose)
-            : (currentValue - dayPnl);
-        const dayPnlPercent = yesterdayHoldingValue > 0
-            ? (dayPnl / yesterdayHoldingValue) * 100
-            : (invested > 0 ? (dayPnl / invested) * 100 : 0);
+        const symbolReturn = dailyReturn.bySymbol[normalizedSymbol];
+        const dayPnl = symbolReturn?.value ?? 0;
+        const dayPnlPercent = symbolReturn?.percent ?? 0;
 
         return {
             ...h,
@@ -476,6 +484,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
             dayChange,
             dayPnl,
             dayPnlPercent,
+            dayPnlReady: todayReturnsReady && !!symbolReturn?.ready,
         };
     });
 
@@ -484,28 +493,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     const totalReturns = currentValue - totalInvested;
     const totalReturnsPercent = totalInvested > 0 ? (totalReturns / totalInvested) * 100 : 0;
     
-    // 1D Return = sum of (quantity * absolute change today)
-    const todayReturns = enrichedHoldings.reduce((a, h) => {
-        const currentPrice = h.currentPrice ?? h.averagePrice;
-        const prevClose = livePreviousClose[h.symbol] ?? livePreviousClose[normalizeSymbol(h.symbol)];
-        const change = liveChanges[h.symbol] ?? liveChanges[normalizeSymbol(h.symbol)];
-
-        if (typeof change === 'number' && Number.isFinite(change)) {
-            return a + (h.quantity * change);
-        }
-        if (typeof prevClose === 'number' && prevClose > 0) {
-            return a + (h.quantity * (currentPrice - prevClose));
-        }
-        return a;
-    }, 0);
-    // Baseline for today's % return is the value of the portfolio at yesterday's close
-    // Yesterday's Value = Current Value - Today's Return
-    const yesterdayValue = currentValue - todayReturns;
-    const todayReturnsPercent = yesterdayValue > 0
-        ? (todayReturns / yesterdayValue) * 100
-        : totalInvested > 0
-            ? (todayReturns / totalInvested) * 100
-            : 0;
+    const todayReturns = todayReturnsReady ? dailyReturn.value : 0;
+    const todayReturnsPercent = todayReturnsReady ? dailyReturn.percent : 0;
 
     return (
         <PortfolioContext.Provider value={{
@@ -518,6 +507,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
             totalReturnsPercent,
             todayReturns,
             todayReturnsPercent,
+            todayReturnsReady,
             livePrices,
             liveChanges,
             marketOpen,

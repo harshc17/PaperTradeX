@@ -19,6 +19,7 @@ export default function HoldingsPage() {
         totalReturnsPercent,
         todayReturns,
         todayReturnsPercent,
+        todayReturnsReady,
         refreshPortfolio,
         refreshOrders,
     } = usePortfolio();
@@ -70,7 +71,7 @@ export default function HoldingsPage() {
         <div className="min-h-screen bg-transparent font-sans page-fade-in pb-16">
             <Header />
 
-            <main className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Header Title & Refresh */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-7">
                     <div>
@@ -143,9 +144,9 @@ export default function HoldingsPage() {
                             ₹{fmt(currentValue)}
                         </h2>
                         <div className="flex items-center gap-1.5 text-xs font-medium">
-                            <span className="text-ink-faint" title="Price movement from the previous market close, weighted by current holdings. This is not your profit since purchase.">Market move:</span>
+                            <span className="text-ink-faint" title="Latest trading session profit/loss, using previous close for overnight shares and execution prices for today's trades. Includes today's sales; percentage is based on opening holdings value plus today's purchases.">1D return:</span>
                             <span className={`tabular-nums font-num font-semibold ${isTodayProfit ? 'text-up' : 'text-down'}`}>
-                                {isTodayProfit ? '+' : '-'}₹{fmt(Math.abs(todayReturns))} ({Math.abs(todayReturnsPercent).toFixed(2)}%)
+                                {todayReturnsReady ? <>{isTodayProfit ? '+' : '-'}₹{fmt(Math.abs(todayReturns))} ({todayReturnsPercent < 0 ? '−' : ''}{Math.abs(todayReturnsPercent).toFixed(2)}%)</> : '—'}
                             </span>
                         </div>
                     </div>
@@ -253,7 +254,7 @@ export default function HoldingsPage() {
                                             { key: 'ALL', label: `All (${holdings.length})` },
                                             { key: 'PROFIT', label: 'Overall Profitable' },
                                             { key: 'LOSS', label: 'Overall In Loss' },
-                                            { key: 'TODAY_PROFIT', label: "Today's Gainers" },
+                                            { key: 'TODAY_PROFIT', label: '1D gainers' },
                                         ] as const
                                     ).map(t => (
                                         <button
@@ -282,7 +283,7 @@ export default function HoldingsPage() {
                                         <th className="px-5 py-3.5 text-right">Quantity</th>
                                         <th className="px-5 py-3.5 text-right">Average price</th>
                                         <th className="px-5 py-3.5 text-right">Current value</th>
-                                        <th className="px-5 py-3.5 text-right" title="Stock movement from previous close, not profit since purchase">Market Move (1D)</th>
+                                        <th className="px-5 py-3.5 text-right" title="Session profit/loss using previous close for overnight shares and execution prices for today's trades, including sales">1D return</th>
                                         <th className="px-5 py-3.5 text-right">Total returns</th>
                                         <th className="px-5 py-3.5 text-center">Action</th>
                                     </tr>
@@ -347,10 +348,10 @@ export default function HoldingsPage() {
                                                 {/* Today's Gain Column */}
                                                 <td className="px-5 py-4 text-right">
                                                     <p className={`text-sm font-medium tabular-nums font-num ${isDayUp ? 'text-up' : 'text-down'}`}>
-                                                        {isDayUp ? '+' : '-'}₹{fmt(Math.abs(h.dayPnl ?? 0))}
+                                                        {h.dayPnlReady ? <>{isDayUp ? '+' : '-'}₹{fmt(Math.abs(h.dayPnl ?? 0))}</> : '—'}
                                                     </p>
                                                     <span className={`inline-block text-xs font-semibold tabular-nums font-num mt-0.5 ${isDayUp ? 'text-up' : 'text-down'}`}>
-                                                        {isDayUp ? '+' : '-'}{Math.abs(h.dayPnlPercent ?? 0).toFixed(2)}%
+                                                        {h.dayPnlReady ? <>{isDayUp ? '+' : '-'}{Math.abs(h.dayPnlPercent ?? 0).toFixed(2)}%</> : '—'}
                                                     </span>
                                                 </td>
 

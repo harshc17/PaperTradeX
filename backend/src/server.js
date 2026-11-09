@@ -428,7 +428,9 @@ function shouldPreferYahoo(symbol) {
 }
 
 app.get('/api/market-status', (req, res) => {
-    res.json(NSEClient.getMarketStatus());
+    const now = new Date();
+    res.json({ ...NSEClient.getMarketStatus(now),
+        returnSessionDate: require('./services/ReturnSession')(now, NSEClient.constructor.HOLIDAYS) });
 });
 
 const SEARCH_CACHE = {};
