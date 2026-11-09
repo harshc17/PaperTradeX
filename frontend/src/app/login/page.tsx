@@ -95,7 +95,7 @@ export default function AuthPage() {
     return (
         <div className="min-h-[100svh] min-w-0 flex font-sans bg-[var(--bg)]">
             {/* Practice account preview */}
-            <section className="hidden lg:flex lg:w-[48%] xl:w-[52%] flex-col justify-between gap-12 border-r border-line bg-surface p-8 xl:p-16">
+            <section className="auth-intro-panel hidden lg:flex lg:w-[48%] xl:w-[52%] flex-col justify-between gap-12 border-r border-line bg-surface p-8 xl:p-16">
                 <BrandLogo className="text-[32px]" />
                 <div className="max-w-lg">
                     <p className="mb-4 text-sm text-ink-muted">NSE / BSE · Paper trading</p>
@@ -106,7 +106,7 @@ export default function AuthPage() {
                         <p className="mt-4 text-3xl xl:text-4xl font-medium tabular-nums font-num text-ink">₹1,00,000.00</p>
                         <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-line pt-4 text-sm text-ink-muted"><span>Real securities</span><span>Simulated orders</span></div>
                     </div>
-                    <div className="mt-8 space-y-3 text-sm text-ink-muted">
+                    <div className="auth-intro-features mt-8 space-y-3 text-sm text-ink-muted">
                         {['Market and limit orders', 'Holdings, watchlists and trade history', 'Orders follow Indian market hours'].map(feature => <p key={feature}>{feature}</p>)}
                     </div>
                 </div>
@@ -114,10 +114,10 @@ export default function AuthPage() {
             </section>
 
             {/* Right Panel — Form */}
-            <div className="min-w-0 flex-1 flex items-start sm:items-center justify-center px-4 py-6 sm:p-8 bg-[var(--bg)]">
+            <div className="auth-form-panel min-w-0 flex-1 flex items-start sm:items-center justify-center px-4 py-6 sm:p-8 bg-[var(--bg)]">
                 <div className="min-w-0 w-full max-w-md">
                     {/* Mobile logo */}
-                    <div className="mb-6 sm:mb-8 flex items-center justify-between gap-4">
+                    <div className="auth-form-heading-gap mb-6 sm:mb-8 flex items-center justify-between gap-4">
                         <div className="lg:hidden"><BrandLogo className="text-xl sm:text-3xl" /></div>
                         <ThemeToggle className="ml-auto" />
                     </div>
@@ -126,12 +126,12 @@ export default function AuthPage() {
                     <h1 className="text-2xl font-medium text-ink-heading mb-1.5 font-heading">
                         {isLogin ? 'Sign in' : 'Create account'}
                     </h1>
-                    <p className="text-ink-faint text-sm mb-6 sm:mb-8">
+                    <p className="auth-form-heading-gap text-ink-faint text-sm mb-6 sm:mb-8">
                         {isLogin ? 'Sign in to your PaperTradeX account.' : 'Start a paper trading account with ₹1,00,000 in virtual funds.'}
                     </p>
 
                     {/* Tab toggle */}
-                    <div className="flex bg-surface border border-line rounded-xl p-1 mb-6 sm:mb-8">
+                    <div className="auth-form-heading-gap flex bg-surface border border-line rounded-xl p-1 mb-6 sm:mb-8">
                         {['Sign in', 'Create account'].map((tab, i) => {
                             const active = i === 0 ? isLogin : !isLogin;
                             return (
