@@ -93,7 +93,7 @@ export default function AuthPage() {
     const inputCls = "w-full px-4 py-3 rounded-xl text-sm text-ink placeholder-[var(--text-faint)] bg-surface-2 border border-line focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors";
 
     return (
-        <div className="min-h-screen flex font-sans bg-[var(--bg)]">
+        <div className="min-h-[100svh] min-w-0 flex font-sans bg-[var(--bg)]">
             {/* Practice account preview */}
             <section className="hidden lg:flex lg:w-[48%] xl:w-[52%] flex-col justify-between gap-12 border-r border-line bg-surface p-8 xl:p-16">
                 <BrandLogo className="text-[32px]" />
@@ -114,10 +114,10 @@ export default function AuthPage() {
             </section>
 
             {/* Right Panel — Form */}
-            <div className="flex-1 flex items-center justify-center px-4 py-8 sm:p-8 bg-[var(--bg)]">
-                <div className="w-full max-w-md">
+            <div className="min-w-0 flex-1 flex items-start sm:items-center justify-center px-4 py-6 sm:p-8 bg-[var(--bg)]">
+                <div className="min-w-0 w-full max-w-md">
                     {/* Mobile logo */}
-                    <div className="mb-8 flex items-center justify-between gap-4">
+                    <div className="mb-6 sm:mb-8 flex items-center justify-between gap-4">
                         <div className="lg:hidden"><BrandLogo className="text-xl sm:text-3xl" /></div>
                         <ThemeToggle className="ml-auto" />
                     </div>
@@ -126,27 +126,27 @@ export default function AuthPage() {
                     <h1 className="text-2xl font-medium text-ink-heading mb-1.5 font-heading">
                         {isLogin ? 'Sign in' : 'Create account'}
                     </h1>
-                    <p className="text-ink-faint text-sm mb-8">
+                    <p className="text-ink-faint text-sm mb-6 sm:mb-8">
                         {isLogin ? 'Sign in to your PaperTradeX account.' : 'Start a paper trading account with ₹1,00,000 in virtual funds.'}
                     </p>
 
                     {/* Tab toggle */}
-                    <div className="flex bg-surface border border-line rounded-xl p-1 mb-8">
+                    <div className="flex bg-surface border border-line rounded-xl p-1 mb-6 sm:mb-8">
                         {['Sign in', 'Create account'].map((tab, i) => {
                             const active = i === 0 ? isLogin : !isLogin;
                             return (
                                     <button key={tab} type="button" disabled={loading} onClick={() => switchTab(i === 0)}
-                                    className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-colors ${active ? 'bg-surface-3 text-primary shadow-none border border-line' : 'text-ink-faint hover:text-ink-muted'}`}>
+                                    className={`min-h-11 min-w-0 flex-1 py-2.5 text-sm font-semibold rounded-lg transition-colors ${active ? 'bg-surface-3 text-primary shadow-none border border-line' : 'text-ink-faint hover:text-ink-muted'}`}>
                                     {tab}
                                 </button>
                             );
                         })}
                     </div>
 
-                    {error && <div role="alert" className="mb-4 p-3 bg-down/10 border border-down/25 rounded-xl text-down text-sm">{error}</div>}
+                    {error && <div role="alert" className="mb-4 break-words p-3 bg-down/10 border border-down/25 rounded-xl text-down text-sm">{error}</div>}
                     {success && (
-                        <div className="mb-4 p-3 bg-up/10 border border-up/25 rounded-xl text-up text-sm flex items-center gap-2">
-                            <CheckCircle2 className="w-4 h-4" />{success}
+                        <div role="status" className="mb-4 break-words p-3 bg-up/10 border border-up/25 rounded-xl text-up text-sm flex items-start gap-2">
+                            <CheckCircle2 className="mt-0.5 w-4 h-4 shrink-0" /><span className="min-w-0">{success}</span>
                         </div>
                     )}
 
@@ -171,21 +171,22 @@ export default function AuthPage() {
                         <div>
                             <label htmlFor="auth-password" className="block text-xs font-semibold text-ink-muted mb-1.5">Password</label>
                             <div className="relative">
-                                <input id="auth-password" autoComplete={isLogin ? 'current-password' : 'new-password'} type={showPassword ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} placeholder={isLogin ? 'Your password' : 'Min. 8 chars, 1 letter & 1 number'} className={`${inputCls} pr-12`} />
-                                <button type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-ink-faint hover:text-ink-muted transition-colors">
+                                <input id="auth-password" aria-describedby={isLogin ? undefined : 'signup-password-hint'} autoComplete={isLogin ? 'current-password' : 'new-password'} type={showPassword ? 'text' : 'password'} required value={password} onChange={e => setPassword(e.target.value)} placeholder={isLogin ? 'Your password' : 'Create a password'} className={`${inputCls} pr-12`} />
+                                <button type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword(!showPassword)} className="absolute right-0 inset-y-0 flex min-h-11 w-11 items-center justify-center rounded-r-xl text-ink-faint hover:text-ink-muted transition-colors">
                                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                 </button>
                             </div>
+                            {!isLogin && <p id="signup-password-hint" className="mt-2 text-xs leading-5 text-ink-faint">At least 8 characters, including a letter and a number.</p>}
                             {isLogin && (
-                                <div className="text-right mt-2">
-                                    <a href="/forgot-password" className="text-xs font-medium text-primary hover:underline">Forgot password?</a>
+                                <div className="text-right mt-1">
+                                    <Link href="/forgot-password" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">Forgot password?</Link>
                                 </div>
                             )}
                         </div>
 
                         </>}
                         <button type="submit" id="auth-submit-btn" disabled={loading}
-                            className="w-full py-3.5 text-sm font-medium rounded-xl transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group mt-2 text-[var(--primary-ink)]"
+                            className="min-h-12 w-full px-3 py-3.5 text-sm font-medium rounded-xl transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group mt-2 text-[var(--primary-ink)]"
                             style={{ background: 'var(--text-main)', color: 'var(--bg)' }}>
                             {loading ? (
                                 <span className="flex items-center gap-2">
@@ -198,7 +199,7 @@ export default function AuthPage() {
                             ) : (
                                 <>
                                     {isLogin ? 'Sign in to PaperTradeX' : verificationPending ? 'Verify email and create account' : 'Send verification code'}
-                                    <ArrowRight className="w-4 h-4 transition-colors" />
+                                    <ArrowRight className="w-4 h-4 shrink-0 transition-colors" />
                                 </>
                             )}
                         </button>
