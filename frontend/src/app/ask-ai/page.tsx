@@ -1,4 +1,5 @@
 'use client';
+import { API_URL } from '@/lib/config';
 
 import { useState, useRef, useEffect } from 'react';
 import Header from '@/components/dashboard/Header';
@@ -45,7 +46,7 @@ export default function AskAIPage() {
             const token = localStorage.getItem('ptx_token') || localStorage.getItem('token') || '';
             const history = messages.slice(-10); // send last 10 messages for context
 
-            const res = await fetch('http://localhost:3001/api/ai/chat', {
+            const res = await fetch(`${API_URL}/api/ai/chat`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

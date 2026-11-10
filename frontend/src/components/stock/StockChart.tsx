@@ -213,10 +213,10 @@ export default function StockChart({ symbol }: { symbol: string }) {
     const isPositive = priceChange >= 0;
 
     const light = theme === 'light';
-    const color = isPositive ? (light ? '#007b5e' : '#4cc9a4') : (light ? '#ca394b' : '#ff8b90');
-    const lineRgb = isPositive ? (light ? '0,123,94' : '76,201,164') : (light ? '202,57,75' : '255,139,144');
+    const color = isPositive ? (light ? '#007b5e' : '#00d09c') : (light ? '#ca394b' : '#ff6b6b');
+    const lineRgb = isPositive ? (light ? '0,123,94' : '0,208,156') : (light ? '202,57,75' : '255,107,107');
     const colorBg = `rgba(${lineRgb},0.10)`;
-    const axisColor = light ? '#6d7485' : '#97a1ad';
+    const axisColor = light ? '#6d7485' : '#9a9ea8';
 
     const labels = displayHistory.map(h => formatLabel(h.date, activePeriod.fmt));
     const closes = displayHistory.map(h => h.close);
@@ -259,7 +259,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
             pointRadius: 0,
             pointHoverRadius: 6,
             pointHoverBackgroundColor: color,
-            pointHoverBorderColor: '#fff',
+            pointHoverBorderColor: light ? '#fff' : '#181818',
             pointHoverBorderWidth: 2,
             borderWidth: 2,
         }],
@@ -275,11 +275,11 @@ export default function StockChart({ symbol }: { symbol: string }) {
         plugins: {
             legend: { display: false },
             tooltip: {
-                backgroundColor: light ? '#ffffff' : '#22272c',
-                titleColor: light ? '#61697b' : '#b2bbc5',
-                bodyColor: light ? '#363b4d' : '#eef2f6',
+                backgroundColor: light ? '#ffffff' : '#222222',
+                titleColor: light ? '#61697b' : '#b5b7be',
+                bodyColor: light ? '#363b4d' : '#ecedef',
                 padding: 14,
-                borderColor: light ? '#e8e9ec' : '#3d454e',
+                borderColor: light ? '#e8e9ec' : '#383838',
                 borderWidth: 1,
                 cornerRadius: 10,
                 displayColors: false,

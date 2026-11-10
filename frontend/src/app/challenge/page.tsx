@@ -470,7 +470,7 @@ export default function ChallengePage() {
                                 </div>
 
                                 <div className="p-5 rounded-2xl bg-surface-2 border border-line flex gap-4 items-start">
-                                    <div className="w-10 h-10 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center flex-shrink-0 text-amber-400">
+                                    <div className="w-10 h-10 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center flex-shrink-0 text-[var(--warning)]">
                                         <Clock className="w-4 h-4" />
                                     </div>
                                     <div>

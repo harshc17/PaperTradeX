@@ -1,4 +1,5 @@
 'use client';
+import { API_URL } from '@/lib/config';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -39,7 +40,7 @@ export default function SearchBar() {
         const searchTimeout = setTimeout(async () => {
             setLoading(true);
             try {
-                const res = await fetch(`http://localhost:3001/api/search?q=${encodeURIComponent(query)}`);
+                const res = await fetch(`${API_URL}/api/search?q=${encodeURIComponent(query)}`);
                 if (res.ok) {
                     const data = await res.json();
                     setResults(data.quotes || []);

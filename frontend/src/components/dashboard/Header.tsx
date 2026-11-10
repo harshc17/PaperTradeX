@@ -293,7 +293,7 @@ export default function Header() {
 
                 {/* Right actions */}
                 <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0 ml-auto">
-                    <ThemeToggle className="hidden sm:inline-flex" />
+                    <ThemeToggle showLabel className="hidden sm:inline-flex" />
                     {/* Market Status Pill */}
                     <button
                         type="button"
@@ -302,7 +302,7 @@ export default function Header() {
                             marketStatus?.isOpen
                                 ? 'bg-up/10 text-up border-up/30 hover:bg-up/15 shadow-none'
                                 : marketStatus?.session === 'PRE_MARKET'
-                                ? 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/15'
+                                ? 'bg-amber-500/10 text-[var(--warning)] border-amber-500/30 hover:bg-amber-500/15'
                                 : 'bg-surface-2 text-ink-muted border-line hover:border-line hover:text-ink'
                         }`}
                         title="View NSE/BSE Trading Hours & Schedule"
@@ -385,16 +385,18 @@ export default function Header() {
                 <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
                     <div
                         ref={marketModalRef}
-                        className="max-h-[85dvh] overflow-y-auto max-w-lg w-full bg-surface-2 border border-line rounded-2xl shadow-none overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                        role="dialog" aria-modal="true" aria-labelledby="market-hours-title"
+                        onKeyDown={event => { if (event.key === 'Escape') setShowMarketModal(false); }}
+                        className="max-h-[85dvh] overflow-y-auto overflow-x-hidden max-w-lg w-full bg-surface-2 border border-line rounded-2xl shadow-none animate-in fade-in zoom-in-95 duration-200"
                     >
                         {/* Header */}
-                        <div className="p-5 border-b border-line flex items-center justify-between bg-[var(--surface-2)]">
-                            <div className="flex items-center gap-2.5">
+                        <div className="sticky top-0 z-10 p-4 sm:p-5 border-b border-line flex items-center justify-between gap-2 bg-[var(--surface-2)]">
+                            <div className="flex min-w-0 items-center gap-2.5">
                                 <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
                                     <Clock className="w-4 h-4" />
                                 </div>
-                                <div>
-                                    <h3 className="text-base font-medium text-ink-heading font-heading">
+                                <div className="min-w-0">
+                                    <h3 id="market-hours-title" className="text-base font-medium text-ink-heading font-heading">
                                         NSE & BSE Trading Hours
                                     </h3>
                                     <p className="text-xs text-ink-faint">
@@ -403,21 +405,22 @@ export default function Header() {
                                 </div>
                             </div>
                             <button
+                                type="button" aria-label="Close market hours" autoFocus
                                 onClick={() => setShowMarketModal(false)}
-                                className="w-8 h-8 rounded-lg bg-surface-2 hover:bg-surface-2 flex items-center justify-center text-ink-muted hover:text-ink transition-colors"
+                                className="min-w-11 h-11 shrink-0 rounded-lg bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-ink-muted hover:text-ink transition-colors"
                             >
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
 
                         {/* Modal Body */}
-                        <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto no-scrollbar">
+                        <div className="p-4 sm:p-5 space-y-4">
                             {/* Current Session Banner */}
-                            <div className={`p-4 rounded-xl border flex items-center justify-between ${
+                            <div className={`p-4 rounded-xl border flex flex-wrap items-center justify-between gap-3 ${
                                 marketStatus?.isOpen
                                     ? 'bg-up/10 border-up/30 text-up'
                                     : marketStatus?.session === 'PRE_MARKET'
-                                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                                    ? 'bg-amber-500/10 border-amber-500/30 text-[var(--warning)]'
                                     : 'bg-surface-2 border-line text-ink'
                             }`}>
                                 <div>
@@ -456,8 +459,8 @@ export default function Header() {
                                 </span>
 
                                 <div className="space-y-1.5">
-                                    <div className={`p-3 rounded-xl border flex items-center justify-between text-xs transition-colors ${
-                                        marketStatus?.session === 'PRE_MARKET' ? 'bg-amber-500/10 border-amber-500/40 text-amber-300' : 'bg-surface-2 border-line text-ink-muted'
+                                    <div className={`p-3 rounded-xl border flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between text-xs transition-colors ${
+                                        marketStatus?.session === 'PRE_MARKET' ? 'bg-amber-500/10 border-amber-500/40 text-[var(--warning)]' : 'bg-surface-2 border-line text-ink-muted'
                                     }`}>
                                         <div className="flex items-center gap-2.5">
                                             <span className="w-2 h-2 rounded-full bg-amber-400" />
@@ -469,7 +472,7 @@ export default function Header() {
                                         <span className="font-num font-medium text-ink">09:00 – 09:15 AM</span>
                                     </div>
 
-                                    <div className={`p-3 rounded-xl border flex items-center justify-between text-xs transition-colors ${
+                                    <div className={`p-3 rounded-xl border flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between text-xs transition-colors ${
                                         marketStatus?.isOpen ? 'bg-up/10 border-up/40 text-up' : 'bg-surface-2 border-line text-ink-muted'
                                     }`}>
                                         <div className="flex items-center gap-2.5">
@@ -482,8 +485,8 @@ export default function Header() {
                                         <span className="font-num font-medium text-ink">09:15 AM – 03:30 PM</span>
                                     </div>
 
-                                    <div className={`p-3 rounded-xl border flex items-center justify-between text-xs transition-colors ${
-                                        marketStatus?.session === 'POST_MARKET' ? 'bg-orange-500/10 border-orange-500/40 text-orange-300' : 'bg-surface-2 border-line text-ink-muted'
+                                    <div className={`p-3 rounded-xl border flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between text-xs transition-colors ${
+                                        marketStatus?.session === 'POST_MARKET' ? 'bg-orange-500/10 border-orange-500/40 text-[var(--warning)]' : 'bg-surface-2 border-line text-ink-muted'
                                     }`}>
                                         <div className="flex items-center gap-2.5">
                                             <span className="w-2 h-2 rounded-full bg-orange-400" />
@@ -495,7 +498,7 @@ export default function Header() {
                                         <span className="font-num font-medium text-ink">03:30 – 04:00 PM</span>
                                     </div>
 
-                                    <div className={`p-3 rounded-xl border flex items-center justify-between text-xs transition-colors ${
+                                    <div className={`p-3 rounded-xl border flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between text-xs transition-colors ${
                                         marketStatus?.session === 'CLOSED' ? 'bg-surface-2 border-primary/30 text-primary' : 'bg-surface-2 border-line text-ink-muted'
                                     }`}>
                                         <div className="flex items-center gap-2.5">
@@ -532,7 +535,7 @@ export default function Header() {
                         <div className="p-4 border-t border-line bg-[var(--surface-2)] flex justify-end">
                             <button
                                 onClick={() => setShowMarketModal(false)}
-                                className="px-4 py-2 rounded-xl text-xs font-medium text-[var(--primary-ink)] transition-colors hover:brightness-110"
+                                className="min-h-11 px-4 py-2 rounded-xl text-xs font-medium text-[var(--primary-ink)] transition-colors hover:brightness-110"
                                 style={{ background: 'var(--primary)', color: 'var(--primary-ink)' }}
                             >
                                 Close

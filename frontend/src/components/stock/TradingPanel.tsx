@@ -202,7 +202,7 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                             marketStatus?.isOpen
                                 ? 'bg-up/10 text-up border-up/25 shadow-none'
                                 : marketStatus?.session === 'PRE_MARKET'
-                                ? 'bg-amber-500/10 text-amber-300 border-amber-500/25'
+                                ? 'bg-amber-500/10 text-[var(--warning)] border-amber-500/25'
                                 : 'bg-surface-2 text-ink-muted border-line'
                         }`}
                         title={marketStatus?.statusMessage || 'Market is closed'}
@@ -214,7 +214,7 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                             </>
                         ) : marketStatus?.session === 'PRE_MARKET' ? (
                             <>
-                                <Clock className="w-3 h-3 text-amber-400 animate-pulse" />
+                                <Clock className="w-3 h-3 text-[var(--warning)] animate-pulse" />
                                 Pre-Market
                             </>
                         ) : (

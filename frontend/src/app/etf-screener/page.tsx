@@ -1,4 +1,5 @@
 'use client';
+import { API_URL } from '@/lib/config';
 import CompanyLogo from '@/components/CompanyLogo';
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -97,7 +98,7 @@ export default function EtfScreenerPage() {
         }
 
         const controller = new AbortController();
-        fetch(`http://localhost:3001/api/search?q=${encodeURIComponent(searchTerm)}`, { signal: controller.signal })
+        fetch(`${API_URL}/api/search?q=${encodeURIComponent(searchTerm)}`, { signal: controller.signal })
             .then(res => res.json())
             .then(data => {
                 if (data.quotes) {
@@ -135,7 +136,7 @@ export default function EtfScreenerPage() {
                 subbedRef.current.add(etf.symbol);
                 s.emit('subscribe', etf.symbol);
 
-                fetch(`http://localhost:3001/api/stock/${encodeURIComponent(etf.symbol)}/realtime`)
+                fetch(`${API_URL}/api/stock/${encodeURIComponent(etf.symbol)}/realtime`)
                     .then(r => r.ok ? r.json() : null)
                     .then(d => {
                         if (d && typeof d.price === 'number') {
@@ -176,7 +177,7 @@ export default function EtfScreenerPage() {
                                 placeholder="Search all ETFs..."
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
-                                className="pl-9 pr-4 py-2 bg-surface border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#00b386]/20 focus:border-primary w-full md:w-64 transition-colors"
+                                className="pl-9 pr-4 py-2 bg-surface border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary w-full md:w-64 transition-colors"
                             />
                         </div>
                     </div>
@@ -221,7 +222,7 @@ export default function EtfScreenerPage() {
                                     <th className="px-6 py-4 text-right">Action</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-50">
+                            <tbody className="divide-y divide-line">
                                 {filteredETFs.length > 0 ? (
                                     filteredETFs.map(etf => {
                                         const q = quotes[etf.symbol];
@@ -267,7 +268,7 @@ export default function EtfScreenerPage() {
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
                                                     {q ? (
-                                                        <span className={`text-[12px] font-medium px-2.5 py-1.5 rounded-lg ${isUp ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'}`}>
+                                                        <span className={`text-[12px] font-medium px-2.5 py-1.5 rounded-lg ${isUp ? 'bg-up/10 text-up' : 'bg-down/10 text-down'}`}>
                                                             {isUp ? '+' : ''}{q.dayChange.toFixed(2)}%
                                                         </span>
                                                     ) : (

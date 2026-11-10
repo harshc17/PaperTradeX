@@ -23,17 +23,17 @@ export default function AdminPage() {
     if (!user) return <div className="p-10">Checking Admin Access...</div>;
 
     return (
-        <div className="min-h-screen bg-surface-2 p-8">
-            <div className="max-w-4xl mx-auto bg-surface rounded-lg shadow p-6">
-                <h1 className="text-2xl font-medium mb-4 text-red-600">Admin Panel</h1>
-                <p className="mb-4">Welcome, Admin <strong>{user.username}</strong></p>
+        <div className="min-h-screen min-w-0 bg-surface-2 px-4 py-6 sm:p-8">
+            <div className="max-w-4xl mx-auto min-w-0 bg-surface rounded-xl border border-line p-4 sm:p-6">
+                <h1 className="text-2xl font-medium mb-4 text-ink">Admin Panel</h1>
+                <p className="mb-4 break-words">Welcome, Admin <strong>{user.username}</strong></p>
 
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-surface-2 rounded border">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="p-4 bg-surface-2 rounded-lg border border-line">
                         <h3 className="font-medium">System Status</h3>
-                        <p className="text-green-500">Online</p>
+                        <p className="text-up">Online</p>
                     </div>
-                    <div className="p-4 bg-surface-2 rounded border">
+                    <div className="p-4 bg-surface-2 rounded-lg border border-line">
                         <h3 className="font-medium">Total Users</h3>
                         <p>2 (Demo)</p>
                     </div>
@@ -41,8 +41,10 @@ export default function AdminPage() {
 
                 <div className="mt-8">
                     <h3 className="font-medium mb-2">Admin Actions</h3>
-                    <button className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 mr-2">Reset Market</button>
-                    <button className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" onClick={() => router.push('/dashboard')}>Go to Trading Dashboard</button>
+                    <div className="flex flex-wrap gap-3">
+                    <button className="min-h-11 bg-down text-[var(--sell-ink)] px-4 py-2 rounded-lg">Reset Market</button>
+                    <button className="min-h-11 bg-primary text-[var(--primary-ink)] px-4 py-2 rounded-lg" onClick={() => router.push('/dashboard')}>Go to Trading Dashboard</button>
+                    </div>
                 </div>
             </div>
         </div>
