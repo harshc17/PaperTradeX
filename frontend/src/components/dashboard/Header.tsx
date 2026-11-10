@@ -313,7 +313,7 @@ export default function Header() {
                             }`} />
                         </span>
                         <span className="font-medium">
-                            {marketStatus?.isOpen ? 'NSE open' : marketStatus?.session === 'PRE_MARKET' ? 'Pre-open' : 'NSE closed'}
+                            {marketStatus?.isOpen ? 'NSE open' : marketStatus?.session === 'PRE_MARKET' ? 'Pre-open' : 'Market closed'}
                         </span>
                         <span className="hidden 2xl:inline text-xs font-num tabular-nums border-l border-line pl-1.5">
                             {marketStatus?.isOpen ? `Closes ${formatRemaining(secondsLeft)}` : `Opens in ${formatRemaining(secondsLeft)}`}

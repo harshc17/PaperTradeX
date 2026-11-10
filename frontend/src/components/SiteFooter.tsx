@@ -9,7 +9,6 @@ export default function SiteFooter() {
         <div className="mx-auto max-w-[1280px]">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-5">
             <div><Link href="/dashboard" aria-label="PaperTradeX home"><BrandLogo className="text-xl" /></Link><p className="mt-3 text-sm">Learn the markets. Practise with virtual funds.</p></div>
-            <a href={`mailto:${SUPPORT_EMAIL}`} className="inline-flex min-h-11 items-center text-sm hover:text-primary">{SUPPORT_EMAIL}</a>
         </div>
         <div className="flex flex-col gap-4 border-t border-line pt-5 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
             <p className="text-xs leading-relaxed">© {new Date().getFullYear()} PaperTradeX. Virtual trading for learning. No real money trades.</p>

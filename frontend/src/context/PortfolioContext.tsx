@@ -1,9 +1,10 @@
 'use client';
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { getSocket } from '@/lib/socket';
 import { API_URL as API } from '@/lib/config';
 import { useAuth } from './AuthContext';
 import { calculateDailyReturn } from '@/lib/dailyReturn';
+import { calculatePortfolioXirr, type XirrResult } from '@/lib/xirr';
 
 function normalizeSymbol(symbol: string) {
     return symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
@@ -21,6 +22,7 @@ export interface PortfolioItem {
     dayPnl?: number;
     dayPnlPercent?: number;
     dayPnlReady?: boolean;
+    xirr?: XirrResult;
 }
 
 interface Order {
@@ -66,6 +68,9 @@ export interface MarketStatusInfo {
 }
 
 interface PortfolioContextType {
+    portfolioXirr: XirrResult;
+    returnView: 'absolute' | 'xirr';
+    setReturnView: (view: 'absolute' | 'xirr') => void;
     holdings: PortfolioItem[];
     orders: Order[];
     transactions: Transaction[];
@@ -105,6 +110,7 @@ function clearAuthState() {
 }
 
 export function PortfolioProvider({ children }: { children: ReactNode }) {
+    const [returnView, setReturnView] = useState<'absolute' | 'xirr'>('absolute');
     const [holdings, setHoldings] = useState<PortfolioItem[]>([]);
     const [orders, setOrders] = useState<Order[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -454,6 +460,11 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         };
     }, [holdings, transactions, marketOpen, marketStatus?.returnSessionDate]);
 
+    const valuationDate = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);
+    const xirr = useMemo(() => calculatePortfolioXirr(holdings, transactions, livePrices, valuationDate), [holdings, transactions, livePrices, valuationDate]);
+    const waitingXirr: XirrResult = { rate: null, days: 0, reason: 'Waiting for complete transaction history' };
+    const xirrReady = holdingsLoaded && transactionsLoaded;
+    const portfolioXirr = xirrReady ? xirr.portfolio : waitingXirr;
     const dailyReturn = calculateDailyReturn(holdings, transactions, livePrices, livePreviousClose, marketStatus?.returnSessionDate);
     const todayReturnsReady = holdingsLoaded && transactionsLoaded && dailyReturn.ready;
     // Compute derived values with live prices
@@ -485,6 +496,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
             dayPnl,
             dayPnlPercent,
             dayPnlReady: todayReturnsReady && !!symbolReturn?.ready,
+            xirr: xirrReady ? xirr.bySymbol[normalizedSymbol] : waitingXirr,
         };
     });
 
@@ -499,6 +511,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     return (
         <PortfolioContext.Provider value={{
             holdings: enrichedHoldings,
+            portfolioXirr, returnView, setReturnView,
             orders,
             transactions,
             totalInvested,

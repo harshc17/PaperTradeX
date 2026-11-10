@@ -70,6 +70,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   outline-offset: 3px;
 }
 .lucide { stroke-width: 1.5; flex-shrink: 0; }
+.theme-toggle-icon { color: var(--brand-wordmark); filter: drop-shadow(0 0 5px rgba(32,180,197,.55)); }
+:root[data-theme="light"] .theme-toggle-icon { filter: drop-shadow(0 0 4px rgba(8,122,132,.28)); }
 .font-num { font-family: var(--font-body), system-ui, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: 0; }
 ::selection { background: var(--primary); color: var(--primary-ink); }
 ::placeholder { color: var(--text-faint); opacity: 1; }

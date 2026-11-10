@@ -140,7 +140,7 @@ export default function DashboardMarket() {
                     {lastUpdated && (
                         <div className="flex items-center gap-2 text-xs text-ink-faint">
                             <span className={`w-1.5 h-1.5 rounded-full ${marketStatus?.isOpen ? 'bg-up' : 'bg-ink-faint'}`} />
-                            <span>{marketStatus ? (marketStatus.isOpen ? 'NSE open' : 'NSE closed') : 'Market snapshot'} · Updated {lastUpdated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })} IST</span>
+                            <span>{marketStatus ? (marketStatus.isOpen ? 'NSE open' : 'Market closed') : 'Market snapshot'} · Updated {lastUpdated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })} IST</span>
                         </div>
                     )}
                 </div>
