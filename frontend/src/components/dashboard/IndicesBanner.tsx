@@ -53,13 +53,14 @@ export default function IndicesBanner() {
 
     return (
         <div className="border-b border-line overflow-hidden" style={{ background: 'var(--bg)' }}>
-            <div className="flex items-center divide-x divide-line overflow-x-auto no-scrollbar">
+            <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 overflow-x-auto no-scrollbar">
+            <div className="flex w-max min-w-full items-center justify-center divide-x divide-line">
                 {INDICES.map(({ symbol, label }) => {
                     const q = quotes[symbol];
                     const isUp = (q?.change ?? 0) >= 0;
                     return (
                         <Link href={`/stock/${encodeURIComponent(symbol)}`} key={symbol}
-                            className="flex-shrink-0 px-6 py-2.5 flex items-center gap-4 hover:bg-surface-3 cursor-pointer transition-colors group">
+                            className="flex-shrink-0 px-4 py-2.5 flex items-center gap-3 hover:bg-surface-3 cursor-pointer transition-colors group">
                             <span className="text-xs font-medium text-ink-faint group-hover:text-ink-muted transition-colors">{label}</span>
                             {q ? (
                                 <div className="flex items-baseline gap-2">
@@ -75,6 +76,7 @@ export default function IndicesBanner() {
                         </Link>
                     );
                 })}
+            </div>
             </div>
         </div>
     );

@@ -36,7 +36,7 @@ export default function PortfolioSummary() {
                             <span className="text-sm text-ink-faint">Invested</span>
                             <span className="text-sm font-semibold text-ink tabular-nums font-num">₹{fmt(totalInvested)}</span>
                         </div>
-                        <div className="flex flex-wrap gap-2 justify-between items-start"><span className="text-sm text-ink-faint">XIRR</span><XirrValue result={portfolioXirr} /></div>
+                        <div className="flex flex-wrap gap-2 justify-between items-center"><span className="text-sm text-ink-faint" title="Annualised return">XIRR</span><div className="ml-auto text-right"><XirrValue result={portfolioXirr} /></div></div>
                     </div>
                 ) : (
                     <div className="text-center py-2 sm:py-4 border-t border-line">

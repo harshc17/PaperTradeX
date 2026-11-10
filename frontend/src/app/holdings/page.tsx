@@ -269,8 +269,9 @@ export default function HoldingsPage() {
                         </div>
 
                         {/* Holdings Data Table */}
-                        <div className="overflow-x-auto overscroll-x-contain">
-                            <table className="w-full min-w-[960px] text-left">
+                        <p className="px-4 pt-3 text-xs text-ink-faint lg:hidden">Swipe to view all columns</p>
+                        <div className="overflow-x-auto overscroll-x-contain" role="region" aria-label="Holdings and stock returns" tabIndex={0}>
+                            <table className="w-full min-w-[960px] text-left [&_td]:whitespace-nowrap">
                                 <thead>
                                     <tr className="bg-surface-2/60 text-xs font-medium text-ink-faint border-b border-line">
                                         <th className="px-5 py-3.5">Asset / Company</th>
@@ -280,7 +281,7 @@ export default function HoldingsPage() {
                                         <th className="px-5 py-3.5 text-right" title="Session profit/loss using previous close for overnight shares and execution prices for today's trades, including sales">1D return</th>
                                         <th className="px-5 py-3.5 text-right">Total returns</th>
                                         <th className="px-5 py-3.5 text-center">Action</th>
-                                        <th className="px-5 py-3.5 text-right">XIRR (annualised)</th>
+                                        <th className="min-w-[136px] px-5 py-3.5 text-right whitespace-nowrap">XIRR <span className="block text-xs font-normal">Annualised</span></th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-line">
