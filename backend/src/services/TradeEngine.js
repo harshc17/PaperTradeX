@@ -1,6 +1,7 @@
 const { User, Portfolio, TransactionHistory, Order } = require('../models');
 const NSEClient = require('./NSEClient');
 const mongoose = require('mongoose');
+const { assertTradable } = require('./MarketIndex');
 
 class TradeEngine {
     /**
@@ -13,6 +14,7 @@ class TradeEngine {
      * and records transaction history.
      */
     async _applyTradeExecution(user, type, bare, qty, price, totalAmount, session) {
+        assertTradable(bare);
         this.assertMarketOpen();
         if (type === 'BUY') {
             if (user.balance < totalAmount) {
@@ -83,6 +85,7 @@ class TradeEngine {
     }
 
     async executeTrade(userId, type, symbol, quantity, currentPrice, orderType = 'MARKET', limitPrice = null) {
+        assertTradable(symbol);
         this.assertMarketOpen();
         return mongoose.connection.transaction(session =>
             this._executeTrade(userId, type, symbol, quantity, currentPrice, orderType, limitPrice, session));

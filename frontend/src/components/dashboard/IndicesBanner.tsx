@@ -5,11 +5,12 @@ import { getSocket } from '@/lib/socket';
 import { API_URL } from '@/lib/config';
 
 const INDICES = [
-    { symbol: '^NSEI',       label: 'NIFTY'      },
+    { symbol: '^NSEI',       label: 'NIFTY 50'   },
     { symbol: '^BSESN',      label: 'SENSEX'     },
     { symbol: '^NSEBANK',    label: 'BANKNIFTY'  },
     { symbol: '^MIDCPNIFTY', label: 'MIDCPNIFTY' },
     { symbol: '^FINNIFTY',   label: 'FINNIFTY'   },
+    { symbol: '^BANKEX',     label: 'BANKEX'     },
 ];
 
 export default function IndicesBanner() {
@@ -52,19 +53,19 @@ export default function IndicesBanner() {
 
     return (
         <div className="border-b border-line overflow-hidden" style={{ background: 'var(--bg)' }}>
-            <div role="region" aria-label="Market indices" tabIndex={0} className="w-full px-4 sm:px-6 lg:px-8 overflow-x-auto overscroll-x-contain no-scrollbar">
-            <div className="flex w-max min-w-full items-center justify-between gap-6 sm:gap-8">
+            <div role="region" aria-label="Market indices" tabIndex={0} className="mx-auto w-full max-w-[1280px] px-4 sm:px-6 lg:px-8 overflow-x-auto overscroll-x-contain no-scrollbar">
+            <div className="flex w-max items-center gap-8 sm:gap-10">
                 {INDICES.map(({ symbol, label }) => {
                     const q = quotes[symbol];
                     const isUp = (q?.change ?? 0) >= 0;
                     return (
                         <Link href={`/stock/${encodeURIComponent(symbol)}`} key={symbol}
-                            className="shrink-0 min-h-11 py-2 flex items-center gap-2 hover:bg-surface-3 cursor-pointer transition-colors group">
-                            <span className="text-xs sm:text-[13px] font-semibold text-ink-heading group-hover:text-ink transition-colors">{label}</span>
+                            className="shrink-0 min-h-12 py-3 flex items-center gap-2 hover:bg-surface-3 cursor-pointer transition-colors group">
+                            <span className="text-[13px] sm:text-sm font-semibold text-ink-heading group-hover:text-ink transition-colors">{label}</span>
                             {q ? (
                                 <div className="flex items-baseline gap-2 whitespace-nowrap">
-                                    <span className="text-xs sm:text-[13px] font-medium text-ink tabular-nums font-num">{fmt(q.price)}</span>
-                                    <span className={`text-xs sm:text-[13px] font-medium tabular-nums font-num ${isUp ? 'text-up' : 'text-down'}`}>
+                                    <span className="text-[13px] sm:text-sm font-medium text-ink tabular-nums font-num">{fmt(q.price)}</span>
+                                    <span className={`text-[13px] sm:text-sm font-medium tabular-nums font-num ${isUp ? 'text-up' : 'text-down'}`}>
                                         {q.change < 0 ? '−' : ''}{fmt(Math.abs(q.change))} ({q.dayChange < 0 ? '−' : ''}{Math.abs(q.dayChange).toFixed(2)}%)
                                     </span>
                                 </div>

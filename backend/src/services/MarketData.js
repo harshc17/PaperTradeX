@@ -41,6 +41,7 @@ const TRACKED_INDICES = [
     { key: '^NSEBANK',    name: 'BANK NIFTY',   yahooSymbol: '^NSEBANK'    },
     { key: '^MIDCPNIFTY', name: 'MIDCPNIFTY',  yahooSymbol: '^NSMIDCP'    },
     { key: '^FINNIFTY',   name: 'FINNIFTY',    yahooSymbol: '^CNXFIN'     },
+    { key: '^BANKEX',     name: 'BANKEX',      yahooSymbol: 'BSE-BANK.BO' },
 ];
 
 // Map from NSE index API name → our key

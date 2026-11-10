@@ -10,13 +10,14 @@ import { TrendingUp, TrendingDown, ArrowUpRight, Loader2 } from 'lucide-react';
 import MarketMovers from './MarketMovers';
 import DashboardNews from './DashboardNews';
 
-const INDEX_SYMBOLS = ['^NSEI', '^BSESN', '^NSEBANK', '^MIDCPNIFTY', '^FINNIFTY'];
+const INDEX_SYMBOLS = ['^NSEI', '^BSESN', '^NSEBANK', '^MIDCPNIFTY', '^FINNIFTY', '^BANKEX'];
 const INDEX_LABELS: Record<string, string> = {
     '^NSEI': 'NIFTY 50',
     '^BSESN': 'SENSEX',
     '^NSEBANK': 'BANKNIFTY',
     '^MIDCPNIFTY': 'MIDCPNIFTY',
-    '^FINNIFTY': 'FINNIFTY'
+    '^FINNIFTY': 'FINNIFTY',
+    '^BANKEX': 'BANKEX'
 };
 
 const TOP_STOCKS = [
@@ -48,7 +49,6 @@ function resolveQuote(quotes: Record<string, QuoteData>, symbol: string): QuoteD
 export default function DashboardMarket() {
     const router = useRouter();
     const { marketStatus } = usePortfolio();
-    const [showAllStocks, setShowAllStocks] = useState(false);
     const [openingSymbol, setOpeningSymbol] = useState<string | null>(null);
     const [isNavigating, startNavigation] = useTransition();
     const openStock = (symbol: string) => {
@@ -177,44 +177,37 @@ export default function DashboardMarket() {
             <section>
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-base font-medium text-ink-heading">Top stocks</h2>
-                    <button type="button" aria-expanded={showAllStocks} aria-controls="top-stocks-list" onClick={() => setShowAllStocks(v => !v)} className="lg:hidden min-h-11 text-[12px] text-primary hover:underline font-medium">{showAllStocks ? 'Show fewer' : 'View all 10'}</button>
+                    <span className="text-xs text-ink-faint">Scroll to explore</span>
                 </div>
                 <div className="bg-surface rounded-2xl border border-line overflow-hidden shadow-none">
-                    <div className="hidden sm:grid grid-cols-12 gap-2 px-3 sm:px-5 py-3 bg-surface-2 border-b border-line text-xs font-medium text-ink-faint">
-                        <div className="col-span-5">Company</div>
-                        <div className="col-span-5 sm:col-span-3 text-right">Price</div>
-                        <div className="col-span-2 text-right" title="Compared with the previous market close">Day change</div>
-                        <div className="col-span-2 text-right">Action</div>
-                    </div>
-                    <div id="top-stocks-list" className="divide-y divide-line">
-                        {TOP_STOCKS.map((stock, index) => {
+                    <div id="top-stocks-list" role="region" aria-label="Top stocks" tabIndex={0} className="flex gap-3 overflow-x-auto overscroll-x-contain snap-x snap-proximity scroll-px-3 sm:scroll-px-4 p-3 sm:p-4">
+                        {TOP_STOCKS.map(stock => {
                             const q = resolveQuote(quotes, stock.symbol);
                             const isUp = (q?.change ?? 0) >= 0;
 
                             return (
                                 <div key={stock.symbol}
-                                    className={`${index >= 4 && !showAllStocks ? 'hidden lg:grid' : 'grid'} grid-cols-12 gap-1 px-3 sm:px-4 py-2.5 items-center hover:bg-surface-3 transition-colors cursor-pointer group`}
+                                    className="grid w-[220px] sm:w-[240px] shrink-0 snap-start grid-cols-12 gap-3 rounded-xl border border-line p-4 items-center hover:bg-surface-3 transition-colors group"
                                     onClick={() => openStock(stock.symbol)}>
-                                    <div className="col-span-6 sm:col-span-5 min-w-0 flex items-center gap-2 sm:gap-3">
+                                    <div className="col-span-12 min-w-0 flex items-center gap-2 sm:gap-3">
                                         <CompanyLogo symbol={stock.symbol} className="h-8 w-8" />
                                         <div className="min-w-0">
                                             <p className="truncate text-xs sm:text-sm font-semibold text-ink group-hover:text-primary transition-colors" title={stock.name}>{stock.name}</p>
                                             <p className="text-xs text-ink-faint">{stock.symbol.replace('.NS', '')} · NSE</p>
                                         </div>
                                     </div>
-                                    <div className="col-span-4 sm:col-span-3 text-right">
+                                    <div className="col-span-12 text-left">
                                         {q ? <p className="text-xs sm:text-sm whitespace-nowrap font-medium text-ink-heading tabular-nums font-num">₹{fmt(q.price)}</p>
                                             : <div className="w-16 h-4 shimmer rounded ml-auto" />}
-                                        {q && <p className={`sm:hidden mt-0.5 text-xs tabular-nums font-num ${isUp ? 'text-up' : 'text-down'}`}>{isUp ? '+' : ''}{q.dayChange.toFixed(2)}%</p>}
                                     </div>
-                                    <div className="hidden sm:block sm:col-span-2 text-right">
+                                    <div className="col-span-7 text-left">
                                         {q ? (
                                             <span className={`text-xs sm:text-xs font-medium px-1 sm:px-2 py-1 rounded-lg tabular-nums font-num ${isUp ? 'text-up bg-up/10 border border-up/20' : 'text-down bg-down/10 border border-down/20'}`}>
                                                 {isUp ? '+' : ''}{q.dayChange.toFixed(2)}%
                                             </span>
                                         ) : <div className="w-12 h-5 shimmer rounded ml-auto" />}
                                     </div>
-                                    <div className="col-span-2 flex justify-end">
+                                    <div className="col-span-5 flex justify-end">
                                         <button
                                             id={`buy-btn-${stock.symbol}`}
                                             onClick={e => { e.stopPropagation(); openStock(stock.symbol); }}
@@ -233,7 +226,7 @@ export default function DashboardMarket() {
                 </div>
             </section>
 
-            <section><MarketMovers /></section>
+            <section><MarketMovers sourceQuotes={quotes} /></section>
             <section><DashboardNews /></section>
         </div>
     );

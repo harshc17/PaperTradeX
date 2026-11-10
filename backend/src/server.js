@@ -12,6 +12,7 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const MarketDataService = require('./services/MarketData');
 const TradeEngine = require('./services/TradeEngine');
+const { assertTradable } = require('./services/MarketIndex');
 const { connectDB, User, PendingSignup, Order, TransactionHistory, WeeklyChallenge, WeeklyChallengeTrade, seedAdmin } = require('./models');
 const NSEClient = require('./services/NSEClient');
 const HistoricalClient = require('./services/HistoricalClient');
@@ -995,19 +996,21 @@ app.post('/api/ai/market-news/refresh', authenticateToken, async (req, res) => {
 
 
 app.get('/api/indices', async (req, res) => {
-    const INDEX_KEYS = ['^NSEI', '^BSESN', '^NSEBANK', '^MIDCPNIFTY', '^FINNIFTY'];
+    const INDEX_KEYS = ['^NSEI', '^BSESN', '^NSEBANK', '^MIDCPNIFTY', '^FINNIFTY', '^BANKEX'];
     const INDEX_LABELS = {
         '^NSEI': 'NIFTY 50',
         '^BSESN': 'SENSEX',
         '^NSEBANK': 'BANK NIFTY',
         '^MIDCPNIFTY': 'MIDCPNIFTY',
         '^FINNIFTY': 'FINNIFTY',
+        '^BANKEX': 'BANKEX',
     };
     // Yahoo Finance symbols for the indices it supports
     const YAHOO_SYMBOLS = {
         '^NSEI': '^NSEI',
         '^BSESN': '^BSESN',
         '^NSEBANK': '^NSEBANK',
+        '^BANKEX': 'BSE-BANK.BO',
         // MIDCPNIFTY and FINNIFTY are NOT on Yahoo — use NSE allIndices only
     };
     // NSE allIndices name → our key (for direct NSE fallback)
@@ -1333,6 +1336,7 @@ app.post('/api/challenge/trade', authenticateToken, async (req, res) => {
     try {
         const userId = req.user.id;
         const { symbol, type, quantity } = req.body;
+        assertTradable(symbol);
 
         if (!NSEClient.constructor.isMarketHours()) {
             return res.status(409).json({ error: 'Market is closed. Buying and selling are disabled.' });
@@ -1449,6 +1453,7 @@ app.post('/api/trade', authenticateToken, async (req, res) => {
     const { symbol, type, quantity, orderType = 'MARKET', limitPrice } = req.body;
     const userId = req.user.id;
     try {
+        assertTradable(symbol);
         TradeEngine.assertMarketOpen();
         if (typeof symbol !== 'string' || !/^[A-Z0-9&-]{1,30}(\.(NS|BO))?$/i.test(symbol)) {
             return res.status(400).json({ error: 'Invalid stock symbol' });

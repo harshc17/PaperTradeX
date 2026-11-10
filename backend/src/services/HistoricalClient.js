@@ -31,6 +31,7 @@ const PERIOD_CONFIG = {
 // Yahoo uses .NS suffix for NSE stocks, .BO for BSE stocks.
 // Preserve existing exchange suffixes; only append .NS if bare.
 function toYahooSymbol(symbol) {
+    if (symbol.toUpperCase() === '^BANKEX') return 'BSE-BANK.BO';
     if (symbol.startsWith('^')) return symbol; // indices unchanged
     const upper = symbol.toUpperCase();
     if (upper.endsWith('.NS') || upper.endsWith('.BO')) return upper;
@@ -42,6 +43,7 @@ function toYahooSymbol(symbol) {
 // e.g. 'RELIANCE.NS' → ['RELIANCE.NS', 'RELIANCE.BO']
 // e.g. 'RELIANCE' → ['RELIANCE.NS', 'RELIANCE.BO']
 function getYahooCandidates(symbol) {
+    if (symbol.toUpperCase() === '^BANKEX') return ['BSE-BANK.BO'];
     if (symbol.startsWith('^')) return [symbol];
     const upper = symbol.toUpperCase();
     if (upper.endsWith('.BO')) return [upper, upper.replace(/\.BO$/, '.NS')];
