@@ -6,15 +6,15 @@
    unslop by Damir Sokolovsky (@heydamir), CC BY 4.0. */
 :root {
   color-scheme: dark;
-  --primary-rgb: 0 208 156; --primary-dark-rgb: 0 179 134; --primary-light-rgb: 183 242 222;
-  --up-rgb: 0 208 156; --down-rgb: 255 107 107;
-  --surface-rgb: 24 24 24; --surface-2-rgb: 34 34 34; --surface-3-rgb: 44 44 44;
-  --line-rgb: 236 237 239; --text-rgb: 236 237 239; --text-muted-rgb: 181 183 190; --text-faint-rgb: 154 158 168;
-  --brand-wordmark: #20b4c5; --primary: #00d09c; --primary-dark: #00b386; --primary-darker: #12382d; --primary-light: #b7f2de; --primary-ink: #082b20;
-  --up: #00d09c; --down: #ff6b6b; --buy-ink: #082b20; --sell-ink: #371b1b;
-  --bg: #121212; --surface: #181818; --surface-2: #222222; --surface-3: #2c2c2c;
-  --surface-border: rgba(236,237,239,.10); --surface-border-strong: rgba(236,237,239,.22);
-  --text-main: #ecedef; --text-heading: #ecedef; --text-muted: #b5b7be; --text-faint: #9a9ea8;
+  --primary-rgb: 0 201 142; --primary-dark-rgb: 0 169 120; --primary-light-rgb: 183 242 222;
+  --up-rgb: 0 201 142; --down-rgb: 255 107 107;
+  --surface-rgb: 16 17 18; --surface-2-rgb: 23 24 25; --surface-3-rgb: 32 34 35;
+  --line-rgb: 244 245 246; --text-rgb: 244 245 246; --text-muted-rgb: 171 174 179; --text-faint-rgb: 139 143 149;
+  --brand-wordmark: #20b4c5; --primary: #00c98e; --primary-dark: #00a978; --primary-darker: #102d24; --primary-light: #b7f2de; --primary-ink: #082b20;
+  --up: #00c98e; --down: #ff6b6b; --buy-ink: #082b20; --sell-ink: #371b1b;
+  --bg: #08090a; --surface: #101112; --surface-2: #171819; --surface-3: #202223;
+  --surface-border: rgba(244,245,246,.12); --surface-border-strong: rgba(244,245,246,.24);
+  --text-main: #f4f5f6; --text-heading: #f4f5f6; --text-muted: #abaeb3; --text-faint: #8b8f95;
   --warning: #e1b963; --scroll-thumb: #575757; --font-heading: var(--font-body); --radius: 12px;
   --shadow-xs: none; --shadow-sm: none; --shadow-md: none; --shadow-lg: 0 8px 32px rgba(0,0,0,.24); --shadow-primary: none;
 }
@@ -70,6 +70,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   outline-offset: 3px;
 }
 .lucide { stroke-width: 1.5; flex-shrink: 0; }
+:root[data-theme="dark"] nav[aria-label="Main navigation"] [aria-current="page"] { color: #f5f6f7; }
+:root[data-theme="dark"] nav[aria-label="Main navigation"] a[aria-current="page"] > span { background-color: #f5f6f7; }
 .theme-toggle-icon { color: var(--brand-wordmark); filter: drop-shadow(0 0 5px rgba(32,180,197,.55)); }
 :root[data-theme="light"] .theme-toggle-icon { filter: drop-shadow(0 0 4px rgba(8,122,132,.28)); }
 .font-num { font-family: var(--font-body), system-ui, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: 0; }
