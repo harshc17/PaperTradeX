@@ -1,12 +1,11 @@
 'use client';
 import Link from 'next/link';
-import ReturnViewToggle from '@/components/ReturnViewToggle';
 import XirrValue from '@/components/XirrValue';
 import { usePortfolio } from '@/context/PortfolioContext';
 import { useAuth } from '@/context/AuthContext';
 export default function PortfolioSummary() {
  const {balance}=useAuth();
- const {returnView,portfolioXirr,holdings,transactions,totalInvested,currentValue,totalReturns,totalReturnsPercent,todayReturns,todayReturnsPercent,todayReturnsReady}=usePortfolio();
+ const {portfolioXirr,holdings,transactions,totalInvested,currentValue,totalReturns,totalReturnsPercent,todayReturns,todayReturnsPercent,todayReturnsReady}=usePortfolio();
  const fmt=(n:number)=>n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
  return (<div className="bg-surface rounded-2xl border border-line p-4 sm:p-6 shadow-none">
                 <div className="flex items-center justify-between mb-3 sm:mb-5">
@@ -14,7 +13,6 @@ export default function PortfolioSummary() {
                     <Link href="/holdings" className="text-[12px] text-primary hover:underline font-medium">View all →</Link>
                 </div>
 
-                <div className="mb-4"><ReturnViewToggle /></div>
                 <div className="mb-3 sm:mb-5 flex flex-wrap items-center justify-between gap-3">
                     <div><p className="text-[12px] text-ink-faint mb-1">Current value</p>
                     <h2 className="text-[28px] font-medium text-ink-heading tabular-nums font-num">₹{fmt(currentValue)}</h2></div>
@@ -25,7 +23,7 @@ export default function PortfolioSummary() {
                     <div className="space-y-3 pt-4 border-t border-line">
                         {[
                             { label: '1D return', val: todayReturns, pct: todayReturnsPercent },
-                            ...(returnView === 'absolute' ? [{ label: 'Total returns', val: totalReturns, pct: totalReturnsPercent }] : []),
+                            { label: 'Total returns', val: totalReturns, pct: totalReturnsPercent },
                         ].map(({ label, val, pct }) => (
                             <div key={label} className="flex flex-wrap gap-2 justify-between items-center">
                                 <span className="text-sm text-ink-faint" title={label === '1D return' ? 'Profit/loss for the latest trading session. Overnight shares use previous close; today’s buys use execution price. Includes today’s sales. Percentage uses opening holdings value plus today’s purchases.' : undefined}>{label}</span>
@@ -34,11 +32,11 @@ export default function PortfolioSummary() {
                                 </span>
                             </div>
                         ))}
-                        {returnView === 'xirr' && <div className="flex flex-wrap gap-2 justify-between items-start"><span className="text-sm text-ink-faint">XIRR</span><XirrValue result={portfolioXirr} /></div>}
                         <div className="flex flex-wrap gap-2 justify-between items-center">
                             <span className="text-sm text-ink-faint">Invested</span>
                             <span className="text-sm font-semibold text-ink tabular-nums font-num">₹{fmt(totalInvested)}</span>
                         </div>
+                        <div className="flex flex-wrap gap-2 justify-between items-start"><span className="text-sm text-ink-faint">XIRR</span><XirrValue result={portfolioXirr} /></div>
                     </div>
                 ) : (
                     <div className="text-center py-2 sm:py-4 border-t border-line">

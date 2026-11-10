@@ -69,8 +69,6 @@ export interface MarketStatusInfo {
 
 interface PortfolioContextType {
     portfolioXirr: XirrResult;
-    returnView: 'absolute' | 'xirr';
-    setReturnView: (view: 'absolute' | 'xirr') => void;
     holdings: PortfolioItem[];
     orders: Order[];
     transactions: Transaction[];
@@ -110,7 +108,6 @@ function clearAuthState() {
 }
 
 export function PortfolioProvider({ children }: { children: ReactNode }) {
-    const [returnView, setReturnView] = useState<'absolute' | 'xirr'>('absolute');
     const [holdings, setHoldings] = useState<PortfolioItem[]>([]);
     const [orders, setOrders] = useState<Order[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -511,7 +508,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     return (
         <PortfolioContext.Provider value={{
             holdings: enrichedHoldings,
-            portfolioXirr, returnView, setReturnView,
+            portfolioXirr,
             orders,
             transactions,
             totalInvested,

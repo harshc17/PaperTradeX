@@ -1,5 +1,4 @@
 'use client';
-import ReturnViewToggle from '@/components/ReturnViewToggle';
 import XirrValue from '@/components/XirrValue';
 import CompanyLogo from '@/components/CompanyLogo';
 import { useEffect, useState, useMemo } from 'react';
@@ -13,7 +12,7 @@ import { TrendingUp, TrendingDown, Package, Search, Clock, ArrowUpRight, Externa
 export default function HoldingsPage() {
     const { user, balance, loading: authLoading } = useAuth();
     const {
-        returnView, portfolioXirr,
+        portfolioXirr,
         holdings,
         orders,
         totalInvested,
@@ -92,7 +91,6 @@ export default function HoldingsPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">
-                        <ReturnViewToggle />
                         <button
                             onClick={handleManualRefresh}
                             disabled={isRefreshing}
@@ -157,13 +155,12 @@ export default function HoldingsPage() {
 
                     <div className="rounded-2xl p-5 bg-surface border border-line min-w-0">
                         <div className="flex items-center justify-between text-xs text-ink-faint mb-2">
-                            <span className="font-semibold">{returnView === 'xirr' ? 'Portfolio XIRR' : 'Total returns'}</span>
+                            <span className="font-semibold">Total returns</span>
                             {isProfit ? <TrendingUp className="w-4 h-4 text-up" /> : <TrendingDown className="w-4 h-4 text-down" />}
                         </div>
-                        {returnView === 'xirr' ? <XirrValue result={portfolioXirr} large /> : <>
                             <h2 className={`text-[28px] font-medium tabular-nums font-num mb-2 ${isProfit ? 'text-up' : 'text-down'}`}>{isProfit ? '+' : '-'}₹{fmt(Math.abs(totalReturns))}</h2>
                             <span className={`text-xs font-num ${isProfit ? 'text-up' : 'text-down'}`}>{isProfit ? '+' : '-'}{Math.abs(totalReturnsPercent).toFixed(2)}% Overall</span>
-                        </>}
+                            <div className="mt-3 border-t border-line pt-3"><p className="text-xs text-ink-faint mb-1">Portfolio XIRR</p><XirrValue result={portfolioXirr} /></div>
                     </div>
 
                     {/* Card 3: Invested Capital */}
@@ -273,7 +270,7 @@ export default function HoldingsPage() {
 
                         {/* Holdings Data Table */}
                         <div className="overflow-x-auto overscroll-x-contain">
-                            <table className="w-full min-w-[700px] text-left">
+                            <table className="w-full min-w-[960px] text-left">
                                 <thead>
                                     <tr className="bg-surface-2/60 text-xs font-medium text-ink-faint border-b border-line">
                                         <th className="px-5 py-3.5">Asset / Company</th>
@@ -281,8 +278,9 @@ export default function HoldingsPage() {
                                         <th className="px-5 py-3.5 text-right">Average price</th>
                                         <th className="px-5 py-3.5 text-right">Current value</th>
                                         <th className="px-5 py-3.5 text-right" title="Session profit/loss using previous close for overnight shares and execution prices for today's trades, including sales">1D return</th>
-                                        <th className="px-5 py-3.5 text-right">{returnView === 'xirr' ? 'XIRR (annualised)' : 'Total returns'}</th>
+                                        <th className="px-5 py-3.5 text-right">Total returns</th>
                                         <th className="px-5 py-3.5 text-center">Action</th>
+                                        <th className="px-5 py-3.5 text-right">XIRR (annualised)</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-line">
@@ -354,14 +352,12 @@ export default function HoldingsPage() {
 
                                                 {/* Total returns (Unrealized P&L Column) */}
                                                 <td className="px-5 py-4 text-right">
-                                                    {returnView === 'xirr' ? <XirrValue result={h.xirr} /> : <>
                                                     <p className={`text-sm font-medium tabular-nums font-num ${isUp ? 'text-up' : 'text-down'}`}>
                                                         {isUp ? '+' : '-'}₹{fmt(Math.abs(h.pnl ?? 0))}
                                                     </p>
                                                     <span className={`inline-block text-xs font-semibold tabular-nums font-num mt-0.5 ${isUp ? 'text-up' : 'text-down'}`}>
                                                         {isUp ? '+' : '-'}{Math.abs(h.pnlPercent ?? 0).toFixed(2)}%
                                                     </span>
-                                                    </>}
                                                 </td>
 
                                                 {/* Quick Action */}
@@ -375,6 +371,7 @@ export default function HoldingsPage() {
                                                         <ExternalLink className="w-3 h-3" />
                                                     </button>
                                                 </td>
+                                                <td className="px-5 py-4 text-right"><XirrValue result={h.xirr} /></td>
                                             </tr>
                                         );
                                     })}
