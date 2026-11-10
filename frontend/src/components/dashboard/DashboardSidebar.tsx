@@ -6,6 +6,7 @@ import AIPortfolioAnalyst from './AIPortfolioAnalyst';
 
 export default function DashboardSidebar() {
     const tools = [
+        { name: 'Trading coach', icon: Bot, href: '/trading-coach' },
         { name: 'Ask AI', icon: Bot, href: '/ask-ai' },
         { name: 'Stock screener', icon: Search, href: '/stock-screener' },
         { name: 'ETF screener', icon: BarChart3, href: '/etf-screener' },

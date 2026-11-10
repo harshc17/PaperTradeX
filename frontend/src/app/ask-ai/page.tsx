@@ -7,6 +7,7 @@ import { Send, Bot, User as UserIcon, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
+import Link from 'next/link';
 
 interface Message {
     role: 'user' | 'ai';
@@ -89,6 +90,7 @@ export default function AskAIPage() {
                             Ask AI
                         </h1>
                         <p className="text-ink-faint text-sm mt-1.5">Get expert financial insights and stock market analysis.</p>
+                        <Link href="/trading-coach" className="mt-2 inline-flex min-h-11 items-center text-sm text-primary hover:underline">Review your completed trades with Trading coach →</Link>
                     </div>
                 </div>
 

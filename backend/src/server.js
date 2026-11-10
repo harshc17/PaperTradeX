@@ -914,6 +914,8 @@ app.get('/api/stock/:symbol/news', async (req, res) => {
 });
 
 
+app.use('/api/ai/coach', require('./routes/tradingCoach')({ TransactionHistory, AIService, authenticateToken }));
+
 app.post('/api/ai/portfolio', authenticateToken, async (req, res) => {
     try {
         const userId = req.user.id;
