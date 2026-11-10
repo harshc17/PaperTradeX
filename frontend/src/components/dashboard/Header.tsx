@@ -215,7 +215,7 @@ export default function Header() {
     const fmtBalance = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     return (
-        <header className="sticky top-0 z-40 flex flex-col border-b border-line"
+        <header className="sticky top-0 z-40 flex flex-col"
             style={{ background: 'var(--surface)' }}>
 
             {/* Top row */}
