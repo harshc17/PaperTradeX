@@ -182,9 +182,8 @@ export default function DashboardMarket() {
             <section>
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-base font-medium text-ink-heading">Top stocks</h2>
-                    <span className="text-xs text-ink-faint">Scroll to explore</span>
                 </div>
-                <div className="bg-surface rounded-2xl border border-line overflow-hidden shadow-none">
+                <div className="min-w-0 overflow-hidden">
                     <div ref={topStocksRef} id="top-stocks-list" role="region" aria-label="Top stocks" tabIndex={0} className="flex gap-3 overflow-x-auto overscroll-x-contain snap-x snap-proximity scroll-px-3 sm:scroll-px-4 p-3 sm:p-4">
                         {TOP_STOCKS.slice(0, showAllStocks ? TOP_STOCKS.length : 4).map(stock => {
                             const q = resolveQuote(quotes, stock.symbol);
