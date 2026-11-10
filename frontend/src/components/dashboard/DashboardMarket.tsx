@@ -193,27 +193,28 @@ export default function DashboardMarket() {
 
                             return (
                                 <div key={stock.symbol}
-                                    className={`${index >= 4 && !showAllStocks ? 'hidden lg:grid' : 'grid'} grid-cols-12 gap-1 px-3 sm:px-5 py-3 sm:py-4 items-center hover:bg-surface-3 transition-colors cursor-pointer group`}
+                                    className={`${index >= 4 && !showAllStocks ? 'hidden lg:grid' : 'grid'} grid-cols-12 gap-1 px-3 sm:px-4 py-2.5 items-center hover:bg-surface-3 transition-colors cursor-pointer group`}
                                     onClick={() => openStock(stock.symbol)}>
-                                    <div className="col-span-7 sm:col-span-5 min-w-0 flex items-center gap-2 sm:gap-3">
-                                        <CompanyLogo symbol={stock.symbol} className="h-8 w-8 sm:h-9 sm:w-9" />
+                                    <div className="col-span-6 sm:col-span-5 min-w-0 flex items-center gap-2 sm:gap-3">
+                                        <CompanyLogo symbol={stock.symbol} className="h-8 w-8" />
                                         <div className="min-w-0">
                                             <p className="truncate text-xs sm:text-sm font-semibold text-ink group-hover:text-primary transition-colors" title={stock.name}>{stock.name}</p>
                                             <p className="text-xs text-ink-faint">{stock.symbol.replace('.NS', '')} · NSE</p>
                                         </div>
                                     </div>
-                                    <div className="col-span-3 text-right">
+                                    <div className="col-span-4 sm:col-span-3 text-right">
                                         {q ? <p className="text-xs sm:text-sm whitespace-nowrap font-medium text-ink-heading tabular-nums font-num">₹{fmt(q.price)}</p>
                                             : <div className="w-16 h-4 shimmer rounded ml-auto" />}
+                                        {q && <p className={`sm:hidden mt-0.5 text-xs tabular-nums font-num ${isUp ? 'text-up' : 'text-down'}`}>{isUp ? '+' : ''}{q.dayChange.toFixed(2)}%</p>}
                                     </div>
-                                    <div className="col-span-7 sm:col-span-2 text-left sm:text-right">
+                                    <div className="hidden sm:block sm:col-span-2 text-right">
                                         {q ? (
                                             <span className={`text-xs sm:text-xs font-medium px-1 sm:px-2 py-1 rounded-lg tabular-nums font-num ${isUp ? 'text-up bg-up/10 border border-up/20' : 'text-down bg-down/10 border border-down/20'}`}>
                                                 {isUp ? '+' : ''}{q.dayChange.toFixed(2)}%
                                             </span>
                                         ) : <div className="w-12 h-5 shimmer rounded ml-auto" />}
                                     </div>
-                                    <div className="col-span-5 sm:col-span-2 flex justify-end">
+                                    <div className="col-span-2 flex justify-end">
                                         <button
                                             id={`buy-btn-${stock.symbol}`}
                                             onClick={e => { e.stopPropagation(); openStock(stock.symbol); }}
@@ -222,7 +223,7 @@ export default function DashboardMarket() {
                                             aria-busy={isNavigating && openingSymbol === stock.symbol}
                                             className="min-h-11 min-w-11 inline-flex items-center justify-center gap-1.5 px-2 sm:px-2 py-2 text-xs font-medium text-[var(--primary-ink)] rounded-lg transition-colors duration-150 hover:brightness-110 shadow-none active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60 disabled:cursor-wait"
                                             style={{ background: 'var(--surface-2)', color: 'var(--text-main)', border: '1px solid var(--surface-border-strong)' }}>
-                                            {isNavigating && openingSymbol === stock.symbol ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /><span className="sm:sr-only">Opening…</span></> : <><span>Buy</span><ArrowUpRight className="w-3.5 h-3.5" /></>}
+                                            {isNavigating && openingSymbol === stock.symbol ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /><span className="sr-only">Opening…</span></> : <><span>Buy</span><ArrowUpRight className="hidden sm:block w-3.5 h-3.5" /></>}
                                         </button>
                                     </div>
                                 </div>

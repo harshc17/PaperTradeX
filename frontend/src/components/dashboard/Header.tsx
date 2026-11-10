@@ -122,6 +122,12 @@ const QUICK_SYMBOLS = [
 
 export default function Header() {
     const pathname = usePathname();
+    const navScrollRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const rail = navScrollRef.current;
+        const active = rail?.querySelector<HTMLElement>('[aria-current="page"]');
+        if (rail && active) rail.scrollLeft = active.offsetLeft - (rail.clientWidth - active.clientWidth) / 2;
+    }, [pathname]);
     const router = useRouter();
     const { user, balance, logout, refreshBalance } = useAuth();
     const { marketStatus, marketOpen } = usePortfolio();
@@ -548,7 +554,7 @@ export default function Header() {
             {/* Main navigation */}
             <div className="border-b border-line">
                 <nav aria-label="Main navigation" className="mx-auto flex min-h-[54px] w-full max-w-[1280px] items-center gap-3 px-4 sm:px-6 lg:px-8">
-                    <div className="flex min-w-0 flex-1 items-center gap-5 overflow-x-auto no-scrollbar">
+                    <div ref={navScrollRef} className="relative flex min-w-0 flex-1 items-center gap-5 overflow-x-auto overscroll-x-contain no-scrollbar">
                         {navItems.map(item => {
                             const isActive = pathname === item.href;
                             return (
@@ -558,7 +564,7 @@ export default function Header() {
                                         isActive ? 'text-ink-heading' : 'text-ink-faint hover:text-ink-muted'
                                     }`}>
                                     {item.name}
-                                    <span className={`absolute left-2 right-2 -bottom-px h-[2px] rounded-full bg-ink-heading transition-colors duration-300 ${
+                                    <span className={`absolute left-2 right-2 bottom-0 h-[2px] rounded-full bg-ink-heading transition-colors duration-300 ${
                                         isActive ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
                                     }`} />
                                 </Link>
