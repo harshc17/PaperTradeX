@@ -49,6 +49,7 @@ function resolveQuote(quotes: Record<string, QuoteData>, symbol: string): QuoteD
 export default function DashboardMarket() {
     const router = useRouter();
     const { marketStatus } = usePortfolio();
+    const [showAllStocks, setShowAllStocks] = useState(false);
     const [openingSymbol, setOpeningSymbol] = useState<string | null>(null);
     const [isNavigating, startNavigation] = useTransition();
     const openStock = (symbol: string) => {
@@ -181,7 +182,7 @@ export default function DashboardMarket() {
                 </div>
                 <div className="bg-surface rounded-2xl border border-line overflow-hidden shadow-none">
                     <div id="top-stocks-list" role="region" aria-label="Top stocks" tabIndex={0} className="flex gap-3 overflow-x-auto overscroll-x-contain snap-x snap-proximity scroll-px-3 sm:scroll-px-4 p-3 sm:p-4">
-                        {TOP_STOCKS.map(stock => {
+                        {TOP_STOCKS.slice(0, showAllStocks ? TOP_STOCKS.length : 4).map(stock => {
                             const q = resolveQuote(quotes, stock.symbol);
                             const isUp = (q?.change ?? 0) >= 0;
 
@@ -224,6 +225,9 @@ export default function DashboardMarket() {
                         })}
                     </div>
                 </div>
+                <button type="button" aria-expanded={showAllStocks} aria-controls="top-stocks-list" onClick={() => setShowAllStocks(value => !value)} className="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">
+                    {showAllStocks ? 'Show fewer' : 'See more'}
+                </button>
             </section>
 
             <section><MarketMovers sourceQuotes={quotes} /></section>

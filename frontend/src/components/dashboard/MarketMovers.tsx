@@ -74,12 +74,12 @@ export default function MarketMovers({ sourceQuotes = {} }: { sourceQuotes?: Rec
                 </div>
             </div>
 
-            <div role="region" aria-label="Market movers" tabIndex={0} className="flex gap-3 overflow-x-auto overscroll-x-contain snap-x snap-proximity scroll-px-3 sm:scroll-px-4 p-3 sm:p-4">
+            <div role="region" aria-label="Market movers" className="divide-y divide-line">
                 {sorted.length > 0 ? sorted.map((q, idx) => {
                     const isUp = q.dayChange >= 0;
                     return (
                         <button type="button" key={q.symbol}
-                            className="flex w-[220px] sm:w-[240px] shrink-0 snap-start flex-col items-start gap-4 rounded-xl border border-line p-4 text-left hover:bg-surface-3 transition-colors group"
+                            className="flex min-h-14 w-full items-center justify-between gap-2 px-3 sm:px-4 py-2.5 text-left hover:bg-surface-3 transition-colors group"
                             onClick={() => router.push(`/stock/${encodeURIComponent(q.symbol)}`)}>
                             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                                 <span className="shrink-0 text-xs font-medium text-ink-faint w-4 font-num">{idx + 1}</span>
@@ -99,7 +99,7 @@ export default function MarketMovers({ sourceQuotes = {} }: { sourceQuotes?: Rec
                     );
                 }) : (
                     [...Array(5)].map((_, i) => (
-                        <div key={i} className="flex w-[220px] sm:w-[240px] shrink-0 flex-col gap-4 rounded-xl border border-line p-4">
+                        <div key={i} className="flex min-h-14 items-center justify-between gap-2 px-3 sm:px-4 py-2.5">
                             <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 shimmer rounded-xl" />
                                 <div className="space-y-1.5">
