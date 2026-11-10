@@ -50,6 +50,10 @@ export default function DashboardMarket() {
     const router = useRouter();
     const { marketStatus } = usePortfolio();
     const [showAllStocks, setShowAllStocks] = useState(false);
+    const topStocksRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (!showAllStocks && topStocksRef.current) topStocksRef.current.scrollLeft = 0;
+    }, [showAllStocks]);
     const [openingSymbol, setOpeningSymbol] = useState<string | null>(null);
     const [isNavigating, startNavigation] = useTransition();
     const openStock = (symbol: string) => {
@@ -181,14 +185,14 @@ export default function DashboardMarket() {
                     <span className="text-xs text-ink-faint">Scroll to explore</span>
                 </div>
                 <div className="bg-surface rounded-2xl border border-line overflow-hidden shadow-none">
-                    <div id="top-stocks-list" role="region" aria-label="Top stocks" tabIndex={0} className="flex gap-3 overflow-x-auto overscroll-x-contain snap-x snap-proximity scroll-px-3 sm:scroll-px-4 p-3 sm:p-4">
+                    <div ref={topStocksRef} id="top-stocks-list" role="region" aria-label="Top stocks" tabIndex={0} className="flex gap-3 overflow-x-auto overscroll-x-contain snap-x snap-proximity scroll-px-3 sm:scroll-px-4 p-3 sm:p-4">
                         {TOP_STOCKS.slice(0, showAllStocks ? TOP_STOCKS.length : 4).map(stock => {
                             const q = resolveQuote(quotes, stock.symbol);
                             const isUp = (q?.change ?? 0) >= 0;
 
                             return (
                                 <div key={stock.symbol}
-                                    className="grid w-[220px] sm:w-[240px] shrink-0 snap-start grid-cols-12 gap-3 rounded-xl border border-line p-4 items-center hover:bg-surface-3 transition-colors group"
+                                    className="grid w-[220px] sm:w-[240px] xl:w-[calc((100%_-_36px)/4)] shrink-0 snap-start grid-cols-12 gap-3 rounded-xl border border-line p-4 items-center hover:bg-surface-3 transition-colors group"
                                     onClick={() => openStock(stock.symbol)}>
                                     <div className="col-span-12 min-w-0 flex items-center gap-2 sm:gap-3">
                                         <CompanyLogo symbol={stock.symbol} className="h-8 w-8" />
