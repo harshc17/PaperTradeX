@@ -28,6 +28,21 @@ test('empty history and open purchases do not produce invented returns', () => {
         assert.deepEqual(recentSales, []);
     }
 });
+test('partial sales retain a one-paise cost remainder and reconcile with recorded cash', () => {
+    const report = calculateTradePerformance([trade('BUY', 1, 100), trade('BUY', 1, 100.01, 2), trade('SELL', 1, 100, 3), trade('SELL', 1, 100, 4)]);
+    assert.equal(report.metrics.netRealisedPnl, -0.01);
+    assert.equal(report.metrics.closedCostBasis, 200.01);
+    assert.equal(report.metrics.grossLoss, 0.01);
+    assert.equal(report.metrics.completedSales, 2);
+    assert.equal(Number(report.recentSales.reduce((sum, sale) => sum + sale.proceeds - sale.costBasis, 0).toFixed(2)), -0.01);
+});
+test('many partial sales conserve recorded purchase cost through full exit', () => {
+    const trades = [trade('BUY', 7, 100.03), trade('BUY', 4, 100.08, 2)];
+    for (let i = 0; i < 11; i++) trades.push(trade('SELL', 1, 101, 3));
+    const report = calculateTradePerformance(trades);
+    assert.equal(report.metrics.closedCostBasis, 1100.53);
+    assert.equal(report.metrics.netRealisedPnl, 10.47);
+});
 test('separate symbols, full exits, and re-entry retain correct costs', () => {
     const { metrics, bySymbol } = calculateTradePerformance([trade('BUY', 2, 100), trade('BUY', 1, 500, 2, 'TCS'), trade('SELL', 2, 150, 3), trade('BUY', 1, 400, 4), trade('SELL', 1, 350, 5)]);
     assert.equal(metrics.netRealisedPnl, 50);
