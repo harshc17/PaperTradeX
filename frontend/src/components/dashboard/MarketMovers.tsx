@@ -56,16 +56,26 @@ export default function MarketMovers({ sourceQuotes = {} }: { sourceQuotes?: Rec
         const q = resolveMoverQuote(quotes, st.symbol) || sourceQuotes[st.symbol];
         return q ? { ...q, symbol: st.symbol, name: st.name } : undefined;
     }).filter((q): q is QuoteData => Boolean(q));
-    const sorted = resolved.sort((a, b) => tab === 'gainers' ? b.dayChange - a.dayChange : a.dayChange - b.dayChange).slice(0, 5);
+    const sorted = resolved
+        .filter(q => Number.isFinite(q.dayChange) && (tab === 'gainers' ? q.dayChange > 0 : q.dayChange < 0))
+        .sort((a, b) => tab === 'gainers' ? b.dayChange - a.dayChange : a.dayChange - b.dayChange)
+        .slice(0, 5);
 
     return (
         <div className="bg-surface rounded-2xl border border-line overflow-hidden shadow-none">
             <div className="flex flex-wrap items-center justify-between gap-3 px-3 sm:px-5 py-4 border-b border-line">
                 <h2 className="text-base font-semibold text-ink-heading font-heading">Market movers</h2>
-                <div className="flex bg-surface-2 border border-line rounded-xl p-0.5">
+                <div role="tablist" aria-label="Market mover direction" className="flex bg-surface-2 border border-line rounded-xl p-0.5">
                     {(['gainers', 'losers'] as const).map(t => (
-                        <button key={t} onClick={() => setTab(t)}
-                            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors capitalize ${
+                        <button type="button" role="tab" id={`market-movers-${t}`} aria-selected={tab === t} aria-controls="market-movers-results" tabIndex={tab === t ? 0 : -1} key={t} onClick={() => setTab(t)}
+                            onKeyDown={event => {
+                                if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                                event.preventDefault();
+                                const next = event.key === 'Home' ? 'gainers' : event.key === 'End' ? 'losers' : t === 'gainers' ? 'losers' : 'gainers';
+                                setTab(next);
+                                event.currentTarget.parentElement?.querySelector<HTMLButtonElement>(`#market-movers-${next}`)?.focus();
+                            }}
+                            className={`min-h-11 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors capitalize ${
                                 tab === t ? 'bg-surface-3 text-primary border border-line' : 'text-ink-faint hover:text-ink-muted'
                             }`}>
                             {t === 'gainers' ? 'Gainers' : 'Losers'}
@@ -74,7 +84,7 @@ export default function MarketMovers({ sourceQuotes = {} }: { sourceQuotes?: Rec
                 </div>
             </div>
 
-            <div role="region" aria-label="Market movers" className="divide-y divide-line">
+            <div id="market-movers-results" role="tabpanel" aria-labelledby={`market-movers-${tab}`} tabIndex={0} aria-label="Market movers" className="divide-y divide-line">
                 {sorted.length > 0 ? sorted.map((q, idx) => {
                     const isUp = q.dayChange >= 0;
                     return (
@@ -97,7 +107,9 @@ export default function MarketMovers({ sourceQuotes = {} }: { sourceQuotes?: Rec
                             </span>
                         </button>
                     );
-                }) : (
+                }) : resolved.length > 0 ? (
+                    <p className="px-4 py-6 text-sm text-ink-muted">No {tab} among the tracked stocks right now.</p>
+                ) : (
                     [...Array(5)].map((_, i) => (
                         <div key={i} className="flex min-h-14 items-center justify-between gap-2 px-3 sm:px-4 py-2.5">
                             <div className="flex items-center gap-3">
