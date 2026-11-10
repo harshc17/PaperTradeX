@@ -1,6 +1,7 @@
 'use client';
 import BrandLogo from '@/components/BrandLogo';
 import CompanyLogo from '@/components/CompanyLogo';
+import IndicesBanner from '@/components/dashboard/IndicesBanner';
 import ThemeToggle from '@/components/ThemeToggle';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -379,6 +380,8 @@ export default function Header() {
                     )}
                 </div>
             </div>
+
+            <IndicesBanner />
 
             {/* Market Schedule Modal */}
             {showMarketModal && (

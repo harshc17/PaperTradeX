@@ -60,12 +60,12 @@ export default function IndicesBanner() {
                     const isUp = (q?.change ?? 0) >= 0;
                     return (
                         <Link href={`/stock/${encodeURIComponent(symbol)}`} key={symbol}
-                            className="flex-shrink-0 px-4 py-2.5 flex items-center gap-3 hover:bg-surface-3 cursor-pointer transition-colors group">
-                            <span className="text-xs font-medium text-ink-faint group-hover:text-ink-muted transition-colors">{label}</span>
+                            className="flex-shrink-0 px-4 sm:px-5 lg:px-6 py-3 flex items-center gap-3 sm:gap-4 hover:bg-surface-3 cursor-pointer transition-colors group">
+                            <span className="text-sm lg:text-base font-medium text-ink-faint group-hover:text-ink-muted transition-colors">{label}</span>
                             {q ? (
                                 <div className="flex items-baseline gap-2">
-                                    <span className="text-sm font-medium text-ink tabular-nums font-num">{fmt(q.price)}</span>
-                                    <span className={`text-xs font-semibold flex items-center gap-0.5 tabular-nums font-num ${isUp ? 'text-up' : 'text-down'}`}>
+                                    <span className="text-base lg:text-lg font-medium text-ink tabular-nums font-num">{fmt(q.price)}</span>
+                                    <span className={`rounded-md px-2 py-1 text-sm font-semibold flex items-center gap-1 tabular-nums font-num ${isUp ? 'bg-up/10 text-up' : 'bg-down/10 text-down'}`}>
                                         {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                         {isUp ? '+' : ''}{q.dayChange.toFixed(2)}%
                                     </span>
