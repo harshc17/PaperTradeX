@@ -1,12 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { TrendingUp, TrendingDown } from 'lucide-react';
 import Link from 'next/link';
 import { getSocket } from '@/lib/socket';
 import { API_URL } from '@/lib/config';
 
 const INDICES = [
-    { symbol: '^NSEI',       label: 'NIFTY 50'   },
+    { symbol: '^NSEI',       label: 'NIFTY'      },
     { symbol: '^BSESN',      label: 'SENSEX'     },
     { symbol: '^NSEBANK',    label: 'BANKNIFTY'  },
     { symbol: '^MIDCPNIFTY', label: 'MIDCPNIFTY' },
@@ -53,21 +52,20 @@ export default function IndicesBanner() {
 
     return (
         <div className="border-b border-line overflow-hidden" style={{ background: 'var(--bg)' }}>
-            <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 overflow-x-auto no-scrollbar">
-            <div className="flex w-max min-w-full items-center justify-center divide-x divide-line">
+            <div className="w-full px-2 sm:px-6 lg:px-8 overflow-x-auto no-scrollbar">
+            <div className="flex w-max min-w-full items-center justify-between gap-3 sm:gap-5">
                 {INDICES.map(({ symbol, label }) => {
                     const q = quotes[symbol];
                     const isUp = (q?.change ?? 0) >= 0;
                     return (
                         <Link href={`/stock/${encodeURIComponent(symbol)}`} key={symbol}
-                            className="flex-shrink-0 px-4 sm:px-5 lg:px-6 py-3 flex items-center gap-3 sm:gap-4 hover:bg-surface-3 cursor-pointer transition-colors group">
-                            <span className="text-sm lg:text-base font-medium text-ink-faint group-hover:text-ink-muted transition-colors">{label}</span>
+                            className="flex-shrink-0 px-2 sm:px-0 py-3 flex items-center gap-2.5 hover:bg-surface-3 cursor-pointer transition-colors group">
+                            <span className="text-sm lg:text-base font-semibold text-ink-heading group-hover:text-ink transition-colors">{label}</span>
                             {q ? (
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-base lg:text-lg font-medium text-ink tabular-nums font-num">{fmt(q.price)}</span>
-                                    <span className={`rounded-md px-2 py-1 text-sm font-semibold flex items-center gap-1 tabular-nums font-num ${isUp ? 'bg-up/10 text-up' : 'bg-down/10 text-down'}`}>
-                                        {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                                        {isUp ? '+' : ''}{q.dayChange.toFixed(2)}%
+                                <div className="flex items-baseline gap-2 whitespace-nowrap">
+                                    <span className="text-sm lg:text-base font-medium text-ink tabular-nums font-num">{fmt(q.price)}</span>
+                                    <span className={`text-sm lg:text-base font-semibold tabular-nums font-num ${isUp ? 'text-up' : 'text-down'}`}>
+                                        {q.change < 0 ? '−' : ''}{fmt(Math.abs(q.change))} ({q.dayChange < 0 ? '−' : ''}{Math.abs(q.dayChange).toFixed(2)}%)
                                     </span>
                                 </div>
                             ) : (

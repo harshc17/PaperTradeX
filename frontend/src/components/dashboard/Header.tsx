@@ -5,7 +5,7 @@ import IndicesBanner from '@/components/dashboard/IndicesBanner';
 import ThemeToggle from '@/components/ThemeToggle';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Search, Bell, LogOut, ChevronDown, Menu, X, History, Clock, Info } from 'lucide-react';
+import { Search, Bell, LogOut, ChevronDown, X, History, Clock, Info } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { usePortfolio } from '@/context/PortfolioContext';
@@ -129,7 +129,6 @@ export default function Header() {
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [showResults, setShowResults] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
-    const [showMobileNav, setShowMobileNav] = useState(false);
     const [showMarketModal, setShowMarketModal] = useState(false);
     const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
     const [localResults, setLocalResults] = useState<any[]>([]);
@@ -381,8 +380,6 @@ export default function Header() {
                 </div>
             </div>
 
-            <IndicesBanner />
-
             {/* Market Schedule Modal */}
             {showMarketModal && (
                 <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
@@ -548,36 +545,30 @@ export default function Header() {
                 </div>
             )}
 
-            {/* Bottom nav */}
-            <nav aria-label="Main navigation" className="mx-auto w-full max-w-[1280px] px-4 sm:px-6 lg:px-8">
-                <div className="flex items-center gap-3 sm:hidden">
-                <button type="button" aria-expanded={showMobileNav} aria-controls="mobile-navigation" onClick={() => setShowMobileNav(v => !v)} className="flex min-h-11 min-w-0 flex-1 items-center justify-between text-sm text-ink">
-                    <span>{navItems.find(item => pathname === item.href)?.name || 'Navigation'}</span>
-                    {showMobileNav ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-                </button>
-                <ThemeToggle className="my-1" />
-                </div>
-                {showMobileNav && <div id="mobile-navigation" className="grid grid-cols-2 gap-1 border-t border-line py-2 sm:hidden">
-                    {navItems.map(item => <Link key={item.href} href={item.href} onClick={() => setShowMobileNav(false)} aria-current={pathname === item.href ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm transition-colors ${pathname === item.href ? 'bg-surface-2 text-primary' : 'text-ink-muted hover:bg-surface-2 hover:text-ink'}`}>{item.name}</Link>)}
-                </div>}
-                <div className="hidden sm:flex items-center gap-5 overflow-x-auto no-scrollbar">
-                    {navItems.map(item => {
-                        const isActive = pathname === item.href;
-                        return (
-                            <Link key={item.name} href={item.href}
-                                aria-current={isActive ? 'page' : undefined}
-                                className={`relative text-sm font-semibold whitespace-nowrap px-1 py-4 transition-colors ${
-                                    isActive ? 'text-primary' : 'text-ink-faint hover:text-ink-muted'
-                                }`}>
-                                {item.name}
-                                <span className={`absolute left-2 right-2 -bottom-px h-[2px] rounded-full bg-primary transition-colors duration-300 ${
-                                    isActive ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
-                                }`}  />
-                            </Link>
-                        );
-                    })}
-                </div>
-            </nav>
+            {/* Main navigation */}
+            <div className="border-b border-line">
+                <nav aria-label="Main navigation" className="mx-auto flex min-h-[54px] w-full max-w-[1280px] items-center gap-3 px-4 sm:px-6 lg:px-8">
+                    <div className="flex min-w-0 flex-1 items-center gap-5 overflow-x-auto no-scrollbar">
+                        {navItems.map(item => {
+                            const isActive = pathname === item.href;
+                            return (
+                                <Link key={item.name} href={item.href}
+                                    aria-current={isActive ? 'page' : undefined}
+                                    className={`relative flex min-h-[54px] shrink-0 items-center text-sm sm:text-base font-semibold whitespace-nowrap px-1 transition-colors ${
+                                        isActive ? 'text-ink-heading' : 'text-ink-faint hover:text-ink-muted'
+                                    }`}>
+                                    {item.name}
+                                    <span className={`absolute left-2 right-2 -bottom-px h-[2px] rounded-full bg-ink-heading transition-colors duration-300 ${
+                                        isActive ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
+                                    }`} />
+                                </Link>
+                            );
+                        })}
+                    </div>
+                    <ThemeToggle className="my-1 shrink-0 sm:hidden" />
+                </nav>
+            </div>
+            <IndicesBanner />
         </header>
     );
 }
