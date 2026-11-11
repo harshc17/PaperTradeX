@@ -425,7 +425,10 @@ function getSymbolMeta(symbol) {
 function shouldPreferYahoo(symbol) {
     const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
     const meta = getSymbolMeta(bare);
-    return bare.startsWith('^') || meta?.quoteType === 'ETF' || symbol.toUpperCase().endsWith('.BO') || meta?.exchange === 'BSE';
+    // NSE also publishes ETF prices. Sending an NSE ETF to Yahoo while the
+    // live market service uses NSE produces two valid but different quotes.
+    // Keep NSE-listed stocks and ETFs on the same source throughout the app.
+    return bare.startsWith('^') || symbol.toUpperCase().endsWith('.BO') || meta?.exchange === 'BSE';
 }
 
 app.get('/api/market-status', (req, res) => {
@@ -1127,8 +1130,10 @@ app.get('/api/stock/:symbol/realtime', async (req, res) => {
             }
         }
 
-        // 1. Check in-memory cache first (fast path — data is <= 5s old)
-        if (cached && (Date.now() - new Date(cached.timestamp).getTime()) < 5000) {
+        // 1. Use MarketData's cache whenever it has a value. The socket
+        // service owns live subscribed symbols; a separate REST fetch here
+        // can otherwise replace its newer NSE quote with another provider.
+        if (cached) {
             return res.json({
                 symbol:    bare,
                 price:     cached.price,

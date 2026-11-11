@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import { getSocket } from '@/lib/socket';
 import { API_URL as API } from '@/lib/config';
 import { useAuth } from './AuthContext';
@@ -114,6 +114,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     const [holdingsLoaded, setHoldingsLoaded] = useState(false);
     const [transactionsLoaded, setTransactionsLoaded] = useState(false);
     const [livePrices, setLivePrices] = useState<Record<string, number>>({});
+    // Prevent delayed REST responses or broadcasts from rolling a symbol back.
+    const latestQuoteAt = useRef<Record<string, number>>({});
+    const lastSocketQuoteAt = useRef<Record<string, number>>({});
     const [liveChanges, setLiveChanges] = useState<Record<string, number>>({});
     const [livePreviousClose, setLivePreviousClose] = useState<Record<string, number>>({});
     const [marketOpen, setMarketOpen] = useState<boolean | null>(null);
@@ -256,17 +259,27 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
             const updates: Record<string, number> = {};
             const changeUpdates: Record<string, number> = {};
             const prevCloseUpdates: Record<string, number> = {};
+            const acceptedSymbols = new Set<string>();
             
             Object.entries(payload).forEach(([sym, d]: [string, any]) => {
                 if (typeof d?.price === 'number') {
-                    updates[sym] = d.price;
-                    updates[normalizeSymbol(sym)] = d.price;
+                    const normalized = normalizeSymbol(sym);
+                    const parsedAt = Date.parse(d?.timestamp ?? '');
+                    const receivedAt = Number.isFinite(parsedAt) ? parsedAt : Date.now();
+                    if (receivedAt >= (latestQuoteAt.current[normalized] ?? 0)) {
+                        latestQuoteAt.current[normalized] = receivedAt;
+                        lastSocketQuoteAt.current[normalized] = Date.now();
+                        acceptedSymbols.add(normalized);
+                        updates[sym] = d.price;
+                        updates[normalized] = d.price;
+                    }
                 }
-                if (typeof d?.change === 'number') {
+                const normalized = normalizeSymbol(sym);
+                if (acceptedSymbols.has(normalized) && typeof d?.change === 'number') {
                     changeUpdates[sym] = d.change;
-                    changeUpdates[normalizeSymbol(sym)] = d.change;
+                    changeUpdates[normalized] = d.change;
                 }
-                if (typeof d?.price === 'number') {
+                if (acceptedSymbols.has(normalized) && typeof d?.price === 'number') {
                     const prevClose = typeof d?.change === 'number' && Number.isFinite(d.change)
                         ? d.price - d.change
                         : typeof d?.dayChange === 'number' && Number.isFinite(d.dayChange) && d.dayChange !== 0
@@ -320,10 +333,20 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
             }
         };
 
+        // MarketData emits lightweight `price_tick` events for subscribed
+        // holdings between its broader `market_update` broadcasts. Normalize
+        // the single-symbol event through the same portfolio update path.
+        const handlePriceTick = (tick: Record<string, any>) => {
+            if (!tick?.symbol) return;
+            handleMarketUpdate({ [tick.symbol]: tick });
+        };
+
         s.on('market_update', handleMarketUpdate);
+        s.on('price_tick', handlePriceTick);
 
         return () => {
             s.off('market_update', handleMarketUpdate);
+            s.off('price_tick', handlePriceTick);
         };
     }, [marketOpen]);
 
@@ -383,13 +406,18 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         if (!symbols.length) return;
 
         const refreshHeldPrices = async () => {
+            const socket = getSocket();
             const responses = await Promise.allSettled(
                 symbols.map(async (sym) => {
+                    const normalized = normalizeSymbol(sym);
+                    // Socket prices are the primary stream. Poll only when it
+                    // has gone quiet, avoiding two competing live sources.
+                    if (socket.connected && Date.now() - (lastSocketQuoteAt.current[normalized] ?? 0) < 8000) return null;
                     const r = await fetch(`${API}/api/stock/${encodeURIComponent(sym)}/realtime`);
                     if (!r.ok) return null;
                     const d = await r.json();
                     return typeof d?.price === 'number'
-                        ? { symbol: sym, price: d.price, change: d.change, dayChange: d.dayChange, prevClose: d.prevClose }
+                        ? { symbol: sym, price: d.price, change: d.change, dayChange: d.dayChange, prevClose: d.prevClose, timestamp: d.timestamp }
                         : null;
                 })
             );
@@ -406,6 +434,10 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
                 const d = res.value;
                 const sym = d.symbol;
                 const normSym = normalizeSymbol(sym);
+                const parsedAt = Date.parse(d.timestamp ?? '');
+                const receivedAt = Number.isFinite(parsedAt) ? parsedAt : Date.now();
+                if (receivedAt < (latestQuoteAt.current[normSym] ?? 0)) return;
+                latestQuoteAt.current[normSym] = receivedAt;
 
                 updates[sym] = d.price;
                 updates[normSym] = d.price;
