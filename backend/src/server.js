@@ -1282,6 +1282,10 @@ app.get('/api/portfolio', authenticateToken, async (req, res) => {
         const portfolio = await TradeEngine.getPortfolio(userId);
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ error: 'User not found' });
+        // Keep every held symbol in the server-side live feed. This makes
+        // portfolio valuation independent of a browser reconnect completing
+        // before the next market-data cycle.
+        portfolio.forEach((position) => marketDataService.subscribe(position.symbol));
         res.json({ balance: user.balance, holdings: portfolio });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
