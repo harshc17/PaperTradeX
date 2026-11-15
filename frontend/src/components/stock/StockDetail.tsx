@@ -6,7 +6,6 @@ import { Bell, Bookmark, Link2, TrendingDown, TrendingUp } from 'lucide-react';
 import { useStockQuote } from '@/lib/useStockQuote';
 import { API_URL } from '@/lib/config';
 import CompanyLogo from '@/components/CompanyLogo';
-import { usePortfolio } from '@/context/PortfolioContext';
 
 type StockData = {
     symbol: string;
@@ -33,17 +32,9 @@ type StockData = {
 };
 const detailCache = new Map<string, StockData>();
 
-function timeAgo(ts: number): string {
-    const secs = Math.floor((Date.now() - ts) / 1000);
-    if (secs < 5)  return 'just now';
-    if (secs < 60) return `${secs}s ago`;
-    return `${Math.floor(secs / 60)}m ago`;
-}
-
 /* ─── Component ──────────────────────────────────────────────────────────────── */
 export default function StockDetail({ symbol }: { symbol: string }) {
     const router = useRouter();
-    const { marketStatus, marketOpen } = usePortfolio();
     const [stockData, setStockData]   = useState<StockData | null>(() => detailCache.get(symbol) || null);
     const [loading, setLoading]       = useState(true);
     const quote = useStockQuote(symbol);
@@ -183,16 +174,6 @@ export default function StockDetail({ symbol }: { symbol: string }) {
                         <span className="text-sm sm:text-base text-ink-faint font-normal">1D</span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2 mt-2">
-                        <p className="text-xs text-ink-faint">
-                            {quote.timestamp ? 'Quote ' + timeAgo(quote.timestamp) : 'Waiting for quote'} · {marketOpen ? (quote.stale ? 'Quote stale — trading paused' : 'Latest quote') : 'Market closed (LTP)'} · {quote.source || 'unavailable'}
-                        </p>
-                        {!marketOpen && marketStatus && (
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-lg bg-surface-2 border border-line text-ink-muted">
-                                {marketStatus.sessionName} · Opens {marketStatus.nextOpenFormatted}
-                            </span>
-                        )}
-                    </div>
                 </div>
 
                 <div className="hidden shrink-0 sm:flex items-center gap-3 pt-1">
