@@ -114,7 +114,7 @@ export default function StockDetail({ symbol }: { symbol: string }) {
 
     // Metadata can arrive later than the quote. A slow company-details
     // request must not hide a price that the shared feed already supplied.
-    const details = stockData || { symbol, shortName: symbol.replace(/\.(NS|BO)$/i, ''), exchange: symbol.endsWith('.BO') ? 'BSE' : 'NSE', regularMarketPreviousClose: 0, regularMarketChange: 0, regularMarketChangePercent: 0 };
+    const details = stockData || { symbol, shortName: symbol.replace(/\.(NS|BO)$/i, ''), exchange: symbol.endsWith('.BO') || ['^BSESN', '^BANKEX'].includes(symbol.toUpperCase()) ? 'BSE' : 'NSE', regularMarketPreviousClose: 0, regularMarketChange: 0, regularMarketChangePercent: 0 };
 
     const currentPrice = quote.price;
 

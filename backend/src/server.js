@@ -982,7 +982,7 @@ async function sendStockDetail(res, symbol, details) {
     const quote = await displayQuote(symbol);
     return res.json({ ...details,
         symbol: quoteKey(symbol).endsWith('.BO') ? quoteKey(symbol) : (symbol.startsWith('^') ? symbol : quoteKey(symbol) + '.NS'),
-        exchange: quoteKey(symbol).endsWith('.BO') ? 'BSE' : 'NSE',
+        exchange: quoteKey(symbol).endsWith('.BO') || ['^BSESN', '^BANKEX'].includes(quoteKey(symbol)) ? 'BSE' : 'NSE',
         regularMarketPrice: quote?.price ?? null,
         regularMarketChange: quote?.change ?? null,
         regularMarketChangePercent: quote?.dayChange ?? null,
