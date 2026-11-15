@@ -23,6 +23,7 @@ const readCache = new PublicReadCache();
 const NSEClient = require('./NSEClient');
 const returnSessionDate = require('./ReturnSession');
 const OfficialIndexHistory = require('./OfficialIndexHistory');
+const IndexIntraday = require('./IndexIntraday');
 
 function aggregateDaily(quotes) {
     const days = new Map();
@@ -106,6 +107,7 @@ module.exports = {
     async _historical(symbol, period) {
         const cfg = PERIOD_CONFIG[period] || PERIOD_CONFIG['1mo'];
         if (OfficialIndexHistory.NAMES[symbol.toUpperCase()]) {
+            if (period === '1d') return IndexIntraday.historical(symbol);
             return OfficialIndexHistory.historical(symbol, period, cfg.lookbackDays);
         }
         const candidates = getYahooCandidates(symbol);

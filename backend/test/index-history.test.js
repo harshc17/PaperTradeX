@@ -13,7 +13,7 @@ test('official history keeps the exact index, date range, ordering and unique se
     assert.equal(data[1].date, '2026-11-13T10:00:00.000Z');
 });
 
-test('1D daily fallback is explicitly labelled, with no invented intraday path', async () => {
+test('official daily history is labelled and cannot be substituted for intraday', async () => {
     const saved = global.fetch;
     global.fetch = async (url, options) => {
         const request = JSON.parse(JSON.parse(options.body).cinfo);
@@ -21,12 +21,13 @@ test('1D daily fallback is explicitly labelled, with no invented intraday path',
         return { ok: true, json: async () => [row('12 Nov 2026', 110), row('13 Nov 2026', 115)] };
     };
     try {
-        const result = await historical('^FINNIFTY', '1d', 5, new Date('2026-11-15T12:00:00Z'));
-        assert.equal(result.data.length, 1);
-        assert.equal(result.data[0].close, 115);
+        const result = await historical('^FINNIFTY', '1mo', 32, new Date('2026-11-15T12:00:00Z'));
+        assert.equal(result.data.length, 2);
+        assert.equal(result.data[1].close, 115);
         assert.equal(result.prevClose, 110);
         assert.equal(result.resolution, 'daily');
-        assert.match(result.note, /Intraday history unavailable/);
+        assert.equal(result.note, 'Official daily history');
+        await assert.rejects(historical('^FINNIFTY', '1d', 5), /intraday reader/);
     } finally { global.fetch = saved; }
 });
 

@@ -27,6 +27,7 @@ function parseHistory(payload, name, from, to) {
 }
 
 async function historical(symbol, period, lookbackDays, now = new Date()) {
+    if (period === '1d') throw new Error('Use the intraday reader for 1D');
     const name = NAMES[symbol.toUpperCase()];
     if (!name) throw new Error('Unsupported official index');
     // The official endpoint supplies daily OHLC. Never present those as intraday candles.
@@ -39,9 +40,9 @@ async function historical(symbol, period, lookbackDays, now = new Date()) {
     if (!response.ok) throw new Error('Official index history unavailable');
     const data = parseHistory(await response.json(), name, from, now);
     const prevClose = data.length > 1 ? data[data.length - 2].close : null;
-    return { data: period === '1d' ? data.slice(-1) : data, prevClose,
+    return { data, prevClose,
         source: 'NSE Indices daily OHLC', resolution: 'daily',
-        note: period === '1d' ? 'Intraday history unavailable. Showing the latest official daily close.' : 'Official daily history',
+        note: 'Official daily history',
     };
 }
 module.exports = { historical, parseHistory, NAMES };
