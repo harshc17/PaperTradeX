@@ -29,7 +29,7 @@ const STOCKS = [
     { symbol: 'HCLTECH.NS', name: 'HCL Technologies', category: 'Technology' },
     { symbol: 'WIPRO.NS', name: 'Wipro', category: 'Technology' },
     { symbol: 'TECHM.NS', name: 'Tech Mahindra', category: 'Technology' },
-    { symbol: 'LTIM.NS', name: 'LTIMindtree', category: 'Technology' },
+    { symbol: 'LTM.NS', name: 'LTM Limited', category: 'Technology' },
     { symbol: 'PERSISTENT.NS', name: 'Persistent Systems', category: 'Technology' },
     { symbol: 'COFORGE.NS', name: 'Coforge', category: 'Technology' },
     { symbol: 'TATAELXSI.NS', name: 'Tata Elxsi', category: 'Technology' },
@@ -48,7 +48,7 @@ const STOCKS = [
 
     // ── Automobile & Components ──
     { symbol: 'MARUTI.NS', name: 'Maruti Suzuki', category: 'Automobile' },
-    { symbol: 'TATAMOTORS.NS', name: 'Tata Motors', category: 'Automobile' },
+    { symbol: 'TMPV.NS', name: 'Tata Motors Passenger Vehicles', category: 'Automobile' },
     { symbol: 'M&M.NS', name: 'Mahindra & Mahindra', category: 'Automobile' },
     { symbol: 'BAJAJ-AUTO.NS', name: 'Bajaj Auto', category: 'Automobile' },
     { symbol: 'EICHERMOT.NS', name: 'Eicher Motors', category: 'Automobile' },
@@ -102,7 +102,7 @@ const STOCKS = [
 
     // ── Telecom, Media & New-Age ──
     { symbol: 'BHARTIARTL.NS', name: 'Bharti Airtel', category: 'Telecom' },
-    { symbol: 'ZOMATO.NS', name: 'Zomato', category: 'New-Age' },
+    { symbol: 'ETERNAL.NS', name: 'Eternal (Zomato)', category: 'New-Age' },
     { symbol: 'SWIGGY.NS', name: 'Swiggy', category: 'New-Age' },
     { symbol: 'PAYTM.NS', name: 'One 97 Communications (Paytm)', category: 'New-Age' },
     { symbol: 'NYKAA.NS', name: 'FSN E-Commerce (Nykaa)', category: 'New-Age' },

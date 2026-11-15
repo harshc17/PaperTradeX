@@ -60,7 +60,7 @@ const POPULAR_SYMBOLS = [
     { symbol: 'BHARTIARTL.NS', shortname: 'Bharti Airtel', exchange: 'NSE' },
     { symbol: 'ITC.NS', shortname: 'ITC Limited', exchange: 'NSE' },
     { symbol: 'LT.NS', shortname: 'Larsen & Toubro', exchange: 'NSE' },
-    { symbol: 'TATAMOTORS.NS', shortname: 'Tata Motors', exchange: 'NSE' },
+    { symbol: 'TMPV.NS', shortname: 'Tata Motors Passenger Vehicles', exchange: 'NSE' },
     { symbol: 'NIFTYBEES.NS', shortname: 'Nippon Nifty BeES ETF', exchange: 'NSE' },
     { symbol: 'GOLDBEES.NS', shortname: 'Nippon Gold BeES ETF', exchange: 'NSE' },
     { symbol: 'BANKBEES.NS', shortname: 'Nippon Bank BeES ETF', exchange: 'NSE' },

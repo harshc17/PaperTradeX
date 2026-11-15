@@ -5,9 +5,10 @@ import { STOCK_LOGOS } from '@/lib/stock-logos';
 
 export default function CompanyLogo({ symbol, className = 'h-10 w-10' }: { symbol: string; className?: string }) {
     const ticker = symbol.toUpperCase().replace(/\.(NS|BO)$/, '');
+    const assetTicker = ({ LTM: 'LTIM', TMPV: 'TATAMOTORS', ETERNAL: 'ZOMATO' } as Record<string, string>)[ticker] || ticker;
     const [failedTicker, setFailedTicker] = useState<string | null>(null);
     const available = /^[A-Z0-9][A-Z0-9&-]{0,29}$/.test(ticker) && failedTicker !== ticker;
-    const source = STOCK_LOGOS.has(ticker) ? `/stock-logos/${encodeURIComponent(ticker)}.webp` : `/api/company-logo?symbol=${encodeURIComponent(ticker)}`;
+    const source = STOCK_LOGOS.has(assetTicker) ? `/stock-logos/${encodeURIComponent(assetTicker)}.webp` : `/api/company-logo?symbol=${encodeURIComponent(ticker)}`;
 
     return <span aria-hidden="true" className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-line ${available ? 'bg-white p-1' : 'bg-surface-3 text-xs font-medium text-primary'} ${className}`}>
         {available

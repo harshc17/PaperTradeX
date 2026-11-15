@@ -12,6 +12,7 @@
  */
 
 const axios = require('axios');
+const { providerSymbol } = require('./InstrumentAliases');
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
@@ -138,6 +139,7 @@ class NSEClient {
      * @param {string} symbol  e.g. "HDFCBANK" or "HDFCBANK.NS"
      */
     async equityQuote(symbol) {
+        symbol = providerSymbol(symbol);
         const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
         return this._get(`/api/quote-equity?symbol=${encodeURIComponent(bare)}`);
     }

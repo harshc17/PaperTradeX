@@ -15,6 +15,7 @@
 
 const YahooFinance = require('yahoo-finance2').default;
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
+const { providerSymbol } = require('./InstrumentAliases');
 
 // Period → { lookbackDays, interval }
 const PERIOD_CONFIG = {
@@ -31,6 +32,7 @@ const PERIOD_CONFIG = {
 // Yahoo uses .NS suffix for NSE stocks, .BO for BSE stocks.
 // Preserve existing exchange suffixes; only append .NS if bare.
 function toYahooSymbol(symbol) {
+    symbol = providerSymbol(symbol);
     if (symbol.toUpperCase() === '^BANKEX') return 'BSE-BANK.BO';
     if (symbol.startsWith('^')) return symbol; // indices unchanged
     const upper = symbol.toUpperCase();
@@ -38,11 +40,9 @@ function toYahooSymbol(symbol) {
     return upper + '.NS'; // default to NSE for bare symbols
 }
 
-// Returns candidate symbols to try in order, with fallback to the other exchange.
-// e.g. 'NSE.BO' → ['NSE.BO', 'NSE.NS']
-// e.g. 'RELIANCE.NS' → ['RELIANCE.NS', 'RELIANCE.BO']
-// e.g. 'RELIANCE' → ['RELIANCE.NS', 'RELIANCE.BO']
+// Resolve verified retired symbols, then keep the requested exchange exact.
 function getYahooCandidates(symbol) {
+    symbol = providerSymbol(symbol);
     if (symbol.toUpperCase() === '^BANKEX') return ['BSE-BANK.BO'];
     if (symbol.startsWith('^')) return [symbol];
     const upper = symbol.toUpperCase();

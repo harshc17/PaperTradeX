@@ -13,7 +13,7 @@ const DEFAULT_WATCHLIST = [
     { symbol: 'TCS.NS', name: 'TCS' },
     { symbol: 'HDFCBANK.NS', name: 'HDFC Bank' },
     { symbol: 'INFY.NS', name: 'Infosys' },
-    { symbol: 'ZOMATO.NS', name: 'Zomato' },
+    { symbol: 'ETERNAL.NS', name: 'Eternal (Zomato)' },
 ];
 
 export default function WatchlistPage() {

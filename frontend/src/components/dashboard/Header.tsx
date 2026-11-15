@@ -31,7 +31,7 @@ const QUICK_SYMBOLS = [
     { symbol: 'KOTAKBANK.NS', shortname: 'Kotak Mahindra Bank', exchange: 'NSE' },
     { symbol: 'TITAN.NS', shortname: 'Titan Company', exchange: 'NSE' },
     { symbol: 'ULTRACEMCO.NS', shortname: 'UltraTech Cement', exchange: 'NSE' },
-    { symbol: 'TATAMOTORS.NS', shortname: 'Tata Motors', exchange: 'NSE' },
+    { symbol: 'TMPV.NS', shortname: 'Tata Motors Passenger Vehicles', exchange: 'NSE' },
     { symbol: 'NTPC.NS', shortname: 'NTPC Limited', exchange: 'NSE' },
     { symbol: 'POWERGRID.NS', shortname: 'Power Grid Corporation', exchange: 'NSE' },
     { symbol: 'M&M.NS', shortname: 'Mahindra and Mahindra', exchange: 'NSE' },
@@ -58,7 +58,7 @@ const QUICK_SYMBOLS = [
     { symbol: 'HDFCLIFE.NS', shortname: 'HDFC Life Insurance', exchange: 'NSE' },
     { symbol: 'HINDALCO.NS', shortname: 'Hindalco Industries', exchange: 'NSE' },
     { symbol: 'BPCL.NS', shortname: 'Bharat Petroleum', exchange: 'NSE' },
-    { symbol: 'LTIM.NS', shortname: 'LTIMindtree', exchange: 'NSE' },
+    { symbol: 'LTM.NS', shortname: 'LTM Limited', exchange: 'NSE' },
     { symbol: 'EICHERMOT.NS', shortname: 'Eicher Motors', exchange: 'NSE' },
     { symbol: 'GRASIM.NS', shortname: 'Grasim Industries', exchange: 'NSE' },
     { symbol: 'SHRIRAMFIN.NS', shortname: 'Shriram Finance', exchange: 'NSE' },
@@ -66,7 +66,7 @@ const QUICK_SYMBOLS = [
     { symbol: 'INDUSINDBK.NS', shortname: 'IndusInd Bank', exchange: 'NSE' },
     // Mid/Large Caps
     { symbol: 'JIOFIN.NS', shortname: 'Jio Financial Services', exchange: 'NSE' },
-    { symbol: 'ZOMATO.NS', shortname: 'Zomato', exchange: 'NSE' },
+    { symbol: 'ETERNAL.NS', shortname: 'Eternal (Zomato)', exchange: 'NSE' },
     { symbol: 'HAL.NS', shortname: 'Hindustan Aeronautics', exchange: 'NSE' },
     { symbol: 'VEDL.NS', shortname: 'Vedanta', exchange: 'NSE' },
     { symbol: 'IRFC.NS', shortname: 'Indian Railway Finance Corporation', exchange: 'NSE' },
@@ -102,8 +102,8 @@ const QUICK_SYMBOLS = [
     { symbol: 'MAZDOCK.NS', shortname: 'Mazagon Dock Shipbuilders', exchange: 'NSE' },
     // BSE-listed stocks
     { symbol: 'NSE.BO', shortname: 'National Stock Exchange of India', exchange: 'BSE' },
-    { symbol: 'BSE.BO', shortname: 'BSE Limited', exchange: 'BSE' },
-    { symbol: 'CDSL.BO', shortname: 'Central Depository Services', exchange: 'BSE' },
+    { symbol: 'BSE.NS', shortname: 'BSE Limited', exchange: 'NSE' },
+    { symbol: 'CDSL.NS', shortname: 'Central Depository Services', exchange: 'NSE' },
     { symbol: 'MCX.BO', shortname: 'Multi Commodity Exchange', exchange: 'BSE' },
     // Indices
     { symbol: '^NSEI', shortname: 'NIFTY 50', exchange: 'NSE' },

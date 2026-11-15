@@ -1,6 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { quoteKey, nseQuoteTime, isFreshQuote } = require('../src/services/QuoteIdentity');
+const { providerSymbol } = require('../src/services/InstrumentAliases');
 const path = require('node:path');
 const root = path.resolve(__dirname, '../src/services');
 let processed = [];
@@ -16,6 +17,16 @@ test('exchange identities remain separate and NSE timestamps use IST', () => {
     assert.equal(quoteKey('reliance.ns'), 'RELIANCE');
     assert.equal(quoteKey('reliance.bo'), 'RELIANCE.BO');
     assert.equal(nseQuoteTime('13-Nov-2026 15:30:00'), Date.parse('2026-11-13T10:00:00Z'));
+});
+
+test('retired ticker lookup uses its current security without crossing exchanges', () => {
+    assert.equal(providerSymbol('ZOMATO.NS'), 'ETERNAL.NS');
+    assert.equal(providerSymbol('LTIM'), 'LTM');
+    assert.equal(providerSymbol('SETFNIF50.NS'), 'SBINIFTY50.NS');
+    assert.equal(providerSymbol('ICICIBANKP'), 'PVTBANIETF');
+    assert.notEqual(providerSymbol('ICICIBANKP'), 'BANKIETF');
+    assert.equal(providerSymbol('RELIANCE.BO'), 'RELIANCE.BO');
+    assert.equal(providerSymbol('LTIM.BO'), 'LTIM.BO');
 });
 
 test('fallback requests share one quote per exchange without cache collisions', async () => {

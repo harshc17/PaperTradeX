@@ -11,11 +11,11 @@ const ETFS = [
     // ── Broad Market & Index ──
     { symbol: 'NIFTYBEES.NS', name: 'Nippon India Nifty 50 BeES ETF', category: 'Equity' },
     { symbol: 'JUNIORBEES.NS', name: 'Nippon India Nifty Next 50 Junior BeES', category: 'Equity' },
-    { symbol: 'SETFNIF50.NS', name: 'SBI Nifty 50 ETF', category: 'Equity' },
-    { symbol: 'SETFNN50.NS', name: 'SBI Nifty Next 50 ETF', category: 'Equity' },
-    { symbol: 'ICICINIFTY.NS', name: 'ICICI Prudential Nifty 50 ETF', category: 'Equity' },
-    { symbol: 'HDFCNIFETF.NS', name: 'HDFC Nifty 50 ETF', category: 'Equity' },
-    { symbol: 'KOTAKNIFTY.NS', name: 'Kotak Nifty 50 ETF', category: 'Equity' },
+    { symbol: 'SBINIFTY50.NS', name: 'SBI Nifty 50 ETF', category: 'Equity' },
+    { symbol: 'SBINEXT50.NS', name: 'SBI Nifty Next 50 ETF', category: 'Equity' },
+    { symbol: 'NIFTYIETF.NS', name: 'ICICI Prudential Nifty 50 ETF', category: 'Equity' },
+    { symbol: 'HDFCNIFTY.NS', name: 'HDFC Nifty 50 ETF', category: 'Equity' },
+    { symbol: 'NIFTY1.NS', name: 'Kotak Nifty 50 ETF', category: 'Equity' },
     { symbol: 'MID150BEES.NS', name: 'Nippon India Nifty Midcap 150 ETF', category: 'Equity' },
     { symbol: 'HDFCSML250.NS', name: 'HDFC Nifty Smallcap 250 ETF', category: 'Equity' },
 
@@ -27,19 +27,19 @@ const ETFS = [
     { symbol: 'PHARMABEES.NS', name: 'Nippon India Nifty Pharma BeES ETF', category: 'Sectoral' },
     { symbol: 'CONSUMBEES.NS', name: 'Nippon India Nifty Consumption BeES ETF', category: 'Sectoral' },
     { symbol: 'INFRABEES.NS', name: 'Nippon India Nifty Infra BeES ETF', category: 'Sectoral' },
-    { symbol: 'KOTAKBKETF.NS', name: 'Kotak Banking ETF', category: 'Sectoral' },
-    { symbol: 'ICICIBANKP.NS', name: 'ICICI Prudential Nifty Bank ETF', category: 'Sectoral' },
-    { symbol: 'ICICITECH.NS', name: 'ICICI Prudential Technology ETF', category: 'Sectoral' },
+    { symbol: 'BANKNIFTY1.NS', name: 'Kotak Banking ETF', category: 'Sectoral' },
+    { symbol: 'PVTBANIETF.NS', name: 'ICICI Prudential Nifty Private Bank ETF', category: 'Sectoral' },
+    { symbol: 'ITIETF.NS', name: 'ICICI Prudential Technology ETF', category: 'Sectoral' },
 
     // ── Commodities ──
     { symbol: 'GOLDBEES.NS', name: 'Nippon India Gold BeES ETF', category: 'Commodity' },
     { symbol: 'SILVERBEES.NS', name: 'Nippon India Silver BeES ETF', category: 'Commodity' },
-    { symbol: 'SETFGOLD.NS', name: 'SBI Gold ETF', category: 'Commodity' },
-    { symbol: 'HDFCMFGETF.NS', name: 'HDFC Gold ETF', category: 'Commodity' },
+    { symbol: 'SBIGOLD.NS', name: 'SBI Gold ETF', category: 'Commodity' },
+    { symbol: 'HDFCGOLD.NS', name: 'HDFC Gold ETF', category: 'Commodity' },
 
     // ── Thematic ──
     { symbol: 'CPSEETF.NS', name: 'CPSE ETF (PSU Index)', category: 'Thematic' },
-    { symbol: 'BHARAT22.NS', name: 'ICICI Prudential Bharat 22 ETF', category: 'Thematic' },
+    { symbol: 'ICICIB22.NS', name: 'ICICI Prudential Bharat 22 ETF', category: 'Thematic' },
 
     // ── Global ──
     { symbol: 'MON100.NS', name: 'Motilal Oswal Nasdaq 100 ETF', category: 'Global' },

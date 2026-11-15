@@ -29,7 +29,7 @@ const NSE_ALL_INDICES_TIMEOUT = 2500;
 
 // Stocks to always track beyond Nifty 50
 const EXTRA_STOCKS = [
-    'ZOMATO', 'PAYTM', 'NYKAA', 'POLICYBZR',
+    'ETERNAL', 'PAYTM', 'NYKAA', 'POLICYBZR',
     'IRFC', 'HAL', 'BEL', 'IRCTC', 'TATAPOWER',
     'TRENT', 'SHRIRAMFIN', 'JIOFIN', 'SUZLON', 'RVNL',
 ];
@@ -74,7 +74,7 @@ class MarketDataService {
         // Pre-subscribe to common stocks
         const defaults = [
             'RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'ICICIBANK', 'SBIN',
-            'TATAMOTORS', 'ITC', 'ZOMATO', 'AXISBANK', 'WIPRO', 'BAJFINANCE',
+            'TMPV', 'ITC', 'ETERNAL', 'AXISBANK', 'WIPRO', 'BAJFINANCE',
         ];
         defaults.forEach(s => this.subscribers.add(s));
     }
