@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useStockQuote } from '@/lib/useStockQuote';
 import { API_URL } from '@/lib/config';
 import { useTheme } from '@/context/ThemeContext';
@@ -16,15 +16,20 @@ import {
     ChartOptions,
     ChartData,
     Plugin,
+    ChartType,
 } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
 import { RefreshCw, WifiOff } from 'lucide-react';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Filler);
 
-function makePriceCursor(previousClose: number | null, light: boolean): Plugin<'line'> { return {
+type PriceCursorOptions = { previousClose: number | null; light: boolean };
+declare module 'chart.js' {
+    interface PluginOptionsByType<TType extends ChartType> { priceCursor: PriceCursorOptions }
+}
+const priceCursor: Plugin<'line', PriceCursorOptions> = {
     id: 'priceCursor',
-    beforeDatasetsDraw(chart) {
+    beforeDatasetsDraw(chart, _args, { previousClose, light }) {
         if (!(previousClose && previousClose > 0)) return;
         const y = chart.scales.y.getPixelForValue(previousClose);
         const { ctx, chartArea } = chart;
@@ -33,7 +38,7 @@ function makePriceCursor(previousClose: number | null, light: boolean): Plugin<'
         ctx.lineWidth = 1; ctx.setLineDash([4.5, 2.5]); ctx.beginPath();
         ctx.moveTo(chartArea.left, y); ctx.lineTo(chartArea.right, y); ctx.stroke(); ctx.restore();
     },
-    afterDatasetsDraw(chart) {
+    afterDatasetsDraw(chart, _args, { light }) {
         const active = chart.getActiveElements()[0];
         if (!active || !Number.isFinite(active.element.x) || !Number.isFinite(active.element.y)) return;
         const { ctx, chartArea } = chart;
@@ -52,7 +57,7 @@ function makePriceCursor(previousClose: number | null, light: boolean): Plugin<'
         ctx.fillStyle = color; ctx.fill(); ctx.strokeStyle = light ? '#ffffff' : '#101010'; ctx.lineWidth = 3; ctx.stroke();
         ctx.restore();
     },
-}; }
+};
 
 /* ─── Types ─────────────────────────────────────────────────────────────────── */
 type HistoryPoint = {
@@ -145,7 +150,6 @@ export default function StockChart({ symbol }: { symbol: string }) {
     const [hoverX, setHoverX] = useState(0);
     const chartRef = useRef<ChartJS<'line'>>(null);
     const touchEndedAt = useRef(0);
-    const [compactPlot, setCompactPlot] = useState(false);
     // prevClose = yesterday's closing price, used as the 1D return anchor.
     // Comes from the /history API response (Yahoo chart meta or NSE cache).
     const [prevClose, setPrevClose] = useState<number | null>(null);
@@ -287,7 +291,6 @@ export default function StockChart({ symbol }: { symbol: string }) {
     const lineOptions: ChartOptions<'line'> = {
         responsive: true,
         maintainAspectRatio: false,
-        onResize: (_chart, size) => setCompactPlot(size.width < 480),
         interaction: { mode: 'index', axis: 'x', intersect: false },
         onHover: (_: any, elements: any[], chart) => {
             // Mobile browsers can emit a mouse event after touch release.
@@ -296,6 +299,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
             setHoverX(elements[0]?.element.x ?? 0);
         },
         plugins: {
+            priceCursor: { previousClose: activePeriod.value === '1d' ? prevClose : null, light },
             legend: { display: false },
             tooltip: {
                 enabled: false,
@@ -308,7 +312,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
                 ticks: {
                     color: axisColor,
                     font: { size: 11 },
-                    maxTicksLimit: compactPlot ? 4 : activePeriod.maxTicks,
+                    maxTicksLimit: activePeriod.maxTicks,
                     maxRotation: 0,
                     autoSkip: true,
                 },
@@ -367,7 +371,6 @@ export default function StockChart({ symbol }: { symbol: string }) {
     const selectedPrice = chartCloses.at(-1) ?? null;
     const selectedChange = selectedPrice != null && baseline != null ? selectedPrice - baseline : null;
     const selectedPercent = selectedChange != null && baseline ? selectedChange / baseline * 100 : null;
-    const cursorPlugin = useMemo(() => makePriceCursor(activePeriod.value === '1d' ? prevClose : null, light), [activePeriod.value, prevClose, light]);
     const clearCursor = () => { setHoverIdx(null); chartRef.current?.setActiveElements([]); chartRef.current?.draw(); };
     const endTouch = () => { touchEndedAt.current = Date.now(); clearCursor(); };
     const inspectWithKey = (event: React.KeyboardEvent) => {
@@ -417,7 +420,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
                 ) : (
                     <>
                         <div className="h-[255px] sm:h-[350px] relative cursor-crosshair touch-pan-y" onMouseLeave={clearCursor} onTouchStartCapture={() => { touchEndedAt.current = 0; }} onTouchEnd={endTouch} onTouchCancel={endTouch}>
-                            <Line ref={chartRef} data={lineData} options={lineOptions} plugins={[cursorPlugin]} aria-label={`${symbol} ${activePeriod.label} price chart. Use arrow keys to inspect prices; Escape clears selection.`} role="img" tabIndex={0} onKeyDown={inspectWithKey} onBlur={clearCursor} />
+                            <Line ref={chartRef} data={lineData} options={lineOptions} plugins={[priceCursor]} aria-label={`${symbol} ${activePeriod.label} price chart. Use arrow keys to inspect prices; Escape clears selection.`} role="img" tabIndex={0} onKeyDown={inspectWithKey} onBlur={clearCursor} />
                         </div>
                         {hasVolume && (
                             <div className="h-10 mt-1 relative opacity-70">
