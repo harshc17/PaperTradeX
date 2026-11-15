@@ -17,5 +17,16 @@ test('BANKEX ranges stay on the exact BSE instrument and preserve source aggrega
         assert.equal(all.resolution, 'sampled');
         assert(urls.every(url => url.includes('/exchange/BSE/segment/CASH/14/')));
         assert(urls[1].endsWith('/all?noOfCandles=300'));
+        const threeYears = await historical('3y');
+        assert.equal(threeYears.resolution, 'sampled');
+        assert(urls[2].endsWith('/3y?intervalInDays=3'));
+        global.fetch = async () => ({ ok: true, json: async () => ({ candles: [
+            [Math.floor(Date.now() / 1000) - 100 * 86400, 90, 105, 85, 100],
+            [Math.floor(Date.now() / 1000) - 60 * 86400, 90, 105, 85, 100],
+            [Math.floor(Date.now() / 1000) - 86400, 100, 110, 90, 105],
+        ] }) });
+        const threeMonths = await historical('3mo');
+        assert.equal(threeMonths.data.length, 2);
+        assert.equal(threeMonths.resolution, 'daily');
     } finally { global.fetch = saved; }
 });

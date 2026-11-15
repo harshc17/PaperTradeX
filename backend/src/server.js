@@ -1010,7 +1010,7 @@ app.get('/api/stock/:symbol/realtime', async (req, res) => {
 // ─── Chart History (NSE intraday for 1D + Yahoo Finance for all other periods) ──
 app.get('/api/stock/:symbol/history', async (req, res) => {
     const { period = '1mo' } = req.query;
-    if (!['1d', '1w', '1mo', '3mo', '6mo', '1y', '5y', 'max'].includes(period)) {
+    if (!['1d', '1w', '1mo', '3mo', '6mo', '1y', '3y', '5y', 'max'].includes(period)) {
         return res.status(400).json({ error: 'Unsupported chart period' });
     }
     try {

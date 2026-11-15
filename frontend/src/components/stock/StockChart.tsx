@@ -81,8 +81,10 @@ const PERIODS: Period[] = [
     { label: '1D', value: '1d', fmt: 'time', maxTicks: 8 },
     { label: '1W', value: '1w', fmt: 'dayTime', maxTicks: 7 },
     { label: '1M', value: '1mo', fmt: 'date', maxTicks: 8 },
+    { label: '3M', value: '3mo', fmt: 'date', maxTicks: 6 },
     { label: '6M', value: '6mo', fmt: 'date', maxTicks: 6 },
     { label: '1Y', value: '1y', fmt: 'date', maxTicks: 6 },
+    { label: '3Y', value: '3y', fmt: 'monthYear', maxTicks: 6 },
     { label: '5Y', value: '5y', fmt: 'monthYear', maxTicks: 5 },
     { label: 'ALL', value: 'max', fmt: 'year', maxTicks: 6 },
 ];
@@ -395,7 +397,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
             {refreshError && <p className="text-xs text-[var(--warning)] mb-2" role="status">Chart refresh unavailable. Showing saved candles.</p>}
             <div className="relative h-[320px] sm:h-[420px] pt-6" data-testid="price-plot">
                 {hoverPt && <div data-testid="chart-cursor-label" className="absolute top-0 w-[180px] max-w-full text-center text-[11px] text-ink-heading whitespace-nowrap pointer-events-none" style={{ left: `clamp(0px, ${hoverX - 90}px, max(0px, 100% - 180px))` }}>
-                    {formatChartPrice(hoverPt.close)} <span className="text-ink-faint">|</span> {activePeriod.value === '1d' ? new Date(hoverPt.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : new Date(hoverPt.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: ['1y', '5y', 'max'].includes(activePeriod.value) ? 'numeric' : undefined, timeZone: 'Asia/Kolkata' })}
+                    {formatChartPrice(hoverPt.close)} <span className="text-ink-faint">|</span> {activePeriod.value === '1d' ? new Date(hoverPt.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : new Date(hoverPt.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: ['1y', '3y', '5y', 'max'].includes(activePeriod.value) ? 'numeric' : undefined, timeZone: 'Asia/Kolkata' })}
                 </div>}
                 {loading ? (
                     <div className="h-full flex flex-col items-center justify-center gap-3">

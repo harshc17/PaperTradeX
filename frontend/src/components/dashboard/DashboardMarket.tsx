@@ -169,7 +169,6 @@ export default function DashboardMarket() {
                                     {q ? (
                                         <>
                                             <p className="text-lg sm:text-xl font-medium text-ink-heading tabular-nums font-num">{fmt(q.price)}</p>
-                                            {q.source === 'official-nse-close' && <p className="text-[10px] text-ink-faint mt-1">Official close · {q.asOf}</p>}
                                             <div className={`flex flex-wrap items-center gap-1 mt-2 text-xs font-normal tabular-nums font-num ${isUp ? 'text-up' : 'text-down'}`}>
                                                 {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                                 {isUp ? '+' : ''}{fmt(q.change)} ({isUp ? '+' : ''}{q.dayChange.toFixed(2)}%)

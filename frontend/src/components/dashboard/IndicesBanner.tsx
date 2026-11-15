@@ -62,7 +62,7 @@ export default function IndicesBanner() {
                     return (
                         <Link href={`/stock/${encodeURIComponent(symbol)}`} key={symbol}
                             className="shrink-0 min-h-12 py-3 flex items-center gap-2 hover:bg-surface-3 cursor-pointer transition-colors group">
-                            <span className="text-[13px] sm:text-sm font-semibold text-ink-heading group-hover:text-ink transition-colors">{label}{q?.source === 'official-nse-close' && <span className="block text-[10px] font-normal text-ink-faint">Close · {q.asOf}</span>}</span>
+                            <span className="text-[13px] sm:text-sm font-semibold text-ink-heading group-hover:text-ink transition-colors">{label}</span>
                             {q ? (
                                 <div className="flex items-baseline gap-2 whitespace-nowrap">
                                     <span className="text-[13px] sm:text-sm font-medium text-ink tabular-nums font-num">{fmt(q.price)}</span>

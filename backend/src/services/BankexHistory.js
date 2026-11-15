@@ -1,5 +1,7 @@
 const PERIODS = {
+    '3mo': { range: '1y', query: 'intervalInDays=1', resolution: 'daily', lookbackDays: 93 },
     '1y': { range: '1y', query: 'intervalInDays=1', resolution: 'daily' },
+    '3y': { range: '3y', query: 'intervalInDays=3', resolution: 'sampled' },
     '5y': { range: '5y', query: 'intervalInDays=5', resolution: 'sampled' },
     'max': { range: 'all', query: 'noOfCandles=300', resolution: 'sampled' },
 };
@@ -23,7 +25,9 @@ async function historical(period) {
     // BSE symbol 14 is verified against Groww's BANKEX instrument metadata.
     const response = await fetch(`https://groww.in/v1/api/charting_service/v2/chart/delayed/exchange/BSE/segment/CASH/14/${config.range}?${config.query}`, { signal: AbortSignal.timeout(10000) });
     if (!response.ok) throw new Error('BANKEX history unavailable');
-    const data = parseCandles(await response.json());
+    const candles = parseCandles(await response.json());
+    const cutoff = config.lookbackDays ? Date.now() - config.lookbackDays * 86400000 : -Infinity;
+    const data = candles.filter(point => Date.parse(point.date) >= cutoff);
     if (data.length < 2) throw new Error('BANKEX historical series incomplete');
     return { data, prevClose: null, source: 'Groww public BANKEX history', resolution: config.resolution,
         note: config.resolution === 'sampled' ? 'Historical candles aggregated over multiple sessions' : 'Daily historical candles' };

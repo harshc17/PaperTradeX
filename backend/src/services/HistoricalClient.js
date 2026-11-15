@@ -53,6 +53,7 @@ const PERIOD_CONFIG = {
     '3mo': { lookbackDays: 93,   interval: '1d'  },
     '6mo': { lookbackDays: 185,  interval: '1d'  },
     '1y':  { lookbackDays: 367,  interval: '1d'  },
+    '3y':  { lookbackDays: 1099, interval: '1wk' },
     '5y':  { lookbackDays: 1832, interval: '1wk' },
     'max': { lookbackDays: 9000, interval: '1mo' },
 };
@@ -113,7 +114,7 @@ module.exports = {
 
     async _historical(symbol, period) {
         const cfg = PERIOD_CONFIG[period] || PERIOD_CONFIG['1mo'];
-        if (symbol.toUpperCase() === '^BANKEX' && ['1y', '5y', 'max'].includes(period)) return BankexHistory.historical(period);
+        if (symbol.toUpperCase() === '^BANKEX' && ['3mo', '1y', '3y', '5y', 'max'].includes(period)) return BankexHistory.historical(period);
         if (OfficialIndexHistory.NAMES[symbol.toUpperCase()]) {
             if (period === '1d') return IndexIntraday.historical(symbol);
             return OfficialIndexHistory.historical(symbol, period, cfg.lookbackDays);
