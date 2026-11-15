@@ -46,7 +46,7 @@ function chartPreviousClose(quote, meta = {}) {
 
 // Period → { lookbackDays, interval }
 const PERIOD_CONFIG = {
-    '1d':  { lookbackDays: 5,    interval: '5m'  }, // 5-min bars, last 5 days (covers weekends)
+    '1d':  { lookbackDays: 5,    interval: '1m'  }, // One-minute bars, last 5 days (covers weekends)
     '1w':  { lookbackDays: 8,    interval: '1h'  }, // 1-hour bars, last 8 days
     '1mo': { lookbackDays: 32,   interval: '1d'  },
     '3mo': { lookbackDays: 93,   interval: '1d'  },

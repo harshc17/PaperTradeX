@@ -315,6 +315,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
                 border: { display: false },
             },
             y: {
+                grace: '5%',
                 suggestedMin: activePeriod.value === '1d' && prevClose ? Math.min(prevClose, ...chartCloses) : undefined,
                 suggestedMax: activePeriod.value === '1d' && prevClose ? Math.max(prevClose, ...chartCloses) : undefined,
                 display: false,
