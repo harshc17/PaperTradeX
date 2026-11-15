@@ -1105,6 +1105,13 @@ app.get('/api/stock/:symbol/realtime', async (req, res) => {
         const marketOpen = NSEClient.constructor.isMarketHours();
         const cached = marketDataService.cache[bare] || marketDataService.cache[rawUpper] || marketDataService.cache[bare + '.NS'];
 
+        if (marketOpen && !yahooPreferred && !isBo) {
+            marketDataService.subscribe(bare);
+            const quote = await marketDataService.refreshSymbol(bare, NSEClient._inBackoff);
+            if (quote) return res.json({ ...quote, source: quote.source || 'nse', marketOpen: true });
+            return res.status(503).json({ error: 'Market quote temporarily unavailable' });
+        }
+
         if (!marketOpen) {
             const closedPrice = await getClosedMarketPrice(rawUpper, cached?.price ?? null);
             const frozenCache = cached;

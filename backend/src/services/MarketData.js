@@ -64,6 +64,8 @@ class MarketDataService {
         this.subscribers = new Set();
         this.prioritySymbols = new Set(); // actively viewed — fetched every cycle
         this.cache = {};
+        this.quoteRequests = new Map();
+        this.lastFallbackAttempt = new Map();
         this._broadcastInterval = null;
         this._lastAllIndicesErrorLogTs = 0;
         this._allIndicesCooldownUntil = 0;
@@ -214,10 +216,42 @@ class MarketDataService {
     }
 
     /** Fetch individual quotes for extras + priority symbols */
-    async _fetchExtras() {
+    async refreshSymbol(bare, skipNse = false) {
+        if (this.quoteRequests.has(bare)) return this.quoteRequests.get(bare);
+        const request = (async () => {
+            const cached = this.cache[bare];
+            if (cached && Date.now() - new Date(cached.timestamp).getTime() < 3000) return cached;
+            if (!skipNse) {
+                try {
+                    const ns = await NSEClient.equityQuote(bare);
+                    if (ns?.priceInfo?.lastPrice > 0) {
+                        const pi = ns.priceInfo;
+                        return this._updateCache(bare, pi.lastPrice, pi.change, pi.pChange, ns.info?.companyName);
+                    }
+                } catch { /* use the shared fallback below */ }
+            }
+            if (Date.now() - (this.lastFallbackAttempt.get(bare) || 0) < 15000) return cached;
+            this.lastFallbackAttempt.set(bare, Date.now());
+            try {
+                const q = await HistoricalClient.quoteDetail(bare);
+                if (q?.regularMarketPrice > 0) {
+                    const data = this._updateCache(bare, q.regularMarketPrice, q.regularMarketChange,
+                        q.regularMarketChangePercent, q.shortName);
+                    data.source = 'yahoo-fallback';
+                    return data;
+                }
+            } catch { /* preserve last known quote without inventing a price */ }
+            return cached;
+        })();
+        this.quoteRequests.set(bare, request);
+        try { return await request; } finally { this.quoteRequests.delete(bare); }
+    }
+
+    async _fetchExtras(skipNse = false) {
         const updates = {};
         const toFetch = [...new Set([
             ...EXTRA_STOCKS,
+            ...Array.from(this.subscribers),
             ...Array.from(this.prioritySymbols),
         ])].filter(s => !s.startsWith('^'));
 
@@ -228,16 +262,8 @@ class MarketDataService {
                 if (cached && (Date.now() - new Date(cached.timestamp).getTime()) < 1000) return;
 
                 try {
-                    const ns = await NSEClient.equityQuote(bare);
-                    if (!ns?.priceInfo?.lastPrice) return;
-                    const pi = ns.priceInfo;
-                    const d = this._updateCache(
-                        bare,
-                        pi.lastPrice,
-                        pi.change  ?? 0,
-                        pi.pChange ?? 0,
-                        ns.info?.companyName || bare,
-                    );
+                    const d = await this.refreshSymbol(bare, skipNse);
+                    if (!d) return;
                     updates[bare]         = d;
                     updates[bare + '.NS'] = d;
                 } catch {
@@ -263,13 +289,22 @@ class MarketDataService {
             const marketOpen = NSEClient.constructor.isMarketHours();
             const pollMs = marketOpen ? NSE_POLL_OPEN : NSE_POLL_CLOSED;
 
+            if (!marketOpen) {
+                setTimeout(fetchLoop, pollMs);
+                return;
+            }
+
             // If NSE client is in backoff, skip this cycle entirely
             if (NSEClient._inBackoff) {
                 // Keep indices alive through Yahoo fallback while NSE is rate-limited/blocked.
                 try {
-                    const indexUpdates = await this._fetchIndices();
+                    const [indexUpdates, stockUpdates] = await Promise.all([
+                        this._fetchIndices(), this._fetchExtras(true),
+                    ]);
                     if (Object.keys(indexUpdates).length > 0) {
-                        this.io.emit('market_update', indexUpdates);
+                        this.io.emit('market_update', { ...stockUpdates, ...indexUpdates });
+                    } else if (Object.keys(stockUpdates).length > 0) {
+                        this.io.emit('market_update', stockUpdates);
                     }
                 } catch {
                     // silent
