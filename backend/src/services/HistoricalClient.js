@@ -114,7 +114,7 @@ module.exports = {
 
     async _historical(symbol, period) {
         const cfg = PERIOD_CONFIG[period] || PERIOD_CONFIG['1mo'];
-        if (symbol.toUpperCase() === '^BANKEX' && ['3mo', '1y', '3y', '5y', 'max'].includes(period)) return BankexHistory.historical(period);
+        if (symbol.toUpperCase() === '^BANKEX' && ['3mo', '6mo', '1y', '3y', '5y', 'max'].includes(period)) return BankexHistory.historical(period);
         if (OfficialIndexHistory.NAMES[symbol.toUpperCase()]) {
             if (period === '1d') return IndexIntraday.historical(symbol);
             return OfficialIndexHistory.historical(symbol, period, cfg.lookbackDays);

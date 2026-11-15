@@ -1,5 +1,6 @@
 const PERIODS = {
     '3mo': { range: '1y', query: 'intervalInDays=1', resolution: 'daily', lookbackDays: 93 },
+    '6mo': { range: '1y', query: 'intervalInDays=1', resolution: 'daily', lookbackDays: 185 },
     '1y': { range: '1y', query: 'intervalInDays=1', resolution: 'daily' },
     '3y': { range: '3y', query: 'intervalInDays=3', resolution: 'sampled' },
     '5y': { range: '5y', query: 'intervalInDays=5', resolution: 'sampled' },

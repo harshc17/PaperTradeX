@@ -447,7 +447,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
                             <Line ref={chartRef} data={lineData} options={lineOptions} plugins={[priceCursor]} aria-label={`${symbol} ${activePeriod.label} price chart. Use arrow keys to inspect prices; Escape clears selection.`} role="img" tabIndex={0} onKeyDown={inspectWithKey} onBlur={clearCursor} />
                         </div>
                         {hasVolume && (
-                            <div className="h-10 shrink-0 mt-1 relative opacity-70">
+                            <div className={`h-10 shrink-0 mt-1 relative opacity-70 ${fullScreen ? '[@media(max-height:500px)]:hidden' : ''}`}>
                                 <Bar data={volData} options={volOptions} />
                             </div>
                         )}
@@ -461,7 +461,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
                         key={p.value}
                         aria-pressed={activePeriod.value === p.value}
                         onClick={() => setActivePeriod(p)}
-                        className={`h-10 min-w-[44px] px-3 rounded-full border text-xs sm:text-sm font-medium transition-colors ${
+                        className={`h-11 min-w-[44px] shrink-0 px-3 rounded-full border text-xs sm:text-sm font-medium transition-colors ${
                             activePeriod.value === p.value
                                 ? 'bg-surface-3 border-ink-heading text-ink-heading'
                                 : 'border-line text-ink-muted hover:text-ink hover:bg-surface-2'
@@ -474,7 +474,8 @@ export default function StockChart({ symbol }: { symbol: string }) {
                 <button
                     onClick={() => fetchHistory(activePeriod, true)}
                     disabled={loading}
-                    className="h-9 w-9 rounded-full border border-line bg-surface-2 grid place-items-center text-ink-muted hover:text-primary hover:border-line disabled:opacity-50"
+                    className="h-11 w-11 shrink-0 rounded-full border border-line bg-surface-2 grid place-items-center text-ink-muted hover:text-primary hover:border-line disabled:opacity-50"
+                    aria-label="Refresh chart"
                     title="Refresh chart"
                 >
                     <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -490,7 +491,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
         </div>
     );
     return fullScreen ? createPortal(
-        <dialog ref={dialogRef} aria-labelledby="full-chart-title" onCancel={() => { clearCursor(); setFullScreen(false); }} onClose={() => setFullScreen(false)} className="fixed inset-0 m-0 h-[100dvh] max-h-none w-full max-w-none border-0 bg-surface p-3 sm:p-6 text-ink backdrop:bg-black/60">
+        <dialog ref={dialogRef} aria-labelledby="full-chart-title" onCancel={() => { clearCursor(); setFullScreen(false); }} onClose={() => setFullScreen(false)} className="fixed inset-0 m-0 h-[100dvh] max-h-none w-full max-w-none border-0 bg-surface p-3 sm:p-[clamp(12px,3dvh,24px)] text-ink backdrop:bg-black/60">
             {content}
         </dialog>, document.body,
     ) : content;

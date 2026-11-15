@@ -28,5 +28,8 @@ test('BANKEX ranges stay on the exact BSE instrument and preserve source aggrega
         const threeMonths = await historical('3mo');
         assert.equal(threeMonths.data.length, 2);
         assert.equal(threeMonths.resolution, 'daily');
+        const sixMonths = await historical('6mo');
+        assert.equal(sixMonths.data.length, 3);
+        assert.equal(sixMonths.resolution, 'daily');
     } finally { global.fetch = saved; }
 });
