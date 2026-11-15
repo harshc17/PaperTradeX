@@ -31,6 +31,7 @@ type StockData = {
     quoteType: string;
     profile?: any;
 };
+const detailCache = new Map<string, StockData>();
 
 function timeAgo(ts: number): string {
     const secs = Math.floor((Date.now() - ts) / 1000);
@@ -43,7 +44,7 @@ function timeAgo(ts: number): string {
 export default function StockDetail({ symbol }: { symbol: string }) {
     const router = useRouter();
     const { marketStatus, marketOpen } = usePortfolio();
-    const [stockData, setStockData]   = useState<StockData | null>(null);
+    const [stockData, setStockData]   = useState<StockData | null>(() => detailCache.get(symbol) || null);
     const [loading, setLoading]       = useState(true);
     const quote = useStockQuote(symbol);
     const flash = null;
@@ -56,10 +57,14 @@ export default function StockDetail({ symbol }: { symbol: string }) {
     useEffect(() => {
         setLoading(true);
         let cancelled = false;
+
+        setStockData(detailCache.get(symbol) || null);
         fetch(`${API_URL}/api/stock/${encodeURIComponent(symbol)}`)
             .then(r => r.ok ? r.json() : null)
             .then(data => {
                 if (data && !cancelled) {
+                    detailCache.set(symbol, data);
+                    if (detailCache.size > 64) detailCache.delete(detailCache.keys().next().value!);
                     setStockData(data);
 
                 }
@@ -83,7 +88,7 @@ export default function StockDetail({ symbol }: { symbol: string }) {
     }, [stockData?.symbol, symbol]);
 
     /* ─── Loading skeleton ─────────────────────────────────────────────────── */
-    if (loading) {
+    if (loading && !stockData && quote.price === null) {
         return (
             <div className="terminal-card p-6 shadow-none space-y-4">
                 <div className="animate-pulse space-y-4">
@@ -99,13 +104,17 @@ export default function StockDetail({ symbol }: { symbol: string }) {
         );
     }
 
-    if (!stockData) {
+    if (!stockData && quote.price === null) {
         return (
             <div className="terminal-card p-6 shadow-none text-center py-12">
                 <p className="text-down font-medium">Failed to load stock data. Please try again.</p>
             </div>
         );
     }
+
+    // Metadata can arrive later than the quote. A slow company-details
+    // request must not hide a price that the shared feed already supplied.
+    const details = stockData || { symbol, shortName: symbol.replace(/\.(NS|BO)$/i, ''), exchange: symbol.endsWith('.BO') ? 'BSE' : 'NSE', regularMarketPreviousClose: 0, regularMarketChange: 0, regularMarketChangePercent: 0 };
 
     const currentPrice = quote.price;
 
@@ -115,20 +124,20 @@ export default function StockDetail({ symbol }: { symbol: string }) {
     const prevClose = quote.previousClose ?? 0;
     const change = prevClose > 0
         ? parseFloat(((currentPrice ?? 0) - prevClose).toFixed(2))
-        : (stockData.regularMarketChange ?? 0);
+        : (details.regularMarketChange ?? 0);
     const changePercent = prevClose > 0
         ? parseFloat(((change / prevClose) * 100).toFixed(2))
-        : (stockData.regularMarketChangePercent ?? 0);
+        : (details.regularMarketChangePercent ?? 0);
     const isUp = change >= 0;
 
     const isNegative = change < 0;
     const changeClass = isNegative ? 'text-down' : 'text-up';
-    const prettySymbol = stockData.symbol.replace('.NS', '');
+    const prettySymbol = details.symbol.replace('.NS', '');
 
     const addToWatchlistAndOpen = () => {
         try {
-            const itemSymbol = (stockData.symbol || symbol || '').toUpperCase();
-            const itemName = stockData.shortName || itemSymbol;
+            const itemSymbol = (details.symbol || symbol || '').toUpperCase();
+            const itemName = details.shortName || itemSymbol;
             const saved = localStorage.getItem('ptx_watchlist');
             const current = saved ? JSON.parse(saved) : [];
             const list = Array.isArray(current) ? current : [];
@@ -151,11 +160,11 @@ export default function StockDetail({ symbol }: { symbol: string }) {
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0 flex-1 basis-72">
                     <div className="text-[20px] text-ink-muted leading-6 mb-1">
-                        {prettySymbol} · {stockData.exchange}
+                        {prettySymbol} · {details.exchange}
                     </div>
                     <h1 className="flex items-center gap-3 text-[24px] sm:text-[28px] font-semibold text-ink-heading leading-[1.15] mb-2.5">
                         <CompanyLogo symbol={symbol} />
-                        <span className="min-w-0 break-words">{stockData.shortName}</span>
+                        <span className="min-w-0 break-words">{details.shortName}</span>
                     </h1>
 
                     <div className={`flex flex-wrap items-baseline gap-2 transition-colors duration-300 ${

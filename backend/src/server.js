@@ -699,7 +699,7 @@ app.get('/api/stock/:symbol', async (req, res) => {
         }
 
         // ── 1. Try NSE (preferred — rich data when market is open, .NS only) ──
-        if (!yahooPreferred && !isBo && !recentlyFailedNse(bare)) {
+        if (NSEClient.constructor.isMarketHours() && !NSEClient._inBackoff && !yahooPreferred && !isBo && !recentlyFailedNse(bare)) {
             try {
                 const nsData = await NSEClient.equityQuote(bare);
                 if (nsData?.priceInfo?.lastPrice) {
@@ -1077,69 +1077,18 @@ app.get('/api/stock/:symbol/realtime', async (req, res) => {
 
 // ─── Chart History (NSE intraday for 1D + Yahoo Finance for all other periods) ──
 app.get('/api/stock/:symbol/history', async (req, res) => {
-    const { symbol } = req.params;
     const { period = '1mo' } = req.query;
-
+    if (!['1d', '1w', '1mo', '3mo', '6mo', '1y', '5y', 'max'].includes(period)) {
+        return res.status(400).json({ error: 'Unsupported chart period' });
+    }
     try {
-        let data = [];
-        let prevClose = null;
-        const bare = quoteKey(symbol);
-        const yahooPreferred = shouldPreferYahoo(bare);
-
-        if (period === '1d' && !yahooPreferred) {
-            // ── 1D: Try NSE intraday chart (5-min candles) first ──
-            try {
-                const raw = await NSEClient.intradayChart(bare);
-                const points = raw?.grapthData || raw?.graphData || [];
-                const nseData = points
-                    .filter(([ts, price]) => price && price > 0)
-                    .map(([ts, price]) => ({
-                        date:   new Date(ts).toISOString(),
-                        open:   price,
-                        high:   price,
-                        low:    price,
-                        close:  price,
-                        volume: 0,
-                    }));
-
-                if (nseData.length >= 5) {
-                    data = nseData;
-                    console.log(`[Chart] NSE 1D: ${nseData.length} points for ${bare}`);
-                }
-            } catch (_) { }
-
-            // ── Fallback: Yahoo Finance 2-min bars for the last trading day ──
-            if (!data || data.length < 5) {
-                console.log(`[Chart] 1D NSE empty for ${symbol}, using Yahoo Finance 2m bars`);
-                try {
-                    const yhResult = await HistoricalClient.historical(symbol, '1d');
-                    data = yhResult.data;
-                    prevClose = yhResult.prevClose;
-                } catch (yErr) {
-                    console.warn('[Chart] Yahoo 1D also failed:', yErr.message);
-                }
-            }
-
-            // NSE path: derive prevClose from cache if not already set.
-            // NSE's `change` = absolute delta vs. previous close → prevClose = price – change.
-            if (!prevClose) {
-                const cached = marketDataService.cache[bare] || marketDataService.cache[bare + '.NS'];
-                if (cached?.price != null && cached?.change != null) {
-                    const derived = parseFloat((cached.price - cached.change).toFixed(2));
-                    if (derived > 0) prevClose = derived;
-                }
-            }
-        } else {
-            // ── 1W → MAX: Yahoo Finance chart() — reliable for historical OHLCV ──
-            const yhResult = await HistoricalClient.historical(symbol, period);
-            data = yhResult.data;
-            // prevClose is only meaningful for 1D; null for longer periods
-        }
-
-        res.json({ data: data || [], prevClose });
-    } catch (error) {
-        console.error('[Chart] History error:', error.message);
-        res.status(500).json({ error: error.message });
+        // Historical candles use one source; avoid blocking the chart on a
+        // failing NSE session probe before requesting those same candles.
+        const result = await HistoricalClient.historical(req.params.symbol, period);
+        res.set('Cache-Control', 'no-store');
+        return res.json({ data: result.data || [], prevClose: result.prevClose });
+    } catch {
+        return res.status(503).json({ error: 'Chart data temporarily unavailable' });
     }
 });
 

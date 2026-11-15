@@ -94,12 +94,15 @@ function formatVol(v: number): string {
 }
 
 /* ─── Component ──────────────────────────────────────────────────────────────── */
+const chartCache = new Map<string, { data: HistoryPoint[]; prevClose: number | null; fetchedAt: number }>();
 export default function StockChart({ symbol }: { symbol: string }) {
     const { theme } = useTheme();
     const [history, setHistory] = useState<HistoryPoint[]>([]);
     const [activePeriod, setActivePeriod] = useState<Period>(PERIODS[2]); // default 1M
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    const [refreshError, setRefreshError] = useState(false);
+    const requestRef = useRef<AbortController | null>(null);
     const quote = useStockQuote(symbol);
     const livePrice = quote.price;
     const isLive = !!quote.marketOpen && !quote.stale;
@@ -111,17 +114,27 @@ export default function StockChart({ symbol }: { symbol: string }) {
     const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
 
     /* ─── Fetch chart data ─────────────────────────────────────────────────────── */
-    const fetchHistory = useCallback((period: Period) => {
-        setLoading(true);
+    const fetchHistory = useCallback((period: Period, force = false) => {
+        requestRef.current?.abort();
+        const controller = new AbortController();
+        requestRef.current = controller;
+        const key = `${symbol.toUpperCase()}:${period.value}`;
+        const cached = chartCache.get(key);
+        setLoading(!cached);
         setError(false);
-        setHistory([]);
-        setPrevClose(null);
+        setRefreshError(false);
+        setHistory(cached?.data || []);
+        setPrevClose(cached?.prevClose ?? null);
+        setHoverIdx(null);
+        if (!force && cached && Date.now() - cached.fetchedAt < 30000) return;
+        const deadline = setTimeout(() => controller.abort(), 15000);
 
         fetch(
-            `${API_URL}/api/stock/${encodeURIComponent(symbol)}/history?period=${period.value}`
+            `${API_URL}/api/stock/${encodeURIComponent(symbol)}/history?period=${period.value}`, { signal: controller.signal }
         )
             .then(r => r.ok ? r.json() : Promise.reject('bad response'))
             .then(data => {
+                if (controller !== requestRef.current || controller.signal.aborted) return;
                 const pts: HistoryPoint[] = (data.data || [])
                     .filter((h: any) => h.close && h.close > 0)
                     .map((h: any) => ({
@@ -133,13 +146,20 @@ export default function StockChart({ symbol }: { symbol: string }) {
                         volume: h.volume ?? 0,
                     }));
                 setHistory(pts);
+                if (pts.length) {
+                    chartCache.set(key, { data: pts, prevClose: data.prevClose ?? null, fetchedAt: Date.now() });
+                    if (chartCache.size > 64) chartCache.delete(chartCache.keys().next().value!);
+                }
                 // Capture prevClose for 1D — the true anchor for 1D return calculation.
                 if (typeof data.prevClose === 'number' && data.prevClose > 0) {
                     setPrevClose(data.prevClose);
                 }
             })
-            .catch(() => setError(true))
-            .finally(() => setLoading(false));
+            .catch(() => {
+                if (controller !== requestRef.current) return;
+                if (cached) setRefreshError(true); else setError(true);
+            })
+            .finally(() => { clearTimeout(deadline); if (controller === requestRef.current) setLoading(false); });
     }, [symbol]);
 
     /* ─── Period change ─────────────────────────────────────────────────────────── */
@@ -149,9 +169,10 @@ export default function StockChart({ symbol }: { symbol: string }) {
         // Auto-refresh chart data every 60s when on 1D
         if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
         if (activePeriod.value === '1d') {
-            refreshTimerRef.current = setInterval(() => fetchHistory(activePeriod), 60_000);
+            refreshTimerRef.current = setInterval(() => fetchHistory(activePeriod, true), 60_000);
         }
         return () => {
+            requestRef.current?.abort();
             if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
         };
     }, [activePeriod, fetchHistory]);
@@ -326,6 +347,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
     /* ─── Render ──────────────────────────────────────────────────────────────────── */
     return (
         <div className="bg-transparent">
+            {refreshError && <p className="text-xs text-[var(--warning)] mb-2" role="status">Chart refresh unavailable. Showing saved candles.</p>}
             <div className="relative h-[390px]">
                 {loading ? (
                     <div className="h-full flex flex-col items-center justify-center gap-3">
@@ -337,7 +359,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
                         <WifiOff className="w-8 h-8 text-ink-faint" />
                         <p className="text-sm text-ink-muted">Failed to load chart data</p>
                         <button
-                            onClick={() => fetchHistory(activePeriod)}
+                            onClick={() => fetchHistory(activePeriod, true)}
                             className="text-xs text-primary hover:underline font-medium"
                         >
                             Retry
@@ -377,7 +399,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
                 ))}
 
                 <button
-                    onClick={() => fetchHistory(activePeriod)}
+                    onClick={() => fetchHistory(activePeriod, true)}
                     disabled={loading}
                     className="h-9 w-9 rounded-full border border-line bg-surface-2 grid place-items-center text-ink-muted hover:text-primary hover:border-line disabled:opacity-50"
                     title="Refresh chart"

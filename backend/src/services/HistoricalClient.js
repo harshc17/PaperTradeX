@@ -14,8 +14,14 @@
  */
 
 const YahooFinance = require('yahoo-finance2').default;
-const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
+const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'],
+    fetch: (url, options = {}) => fetch(url, { ...options, signal: options.signal || AbortSignal.timeout(10000) }),
+});
 const { providerSymbol } = require('./InstrumentAliases');
+const PublicReadCache = require('./PublicReadCache');
+const readCache = new PublicReadCache();
+const NSEClient = require('./NSEClient');
+const returnSessionDate = require('./ReturnSession');
 
 // Period → { lookbackDays, interval }
 const PERIOD_CONFIG = {
@@ -76,6 +82,14 @@ module.exports = {
      * @returns {Array} ascending array of { date, open, high, low, close, volume }
      */
     async historical(symbol, period) {
+        const open = NSEClient.constructor.isMarketHours();
+        const session = returnSessionDate(new Date(), NSEClient.constructor.HOLIDAYS);
+        const key = `chart:${getYahooCandidates(symbol).join(',')}:${period}:${session}:${open}`;
+        return readCache.load(key, open ? 30000 : 3600000,
+            () => this._historical(symbol, period), value => value?.data?.length > 0);
+    },
+
+    async _historical(symbol, period) {
         const cfg = PERIOD_CONFIG[period] || PERIOD_CONFIG['1mo'];
         const candidates = getYahooCandidates(symbol);
         const now = new Date();
@@ -169,6 +183,11 @@ module.exports = {
      * @param {string} symbol  e.g. "HDFCBANK", "RELIANCE"
      */
     async quoteDetail(symbol) {
+        return readCache.load(`quote:${getYahooCandidates(symbol).join(',')}`, 2000,
+            () => this._quoteDetail(symbol));
+    },
+
+    async _quoteDetail(symbol) {
         const candidates = getYahooCandidates(symbol);
         for (const yhSymbol of candidates) {
             try {

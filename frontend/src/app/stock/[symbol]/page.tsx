@@ -33,12 +33,12 @@ export default function StockPage() {
             <main className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-7">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 items-start">
                     <div className={`min-w-0 ${viewOnly ? 'lg:col-span-12' : 'lg:col-span-8'} space-y-5`}>
-                        <StockDetail symbol={symbol} />
-                        <StockChart symbol={symbol} />
+                        <StockDetail key={`details:${symbol}`} symbol={symbol} />
+                        <StockChart key={`chart:${symbol}`} symbol={symbol} />
                     </div>
 
                     {!viewOnly && <div className="min-w-0 lg:col-span-4 lg:row-span-2">
-                        <TradingPanel symbol={symbol} />
+                        <TradingPanel key={symbol} symbol={symbol} />
                     </div>}
                     <div className={`min-w-0 ${viewOnly ? 'lg:col-span-12' : 'lg:col-span-8'}`}>
                         <AINewsPanel symbol={symbol} companyName={symbol.replace(/\.(NS|BO)$/i, '')} />
