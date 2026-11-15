@@ -94,7 +94,8 @@ function formatVol(v: number): string {
 }
 
 /* ─── Component ──────────────────────────────────────────────────────────────── */
-const chartCache = new Map<string, { data: HistoryPoint[]; prevClose: number | null; fetchedAt: number }>();
+type ChartFeed = { source?: string; resolution?: string; note?: string };
+const chartCache = new Map<string, { data: HistoryPoint[]; prevClose: number | null; fetchedAt: number; feed: ChartFeed }>();
 export default function StockChart({ symbol }: { symbol: string }) {
     const { theme } = useTheme();
     const [history, setHistory] = useState<HistoryPoint[]>([]);
@@ -102,6 +103,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [refreshError, setRefreshError] = useState(false);
+    const [feed, setFeed] = useState<ChartFeed>({});
     const requestRef = useRef<AbortController | null>(null);
     const quote = useStockQuote(symbol);
     const livePrice = quote.price;
@@ -124,6 +126,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
         setError(false);
         setRefreshError(false);
         setHistory(cached?.data || []);
+        setFeed(cached?.feed || {});
         setPrevClose(cached?.prevClose ?? null);
         setHoverIdx(null);
         if (!force && cached && Date.now() - cached.fetchedAt < 30000) return;
@@ -146,8 +149,10 @@ export default function StockChart({ symbol }: { symbol: string }) {
                         volume: h.volume ?? 0,
                     }));
                 setHistory(pts);
+                const nextFeed = { source: data.source, resolution: data.resolution, note: data.note };
+                setFeed(nextFeed);
                 if (pts.length) {
-                    chartCache.set(key, { data: pts, prevClose: data.prevClose ?? null, fetchedAt: Date.now() });
+                    chartCache.set(key, { data: pts, prevClose: data.prevClose ?? null, fetchedAt: Date.now(), feed: nextFeed });
                     if (chartCache.size > 64) chartCache.delete(chartCache.keys().next().value!);
                 }
                 // Capture prevClose for 1D — the true anchor for 1D return calculation.
@@ -202,7 +207,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
     const colorBg = `rgba(${lineRgb},0.10)`;
     const axisColor = light ? '#6d7485' : '#9a9ea8';
 
-    const labels = displayHistory.map(h => formatLabel(h.date, activePeriod.fmt));
+    const labels = displayHistory.map(h => formatLabel(h.date, feed.resolution === 'daily' ? 'date' : activePeriod.fmt));
     const closes = displayHistory.map(h => h.close);
     const volumes = displayHistory.map(h => h.volume ?? 0);
     const hasVolume = volumes.some(v => v > 0);
@@ -210,7 +215,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
     // If on 1D and we have livePrice, extend chart with current live point
     const chartLabels = [...labels];
     const chartCloses = [...closes];
-    if (activePeriod.value === '1d' && livePrice && displayHistory.length > 0) {
+    if (activePeriod.value === '1d' && isLive && feed.resolution !== 'daily' && livePrice && displayHistory.length > 0) {
         const now = new Date();
         const liveFmt = formatLabel(now.toISOString(), 'time');
         if (chartLabels[chartLabels.length - 1] !== liveFmt) {
@@ -240,7 +245,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
             },
             fill: true,
             tension: activePeriod.value === '1d' ? 0.15 : 0.3,
-            pointRadius: 0,
+            pointRadius: displayHistory.length === 1 ? 4 : 0,
             pointHoverRadius: 6,
             pointHoverBackgroundColor: color,
             pointHoverBorderColor: light ? '#fff' : '#181818',
@@ -347,6 +352,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
     /* ─── Render ──────────────────────────────────────────────────────────────────── */
     return (
         <div className="bg-transparent">
+            {feed.note && <p className="text-xs text-ink-muted mb-2" role="status">{feed.note}</p>}
             {refreshError && <p className="text-xs text-[var(--warning)] mb-2" role="status">Chart refresh unavailable. Showing saved candles.</p>}
             <div className="relative h-[300px] sm:h-[390px]">
                 {loading ? (
@@ -419,7 +425,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
             )}
 
             <div className="mt-1 text-xs text-ink-faint">
-                {isLive ? 'Chart feed connected' : 'Chart feed delayed'} · {displayHistory.length} points · {activePeriod.value === '1d' ? 'NSE intraday' : 'Yahoo OHLCV'}
+                {feed.resolution === 'daily' ? 'Daily history' : isLive ? 'Chart feed connected' : 'Chart feed delayed'} · {displayHistory.length} points · {feed.source || 'Historical OHLCV'}
             </div>
         </div>
     );

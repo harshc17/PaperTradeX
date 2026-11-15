@@ -22,6 +22,20 @@ const PublicReadCache = require('./PublicReadCache');
 const readCache = new PublicReadCache();
 const NSEClient = require('./NSEClient');
 const returnSessionDate = require('./ReturnSession');
+const OfficialIndexHistory = require('./OfficialIndexHistory');
+
+function aggregateDaily(quotes) {
+    const days = new Map();
+    for (const q of [...quotes].filter(q => q?.close > 0).sort((a, b) => +new Date(a.date) - +new Date(b.date))) {
+        const day = new Date(+new Date(q.date) + 330 * 60000).toISOString().slice(0, 10);
+        const old = days.get(day);
+        days.set(day, { date: q.date, open: old?.open ?? q.open ?? q.close,
+            high: Math.max(old?.high ?? -Infinity, q.high ?? q.close),
+            low: Math.min(old?.low ?? Infinity, q.low ?? q.close), close: q.close,
+            volume: (old?.volume || 0) + (q.volume || 0) });
+    }
+    return [...days.values()];
+}
 
 // Period → { lookbackDays, interval }
 const PERIOD_CONFIG = {
@@ -91,6 +105,9 @@ module.exports = {
 
     async _historical(symbol, period) {
         const cfg = PERIOD_CONFIG[period] || PERIOD_CONFIG['1mo'];
+        if (OfficialIndexHistory.NAMES[symbol.toUpperCase()]) {
+            return OfficialIndexHistory.historical(symbol, period, cfg.lookbackDays);
+        }
         const candidates = getYahooCandidates(symbol);
         const now = new Date();
         const period1 = new Date(now - cfg.lookbackDays * 86400000);
@@ -115,7 +132,14 @@ module.exports = {
         // chart() with validateResult:false works reliably for historical OHLCV
         // (result already fetched above)
 
-        const raw = result?.quotes || [];
+        let raw = result?.quotes || [];
+        let source = 'Yahoo OHLCV';
+        if (symbol.toUpperCase() === '^BANKEX' && period === '1mo' && raw.filter(q => q?.close > 0).length < 2) {
+            const hourly = await yf.chart('BSE-BANK.BO', { period1, period2: now, interval: '1h' }, { validateResult: false });
+            if (hourly.meta?.symbol !== 'BSE-BANK.BO') throw new Error('BANKEX history identity mismatch');
+            raw = aggregateDaily(hourly.quotes || []);
+            source = 'Yahoo hourly OHLCV aggregated by session';
+        }
 
         const points = raw
             .filter(q => q && q.close != null && q.close > 0)
@@ -147,7 +171,9 @@ module.exports = {
             if (typeof raw === 'number' && raw > 0) prevClose = raw;
         }
 
-        return { data: filteredPoints, prevClose };
+        const resolution = source.includes('aggregated') || cfg.interval === '1d' ? 'daily'
+            : cfg.interval === '1wk' ? 'weekly' : cfg.interval === '1mo' ? 'monthly' : 'intraday';
+        return { data: filteredPoints, prevClose, source, resolution };
     },
 
     /**
@@ -243,5 +269,6 @@ module.exports = {
             return null;
         }
     },
+    aggregateDaily,
 };
 

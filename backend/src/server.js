@@ -1018,7 +1018,7 @@ app.get('/api/stock/:symbol/history', async (req, res) => {
         // failing NSE session probe before requesting those same candles.
         const result = await HistoricalClient.historical(req.params.symbol, period);
         res.set('Cache-Control', 'no-store');
-        return res.json({ data: result.data || [], prevClose: result.prevClose });
+        return res.json({ data: result.data || [], prevClose: result.prevClose, source: result.source, resolution: result.resolution, note: result.note });
     } catch {
         return res.status(503).json({ error: 'Chart data temporarily unavailable' });
     }
