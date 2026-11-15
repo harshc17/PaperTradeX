@@ -25,6 +25,7 @@ const returnSessionDate = require('./ReturnSession');
 const OfficialIndexHistory = require('./OfficialIndexHistory');
 const IndexIntraday = require('./IndexIntraday');
 const OfficialIndexSnapshot = require('./OfficialIndexSnapshot');
+const BankexHistory = require('./BankexHistory');
 
 function aggregateDaily(quotes) {
     const days = new Map();
@@ -112,6 +113,7 @@ module.exports = {
 
     async _historical(symbol, period) {
         const cfg = PERIOD_CONFIG[period] || PERIOD_CONFIG['1mo'];
+        if (symbol.toUpperCase() === '^BANKEX' && ['1y', '5y', 'max'].includes(period)) return BankexHistory.historical(period);
         if (OfficialIndexHistory.NAMES[symbol.toUpperCase()]) {
             if (period === '1d') return IndexIntraday.historical(symbol);
             return OfficialIndexHistory.historical(symbol, period, cfg.lookbackDays);
