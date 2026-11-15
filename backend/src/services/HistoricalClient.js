@@ -24,6 +24,7 @@ const NSEClient = require('./NSEClient');
 const returnSessionDate = require('./ReturnSession');
 const OfficialIndexHistory = require('./OfficialIndexHistory');
 const IndexIntraday = require('./IndexIntraday');
+const OfficialIndexSnapshot = require('./OfficialIndexSnapshot');
 
 function aggregateDaily(quotes) {
     const days = new Map();
@@ -36,6 +37,11 @@ function aggregateDaily(quotes) {
             volume: (old?.volume || 0) + (q.volume || 0) });
     }
     return [...days.values()];
+}
+
+function chartPreviousClose(quote, meta = {}) {
+    return [quote?.regularMarketPreviousClose, meta.regularMarketPreviousClose, meta.previousClose, meta.chartPreviousClose]
+        .find(value => typeof value === 'number' && Number.isFinite(value) && value > 0) ?? null;
 }
 
 // Period → { lookbackDays, interval }
@@ -111,6 +117,8 @@ module.exports = {
             return OfficialIndexHistory.historical(symbol, period, cfg.lookbackDays);
         }
         const candidates = getYahooCandidates(symbol);
+        const quoteRead = period === '1d' ? this.quoteDetail(symbol).catch(() => null) : Promise.resolve(null);
+        const officialRead = period === '1d' && symbol.startsWith('^') ? OfficialIndexSnapshot.latest() : Promise.resolve({});
         const now = new Date();
         const period1 = new Date(now - cfg.lookbackDays * 86400000);
 
@@ -169,8 +177,11 @@ module.exports = {
         let prevClose = null;
         if (period === '1d') {
             const meta = result?.meta || {};
-            const raw = meta.regularMarketPreviousClose ?? meta.chartPreviousClose ?? meta.previousClose ?? null;
-            if (typeof raw === 'number' && raw > 0) prevClose = raw;
+            prevClose = chartPreviousClose(await quoteRead, meta);
+            const official = (await officialRead)[symbol.toUpperCase()];
+            const chartSession = filteredPoints.at(-1)?.date?.slice(0, 10);
+            if (official && chartSession) prevClose = official.asOf === chartSession ? official.prevClose
+                : official.asOf < chartSession ? official.price : prevClose;
         }
 
         const resolution = source.includes('aggregated') || cfg.interval === '1d' ? 'daily'
@@ -272,5 +283,6 @@ module.exports = {
         }
     },
     aggregateDaily,
+    chartPreviousClose,
 };
 

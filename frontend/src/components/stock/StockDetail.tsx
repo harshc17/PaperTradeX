@@ -132,7 +132,7 @@ export default function StockDetail({ symbol }: { symbol: string }) {
 
     const isNegative = change < 0;
     const changeClass = isNegative ? 'text-down' : 'text-up';
-    const prettySymbol = details.symbol.replace('.NS', '');
+    const prettySymbol = String(details.symbol || symbol).replace(/\.NS$/i, '');
 
     const addToWatchlistAndOpen = () => {
         try {

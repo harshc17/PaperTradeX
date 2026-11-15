@@ -1,9 +1,15 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { parseHistory, historical } = require('../src/services/OfficialIndexHistory');
-const { aggregateDaily } = require('../src/services/HistoricalClient');
+const { aggregateDaily, chartPreviousClose } = require('../src/services/HistoricalClient');
 const name = 'NIFTY FINANCIAL SERVICES';
 const row = (date, close, index = name) => ({ INDEX_NAME: index, HistoricalDate: date, OPEN: '100', HIGH: '120', LOW: '90', CLOSE: String(close) });
+
+test('1D reference line uses session previous close instead of the chart-window baseline', () => {
+    assert.equal(chartPreviousClose({ regularMarketPreviousClose: 112.71 }, { previousClose: 112.71, chartPreviousClose: 116.86 }), 112.71);
+    assert.equal(chartPreviousClose(null, { previousClose: 112.71, chartPreviousClose: 116.86 }), 112.71);
+    assert.equal(chartPreviousClose({ regularMarketPreviousClose: 0 }, { chartPreviousClose: 116.86 }), 116.86);
+});
 
 test('official history keeps the exact index, date range, ordering and unique sessions', () => {
     const rows = [row('13 Nov 2026', 115), row('12 Nov 2026', 110), row('12 Nov 2026', 110),

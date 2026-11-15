@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useStockQuote } from '@/lib/useStockQuote';
 import { API_URL } from '@/lib/config';
 import { useTheme } from '@/context/ThemeContext';
@@ -22,23 +22,37 @@ import { RefreshCw, WifiOff } from 'lucide-react';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Filler);
 
-const priceCursor: Plugin<'line'> = {
+function makePriceCursor(previousClose: number | null, light: boolean): Plugin<'line'> { return {
     id: 'priceCursor',
+    beforeDatasetsDraw(chart) {
+        if (!(previousClose && previousClose > 0)) return;
+        const y = chart.scales.y.getPixelForValue(previousClose);
+        const { ctx, chartArea } = chart;
+        if (y < chartArea.top || y > chartArea.bottom) return;
+        ctx.save(); ctx.strokeStyle = light ? 'rgba(83,91,99,0.3)' : 'rgba(190,195,201,0.3)';
+        ctx.lineWidth = 1; ctx.setLineDash([4.5, 2.5]); ctx.beginPath();
+        ctx.moveTo(chartArea.left, y); ctx.lineTo(chartArea.right, y); ctx.stroke(); ctx.restore();
+    },
     afterDatasetsDraw(chart) {
         const active = chart.getActiveElements()[0];
-        if (!active) return;
+        if (!active || !Number.isFinite(active.element.x) || !Number.isFinite(active.element.y)) return;
         const { ctx, chartArea } = chart;
         ctx.save();
-        ctx.strokeStyle = '#8b929b';
+        ctx.strokeStyle = light ? '#e0e3e7' : '#34373b';
         ctx.lineWidth = 1;
-        ctx.setLineDash([3, 4]);
+        ctx.setLineDash([]);
         ctx.beginPath();
         ctx.moveTo(active.element.x, chartArea.top);
         ctx.lineTo(active.element.x, chartArea.bottom);
         ctx.stroke();
+        const color = String(chart.data.datasets[0].borderColor);
+        ctx.beginPath(); ctx.arc(active.element.x, active.element.y, 7.5, 0, Math.PI * 2);
+        ctx.strokeStyle = color; ctx.globalAlpha = 0.25; ctx.lineWidth = 2.25; ctx.stroke(); ctx.globalAlpha = 1;
+        ctx.beginPath(); ctx.arc(active.element.x, active.element.y, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = color; ctx.fill(); ctx.strokeStyle = light ? '#ffffff' : '#101010'; ctx.lineWidth = 3; ctx.stroke();
         ctx.restore();
     },
-};
+}; }
 
 /* ─── Types ─────────────────────────────────────────────────────────────────── */
 type HistoryPoint = {
@@ -118,7 +132,7 @@ const chartCache = new Map<string, { data: HistoryPoint[]; prevClose: number | n
 export default function StockChart({ symbol }: { symbol: string }) {
     const { theme } = useTheme();
     const [history, setHistory] = useState<HistoryPoint[]>([]);
-    const [activePeriod, setActivePeriod] = useState<Period>(PERIODS[2]); // default 1M
+    const [activePeriod, setActivePeriod] = useState<Period>(PERIODS[0]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [refreshError, setRefreshError] = useState(false);
@@ -128,16 +142,22 @@ export default function StockChart({ symbol }: { symbol: string }) {
     const livePrice = quote.price;
     const isLive = !!quote.marketOpen && !quote.stale;
     const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+    const [hoverX, setHoverX] = useState(0);
+    const chartRef = useRef<ChartJS<'line'>>(null);
+    const touchEndedAt = useRef(0);
     const [compactPlot, setCompactPlot] = useState(false);
     // prevClose = yesterday's closing price, used as the 1D return anchor.
     // Comes from the /history API response (Yahoo chart meta or NSE cache).
     const [prevClose, setPrevClose] = useState<number | null>(null);
     const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
+    const formatChartPrice = (value: number) => bare.startsWith('^')
+        ? value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : formatINR(value);
 
     /* ─── Fetch chart data ─────────────────────────────────────────────────────── */
     const fetchHistory = useCallback((period: Period, force = false) => {
         requestRef.current?.abort();
+        chartRef.current?.setActiveElements([]);
         const controller = new AbortController();
         requestRef.current = controller;
         const key = `${symbol.toUpperCase()}:${period.value}`;
@@ -158,8 +178,8 @@ export default function StockChart({ symbol }: { symbol: string }) {
             .then(r => r.ok ? r.json() : Promise.reject('bad response'))
             .then(data => {
                 if (controller !== requestRef.current || controller.signal.aborted) return;
-                const pts: HistoryPoint[] = (data.data || [])
-                    .filter((h: any) => h.close && h.close > 0)
+                const pts: HistoryPoint[] = (Array.isArray(data.data) ? data.data : [])
+                    .filter((h: any) => Number.isFinite(h.close) && h.close > 0 && Number.isFinite(Date.parse(h.date)))
                     .map((h: any) => ({
                         date: h.date,
                         close: h.close,
@@ -167,18 +187,18 @@ export default function StockChart({ symbol }: { symbol: string }) {
                         high: h.high,
                         low: h.low,
                         volume: h.volume ?? 0,
-                    }));
+                    })).sort((a: HistoryPoint, b: HistoryPoint) => Date.parse(a.date) - Date.parse(b.date));
+                if (!pts.length) throw new Error('No valid chart candles');
+                const prior = typeof data.prevClose === 'number' && data.prevClose > 0 ? data.prevClose : null;
                 setHistory(pts);
                 const nextFeed = { source: data.source, resolution: data.resolution, note: data.note, delayed: data.delayed, session: data.session };
                 setFeed(nextFeed);
                 if (pts.length) {
-                    chartCache.set(key, { data: pts, prevClose: data.prevClose ?? null, fetchedAt: Date.now(), feed: nextFeed });
+                    chartCache.set(key, { data: pts, prevClose: prior, fetchedAt: Date.now(), feed: nextFeed });
                     if (chartCache.size > 64) chartCache.delete(chartCache.keys().next().value!);
                 }
                 // Capture prevClose for 1D — the true anchor for 1D return calculation.
-                if (typeof data.prevClose === 'number' && data.prevClose > 0) {
-                    setPrevClose(data.prevClose);
-                }
+                setPrevClose(prior);
             })
             .catch(() => {
                 if (controller !== requestRef.current) return;
@@ -222,7 +242,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
     const isPositive = priceChange >= 0;
 
     const light = theme === 'light';
-    const color = isPositive ? (light ? '#007b5e' : '#00d09c') : (light ? '#ca394b' : '#ff6b6b');
+    const color = isPositive ? (light ? '#00b386' : '#00d09c') : '#ff5b35';
     const axisColor = light ? '#6d7485' : '#9a9ea8';
 
     const labels = displayHistory.map(h => formatLabel(h.date, feed.resolution === 'daily' ? 'date' : activePeriod.fmt));
@@ -233,13 +253,16 @@ export default function StockChart({ symbol }: { symbol: string }) {
     // If on 1D and we have livePrice, extend chart with current live point
     const chartLabels = [...labels];
     const chartCloses = [...closes];
+    const plotPoints = [...displayHistory];
     if (activePeriod.value === '1d' && isLive && !feed.delayed && feed.resolution !== 'daily' && livePrice && quote.timestamp && displayHistory.length > 0 && quote.timestamp >= Date.parse(displayHistory[displayHistory.length - 1].date)) {
         const liveFmt = formatLabel(new Date(quote.timestamp).toISOString(), 'time');
         if (chartLabels[chartLabels.length - 1] !== liveFmt) {
             chartLabels.push(liveFmt);
             chartCloses.push(livePrice);
+            plotPoints.push({ date: new Date(quote.timestamp).toISOString(), close: livePrice });
         } else {
             chartCloses[chartCloses.length - 1] = livePrice;
+            plotPoints[plotPoints.length - 1] = { ...plotPoints[plotPoints.length - 1], date: new Date(quote.timestamp).toISOString(), close: livePrice };
         }
     }
 
@@ -253,11 +276,11 @@ export default function StockChart({ symbol }: { symbol: string }) {
             fill: false,
             tension: 0,
             pointRadius: displayHistory.length === 1 ? 4 : 0,
-            pointHoverRadius: 4,
+            pointHoverRadius: 0,
             pointHoverBackgroundColor: color,
             pointHoverBorderColor: light ? '#fff' : '#181818',
             pointHoverBorderWidth: 2,
-            borderWidth: 2,
+            borderWidth: 3,
         }],
     };
 
@@ -265,40 +288,22 @@ export default function StockChart({ symbol }: { symbol: string }) {
         responsive: true,
         maintainAspectRatio: false,
         onResize: (_chart, size) => setCompactPlot(size.width < 480),
-        interaction: { mode: 'index', intersect: false },
-        onHover: (_: any, elements: any[]) => {
+        interaction: { mode: 'index', axis: 'x', intersect: false },
+        onHover: (_: any, elements: any[], chart) => {
+            // Mobile browsers can emit a mouse event after touch release.
+            if (Date.now() - touchEndedAt.current < 800) { chart.setActiveElements([]); return; }
             setHoverIdx(elements.length > 0 ? elements[0].index : null);
+            setHoverX(elements[0]?.element.x ?? 0);
         },
         plugins: {
             legend: { display: false },
             tooltip: {
-                backgroundColor: light ? '#ffffff' : '#222222',
-                titleColor: light ? '#61697b' : '#b5b7be',
-                bodyColor: light ? '#363b4d' : '#ecedef',
-                padding: 14,
-                borderColor: light ? '#e8e9ec' : '#383838',
-                borderWidth: 1,
-                cornerRadius: 10,
-                displayColors: false,
-                callbacks: {
-                    title: (items: any[]) => items[0]?.label || '',
-                    label: (ctx: any) => {
-                        const i = ctx.dataIndex;
-                        const p = displayHistory[i];
-                        if (!p) return `Close: ${formatINR(ctx.raw)}`;
-                        const lines = [`Close:  ${formatINR(p.close)}`];
-                        if (p.open != null) lines.push(`Open:   ${formatINR(p.open)}`);
-                        if (p.high != null) lines.push(`High:   ${formatINR(p.high)}`);
-                        if (p.low != null) lines.push(`Low:    ${formatINR(p.low)}`);
-                        if (p.volume) lines.push(`Vol:    ${formatVol(p.volume)}`);
-                        return lines;
-                    },
-                },
+                enabled: false,
             },
         },
         scales: {
             x: {
-                display: true,
+                display: false,
                 grid: { display: false },
                 ticks: {
                     color: axisColor,
@@ -310,7 +315,9 @@ export default function StockChart({ symbol }: { symbol: string }) {
                 border: { display: false },
             },
             y: {
-                display: true,
+                suggestedMin: activePeriod.value === '1d' && prevClose ? Math.min(prevClose, ...chartCloses) : undefined,
+                suggestedMax: activePeriod.value === '1d' && prevClose ? Math.max(prevClose, ...chartCloses) : undefined,
+                display: false,
                 position: 'right' as const,
                 grid: { display: false },
                 ticks: {
@@ -355,24 +362,37 @@ export default function StockChart({ symbol }: { symbol: string }) {
     };
 
     /* ─── Hover tooltip ──────────────────────────────────────────────────────────── */
-    const hoverPt = hoverIdx != null ? displayHistory[hoverIdx] : null;
-    const selectedPrice = hoverPt?.close ?? lastClose;
+    const hoverPt = hoverIdx != null ? plotPoints[hoverIdx] : null;
+    const selectedPrice = chartCloses.at(-1) ?? null;
     const selectedChange = selectedPrice != null && baseline != null ? selectedPrice - baseline : null;
     const selectedPercent = selectedChange != null && baseline ? selectedChange / baseline * 100 : null;
+    const cursorPlugin = useMemo(() => makePriceCursor(activePeriod.value === '1d' ? prevClose : null, light), [activePeriod.value, prevClose, light]);
+    const clearCursor = () => { setHoverIdx(null); chartRef.current?.setActiveElements([]); chartRef.current?.draw(); };
+    const endTouch = () => { touchEndedAt.current = Date.now(); clearCursor(); };
+    const inspectWithKey = (event: React.KeyboardEvent) => {
+        if (event.key === 'Escape') { clearCursor(); return; }
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || !plotPoints.length) return;
+        event.preventDefault();
+        const index = event.key === 'Home' ? 0 : event.key === 'End' ? plotPoints.length - 1
+            : Math.max(0, Math.min(plotPoints.length - 1, (hoverIdx ?? 0) + (event.key === 'ArrowLeft' ? -1 : 1)));
+        const chart = chartRef.current; if (!chart) return;
+        chart.setActiveElements([{ datasetIndex: 0, index }]); chart.draw();
+        setHoverIdx(index); setHoverX(chart.getDatasetMeta(0).data[index].x);
+    };
 
     /* ─── Render ──────────────────────────────────────────────────────────────────── */
     return (
         <div className="bg-transparent">
-            <div className="min-h-16 mb-3 flex flex-wrap items-end justify-between gap-2" data-testid="chart-readout">
-                <div>
-                    <p className="text-xs text-ink-faint mb-1">{hoverPt ? new Date(hoverPt.date).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : `${activePeriod.label} performance`}</p>
-                    <p className="text-lg font-medium text-ink-heading font-num tabular-nums">{selectedPrice != null ? formatINR(selectedPrice) : '—'}</p>
-                </div>
-                {selectedChange != null && selectedPercent != null && <p className={`text-sm font-num tabular-nums ${selectedChange >= 0 ? 'text-up' : 'text-down'}`}>{selectedChange >= 0 ? '+' : '−'}{formatINR(Math.abs(selectedChange))} ({Math.abs(selectedPercent).toFixed(2)}%)</p>}
+            <div className="min-h-6 mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-faint" data-testid="chart-readout">
+                {activePeriod.value !== '1d' && <><span>{activePeriod.label} return</span>
+                {selectedChange != null && selectedPercent != null && <span className={`font-num tabular-nums ${selectedChange >= 0 ? 'text-up' : 'text-down'}`}>{selectedChange >= 0 ? '+' : '−'}{formatChartPrice(Math.abs(selectedChange))} ({Math.abs(selectedPercent).toFixed(2)}%)</span>}</>}
             </div>
             {feed.note && <p className="text-xs text-ink-muted mb-2" role="status">{feed.note}</p>}
             {refreshError && <p className="text-xs text-[var(--warning)] mb-2" role="status">Chart refresh unavailable. Showing saved candles.</p>}
-            <div className="relative h-[300px] sm:h-[390px]">
+            <div className="relative h-[320px] sm:h-[420px] pt-6" data-testid="price-plot">
+                {hoverPt && <div data-testid="chart-cursor-label" className="absolute top-0 w-[180px] max-w-full text-center text-[11px] text-ink-heading whitespace-nowrap pointer-events-none" style={{ left: `clamp(0px, ${hoverX - 90}px, max(0px, 100% - 180px))` }}>
+                    {formatChartPrice(hoverPt.close)} <span className="text-ink-faint">|</span> {activePeriod.value === '1d' ? new Date(hoverPt.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : formatLabel(hoverPt.date, 'date')}
+                </div>}
                 {loading ? (
                     <div className="h-full flex flex-col items-center justify-center gap-3">
                         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -395,8 +415,8 @@ export default function StockChart({ symbol }: { symbol: string }) {
                     </div>
                 ) : (
                     <>
-                        <div className="h-[235px] sm:h-[320px] relative" onMouseLeave={() => setHoverIdx(null)}>
-                            <Line data={lineData} options={lineOptions} plugins={[priceCursor]} aria-label={`${symbol} ${activePeriod.label} price chart`} role="img" />
+                        <div className="h-[255px] sm:h-[350px] relative cursor-crosshair touch-pan-y" onMouseLeave={clearCursor} onTouchStartCapture={() => { touchEndedAt.current = 0; }} onTouchEnd={endTouch} onTouchCancel={endTouch}>
+                            <Line ref={chartRef} data={lineData} options={lineOptions} plugins={[cursorPlugin]} aria-label={`${symbol} ${activePeriod.label} price chart. Use arrow keys to inspect prices; Escape clears selection.`} role="img" tabIndex={0} onKeyDown={inspectWithKey} onBlur={clearCursor} />
                         </div>
                         {hasVolume && (
                             <div className="h-10 mt-1 relative opacity-70">
@@ -407,16 +427,16 @@ export default function StockChart({ symbol }: { symbol: string }) {
                 )}
             </div>
 
-            <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
+            <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1 border-t border-line pt-3">
                 {PERIODS.map((p) => (
                     <button
                         key={p.value}
                         aria-pressed={activePeriod.value === p.value}
                         onClick={() => setActivePeriod(p)}
-                        className={`h-10 min-w-[44px] px-3 rounded-md text-xs sm:text-sm font-medium transition-colors ${
+                        className={`h-10 min-w-[44px] px-3 rounded-full border text-xs sm:text-sm font-medium transition-colors ${
                             activePeriod.value === p.value
-                                ? 'bg-primary/10 text-primary'
-                                : 'text-ink-muted hover:text-ink hover:bg-surface-2'
+                                ? 'bg-surface-3 border-ink-heading text-ink-heading'
+                                : 'border-line text-ink-muted hover:text-ink hover:bg-surface-2'
                         }`}
                     >
                         {p.label}
@@ -432,16 +452,6 @@ export default function StockChart({ symbol }: { symbol: string }) {
                     <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                 </button>
             </div>
-
-            {hoverPt && (
-                <div className="mt-2 text-xs text-ink-muted flex items-center gap-2.5 flex-wrap">
-                    <span>O {formatINR(hoverPt.open ?? hoverPt.close)}</span>
-                    <span>H {formatINR(hoverPt.high ?? hoverPt.close)}</span>
-                    <span>L {formatINR(hoverPt.low ?? hoverPt.close)}</span>
-                    <span>C {formatINR(hoverPt.close)}</span>
-                    {(hoverPt.volume ?? 0) > 0 && <span>Vol {formatVol(hoverPt.volume!)}</span>}
-                </div>
-            )}
 
             <div className="mt-1 text-xs text-ink-faint">
                 {feed.resolution === 'daily' ? 'Daily history' : feed.delayed ? 'Delayed intraday' : isLive ? 'Chart feed connected' : 'Chart feed delayed'} · {displayHistory.length} points · {feed.source || 'Historical OHLCV'}

@@ -231,11 +231,11 @@ class MarketDataService {
             })
         );
 
-        if (!updates['^MIDCPNIFTY'] || !updates['^FINNIFTY']) {
+        if (!updates['^MIDCPNIFTY'] || !updates['^FINNIFTY'] || !NSEClient.constructor.isMarketHours()) {
             const closes = await OfficialIndexSnapshot.latest();
             for (const [key, quote] of Object.entries(closes)) {
-                if (updates[key]) continue;
-                if (this.cache[key] && quoteTime(this.cache[key].timestamp) > quoteTime(quote.timestamp)) continue;
+                if (NSEClient.constructor.isMarketHours() && updates[key]) continue;
+                if (NSEClient.constructor.isMarketHours() && this.cache[key] && quoteTime(this.cache[key].timestamp) > quoteTime(quote.timestamp)) continue;
                 this.cache[key] = quote;
                 updates[key] = quote;
             }

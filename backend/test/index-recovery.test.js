@@ -16,6 +16,12 @@ test('official fallback selects exact index names and keeps the report timestamp
     assert.deepEqual(parseSnapshot('<html>blocked</html>', '2026-11-13', 'bad-report'), {});
 });
 
+test('NIFTY previous close is derived from the official session change', () => {
+    const quotes = parseSnapshot(`${headers}\nNifty 50,13-11-2026,25144.3,-155.05,-.61`, '2026-11-13', 'official-report');
+    assert.equal(quotes['^NSEI'].prevClose, 25299.35);
+    assert.equal(quotes['^NSEI'].change, -155.05);
+});
+
 test('before opening uses the previous completed session and coalesces report requests', async () => {
     const saved = global.fetch;
     const urls = [];

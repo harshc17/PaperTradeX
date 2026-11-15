@@ -3,6 +3,8 @@ const NSEClient = require('./NSEClient');
 const returnSessionDate = require('./ReturnSession');
 const cache = new PublicReadCache(8);
 const INDEX_NAMES = {
+    'NIFTY 50': { symbol: '^NSEI', shortname: 'NIFTY 50' },
+    'NIFTY BANK': { symbol: '^NSEBANK', shortname: 'BANKNIFTY' },
     'NIFTY MIDCAP SELECT': { symbol: '^MIDCPNIFTY', shortname: 'MIDCPNIFTY' },
     'NIFTY FINANCIAL SERVICES': { symbol: '^FINNIFTY', shortname: 'FINNIFTY' },
 };

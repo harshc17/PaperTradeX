@@ -536,7 +536,7 @@ function getClosedMarketSessionKey(date = new Date()) {
 
 async function getClosedMarketPrice(symbol, fallbackPrice = null) {
     const bare = quoteKey(symbol);
-    if (bare === '^MIDCPNIFTY' || bare === '^FINNIFTY') {
+    if (['^MIDCPNIFTY', '^FINNIFTY', '^NSEI', '^NSEBANK'].includes(bare)) {
         await marketDataService._fetchIndices();
         return marketDataService.cache[bare] || null;
     }
