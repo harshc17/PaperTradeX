@@ -159,7 +159,7 @@ export default function StockDetail({ symbol }: { symbol: string }) {
         <div className="bg-transparent">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0 flex-1 basis-72">
-                    <div className="text-[20px] text-ink-muted leading-6 mb-1">
+                    <div className="text-[20px] break-words text-ink-muted leading-6 mb-1">
                         {prettySymbol} · {details.exchange}
                     </div>
                     <h1 className="flex items-center gap-3 text-[24px] sm:text-[28px] font-semibold text-ink-heading leading-[1.15] mb-2.5">

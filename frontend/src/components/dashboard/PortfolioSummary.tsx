@@ -5,7 +5,7 @@ import { usePortfolio } from '@/context/PortfolioContext';
 import { useAuth } from '@/context/AuthContext';
 export default function PortfolioSummary() {
  const {balance}=useAuth();
- const {pricesStale,portfolioXirr,holdings,transactions,totalInvested,currentValue,totalReturns,totalReturnsPercent,todayReturns,todayReturnsPercent,todayReturnsReady}=usePortfolio();
+ const {holdingsReady,portfolioError,refreshPortfolio,pricesStale,portfolioXirr,holdings,transactions,totalInvested,currentValue,totalReturns,totalReturnsPercent,todayReturns,todayReturnsPercent,todayReturnsReady}=usePortfolio();
  const fmt=(n:number)=>Number.isFinite(n)?n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
  return (<div className="bg-surface rounded-2xl border border-line p-4 sm:p-6 shadow-none">
                 <div className="flex items-center justify-between mb-3 sm:mb-5">
@@ -13,6 +13,8 @@ export default function PortfolioSummary() {
                     <Link href="/holdings" className="text-[12px] text-primary hover:underline font-medium">View all →</Link>
                 </div>
 
+                {portfolioError && <div role="alert" className="text-xs text-[var(--warning)] mb-3">{portfolioError} <button type="button" onClick={refreshPortfolio} className="min-h-11 underline">Retry holdings</button></div>}
+                {!holdingsReady && !portfolioError && <p role="status" className="text-xs text-ink-faint mb-3">Loading holdings…</p>}
                 {pricesStale && <p className="text-xs text-[var(--warning)] mb-3">Quotes delayed or unavailable — showing last known values.</p>}
                 <div className="mb-3 sm:mb-5 flex flex-wrap items-center justify-between gap-3">
                     <div><p className="text-[12px] text-ink-faint mb-1">Current value</p>
@@ -29,7 +31,7 @@ export default function PortfolioSummary() {
                             <div key={label} className="flex flex-wrap gap-2 justify-between items-center">
                                 <span className="text-sm text-ink-faint" title={label === '1D return' ? 'Profit/loss for the latest trading session. Overnight shares use previous close; today’s buys use execution price. Includes today’s sales. Percentage uses opening holdings value plus today’s purchases.' : undefined}>{label}</span>
                                 <span className={`text-sm font-semibold tabular-nums font-num ${val >= 0 ? 'text-up' : 'text-down'}`}>
-                                    {label === '1D return' && !todayReturnsReady ? '—' : <>{val >= 0 ? '+' : '-'}₹{fmt(Math.abs(val))} ({pct < 0 ? '−' : ''}{(Number.isFinite(pct) ? Math.abs(pct).toFixed(2) : '—')}%)</>}
+                                    {!Number.isFinite(val) || (label === '1D return' && !todayReturnsReady) ? '—' : <>{val >= 0 ? '+' : '-'}₹{fmt(Math.abs(val))} ({pct < 0 ? '−' : ''}{(Number.isFinite(pct) ? Math.abs(pct).toFixed(2) : '—')}%)</>}
                                 </span>
                             </div>
                         ))}
@@ -39,11 +41,11 @@ export default function PortfolioSummary() {
                         </div>
                         <div className="flex flex-wrap gap-2 justify-between items-center"><span className="text-sm text-ink-faint" title="Annualised return">XIRR</span><div className="ml-auto text-right"><XirrValue result={portfolioXirr} /></div></div>
                     </div>
-                ) : (
+                ) : holdingsReady ? (
                     <div className="text-center py-2 sm:py-4 border-t border-line">
                         <p className="text-sm text-ink-faint mb-3">No holdings yet</p>
                         <Link href="/dashboard" className="text-sm font-semibold text-primary hover:underline">Explore stocks →</Link>
                     </div>
-                )}
+                ) : null}
             </div>);
 }

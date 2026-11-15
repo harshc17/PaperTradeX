@@ -348,7 +348,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
     return (
         <div className="bg-transparent">
             {refreshError && <p className="text-xs text-[var(--warning)] mb-2" role="status">Chart refresh unavailable. Showing saved candles.</p>}
-            <div className="relative h-[390px]">
+            <div className="relative h-[300px] sm:h-[390px]">
                 {loading ? (
                     <div className="h-full flex flex-col items-center justify-center gap-3">
                         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -371,7 +371,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
                     </div>
                 ) : (
                     <>
-                        <div className="h-[320px] relative">
+                        <div className="h-[235px] sm:h-[320px] relative">
                             <Line data={lineData} options={lineOptions} />
                         </div>
                         {hasVolume && (

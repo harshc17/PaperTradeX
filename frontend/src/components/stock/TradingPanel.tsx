@@ -104,7 +104,7 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
     const isUp = priceChange >= 0;
 
     return (
-        <div className="relative rounded-2xl bg-surface border border-line shadow-none overflow-hidden transition-colors sticky top-20">
+        <div className="relative rounded-2xl bg-surface border border-line shadow-none overflow-hidden transition-colors lg:sticky lg:top-20">
             {/* Notification Toast */}
             {toast && (
                 <div

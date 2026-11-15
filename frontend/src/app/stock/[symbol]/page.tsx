@@ -11,7 +11,7 @@ import AINewsPanel from '@/components/stock/AINewsPanel';
 import { isMarketIndex } from '@/lib/marketIndex';
 
 const StockChart = dynamic(() => import('@/components/stock/StockChart'), {
-    loading: () => <div className="h-[390px] rounded-2xl bg-surface border border-line shimmer" />,
+    loading: () => <div className="h-[300px] sm:h-[390px] rounded-2xl bg-surface border border-line shimmer" />,
 });
 
 export default function StockPage() {

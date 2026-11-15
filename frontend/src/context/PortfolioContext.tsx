@@ -68,6 +68,8 @@ export interface MarketStatusInfo {
 }
 
 interface PortfolioContextType {
+    holdingsReady: boolean;
+    portfolioError: string | null;
     pricesStale: boolean;
     quoteTimes: Record<string, number>;
     quoteSources: Record<string, string>;
@@ -117,6 +119,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     const [orders, setOrders] = useState<Order[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [holdingsLoaded, setHoldingsLoaded] = useState(false);
+    const [portfolioError, setPortfolioError] = useState<string | null>(null);
+    const portfolioRequest = useRef(0);
     const [transactionsLoaded, setTransactionsLoaded] = useState(false);
     const [livePrices, setLivePrices] = useState<Record<string, number>>({});
     // Prevent delayed REST responses or broadcasts from rolling a symbol back.
@@ -142,16 +146,22 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     const refreshPortfolio = useCallback(async () => {
         const token = getToken();
         if (!token) return;
+        const requestId = ++portfolioRequest.current;
         try {
             const res = await fetch(`${API}/api/portfolio`, {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` }, cache: 'no-store', signal: AbortSignal.timeout(15000),
             });
+            if (requestId !== portfolioRequest.current) return;
             if (res.status === 401 || res.status === 403) {
                 clearAuthState();
+                setPortfolioError('Your session expired. Please sign in again to load your holdings.');
                 return;
             }
+            if (!res.ok) throw new Error('Holdings request failed');
             if (res.ok) {
                 const data = await res.json();
+                if (requestId !== portfolioRequest.current) return;
+                if (!Array.isArray(data.holdings)) throw new Error('Incomplete holdings response');
                 const h: PortfolioItem[] = (data.holdings || []).map((item: any) => ({
                     symbol: normalizeSymbol(item.symbol),
                     quantity: item.quantity,
@@ -159,11 +169,14 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
                 }));
                 setHoldings(h);
                 setHoldingsLoaded(true);
+                setPortfolioError(null);
                 // Subscribe to live prices for holdings
                 const s = getSocket();
                 h.forEach(item => s.emit('subscribe', item.symbol));
             }
-        } catch (e) { /* silent */ }
+        } catch {
+            if (requestId === portfolioRequest.current) setPortfolioError('Unable to refresh holdings. Please retry.');
+        }
     }, []);
 
     const refreshOrders = useCallback(async () => {
@@ -305,6 +318,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         setHoldingsLoaded(false);
+        setPortfolioError(null);
         setTransactionsLoaded(false);
         if (user) {
             refreshPortfolio();
@@ -316,6 +330,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
             }, 30000);
             return () => clearInterval(timer);
         } else {
+            portfolioRequest.current++;
             setHoldings([]);
             setTransactions([]);
             setOrders([]);
@@ -415,8 +430,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         };
     });
 
-    const totalInvested = enrichedHoldings.reduce((a, h) => a + h.quantity * h.averagePrice, 0);
-    const currentValue = enrichedHoldings.reduce((a, h) => a + (h.currentValue ?? 0), 0);
+    const totalInvested = holdingsLoaded ? enrichedHoldings.reduce((a, h) => a + h.quantity * h.averagePrice, 0) : NaN;
+    const currentValue = holdingsLoaded ? enrichedHoldings.reduce((a, h) => a + (h.currentValue ?? NaN), 0) : NaN;
     const totalReturns = currentValue - totalInvested;
     const totalReturnsPercent = totalInvested > 0 ? (totalReturns / totalInvested) * 100 : 0;
     
@@ -425,6 +440,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
 
     return (
         <PortfolioContext.Provider value={{
+            holdingsReady: holdingsLoaded, portfolioError,
             pricesStale: holdings.some(h => !quoteTimes[h.symbol] || (!!marketOpen && now - quoteTimes[h.symbol] > 60000)),
             quoteTimes, quoteSources, livePreviousClose, watchSymbol,
             holdings: enrichedHoldings,

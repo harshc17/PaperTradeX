@@ -12,7 +12,7 @@ import { TrendingUp, TrendingDown, Package, Search, Clock, ArrowUpRight, Externa
 export default function HoldingsPage() {
     const { user, balance, loading: authLoading } = useAuth();
     const {
-        portfolioXirr, pricesStale,
+        portfolioXirr, pricesStale, holdingsReady, portfolioError,
         holdings,
         orders,
         totalInvested,
@@ -193,7 +193,12 @@ export default function HoldingsPage() {
                 </div>
 
                 {/* Holdings Table Section */}
-                {holdings.length === 0 ? (
+                {!holdingsReady ? (
+                    <div className="rounded-2xl border border-line bg-surface p-6" role={portfolioError ? 'alert' : 'status'}>
+                        <p>{portfolioError || 'Loading holdings…'}</p>
+                        {portfolioError && <button type="button" onClick={refreshPortfolio} className="min-h-11 text-primary underline">Retry holdings</button>}
+                    </div>
+                ) : holdings.length === 0 ? (
                     <div className="rounded-2xl border border-line bg-surface p-12 text-center shadow-none">
                         <div className="w-16 h-16 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
                             <Package className="w-8 h-8 text-primary" />
