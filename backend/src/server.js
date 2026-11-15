@@ -16,6 +16,7 @@ const { assertTradable } = require('./services/MarketIndex');
 const { connectDB, User, PendingSignup, Order, TransactionHistory, WeeklyChallenge, WeeklyChallengeTrade, seedAdmin } = require('./models');
 const NSEClient = require('./services/NSEClient');
 const HistoricalClient = require('./services/HistoricalClient');
+const { quoteKey, quoteTime, isFreshQuote } = require('./services/QuoteIdentity');
 const AIService = require('./services/AIService');
 const Mailer = require('./services/Mailer');
 
@@ -423,7 +424,7 @@ function getSymbolMeta(symbol) {
 }
 
 function shouldPreferYahoo(symbol) {
-    const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
+    const bare = quoteKey(symbol);
     const meta = getSymbolMeta(bare);
     // NSE also publishes ETF prices. Sending an NSE ETF to Yahoo while the
     // live market service uses NSE produces two valid but different quotes.
@@ -529,42 +530,11 @@ function getPreviousBusinessDayKeyFromIstDate(istDateKey) {
 }
 
 function getClosedMarketSessionKey(date = new Date()) {
-    const parts = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'Asia/Kolkata',
-        weekday: 'short',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-    }).formatToParts(date);
-
-    const pick = (type) => parts.find(p => p.type === type)?.value;
-    const weekday = pick('weekday');
-    const year = pick('year');
-    const month = pick('month');
-    const day = pick('day');
-    const hour = Number(pick('hour'));
-    const minute = Number(pick('minute'));
-    const todayKey = `${year}-${month}-${day}`;
-
-    // Weekends should freeze to last business day's close.
-    if (weekday === 'Sat' || weekday === 'Sun') {
-        return getPreviousBusinessDayKeyFromIstDate(todayKey);
-    }
-
-    // Before market open (09:15 IST), still use previous business day's close.
-    if (hour < 9 || (hour === 9 && minute < 15)) {
-        return getPreviousBusinessDayKeyFromIstDate(todayKey);
-    }
-
-    // During/after same-day market close window, freeze to today's close.
-    return todayKey;
+    return require('./services/ReturnSession')(date, NSEClient.constructor.HOLIDAYS);
 }
 
 async function getClosedMarketPrice(symbol, fallbackPrice = null) {
-    const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
+    const bare = quoteKey(symbol);
     const dateKey = getClosedMarketSessionKey();
     const frozen = CLOSED_PRICE_CACHE[bare];
 
@@ -572,7 +542,8 @@ async function getClosedMarketPrice(symbol, fallbackPrice = null) {
         return frozen;
     }
 
-    let cached = marketDataService.cache[bare] || marketDataService.cache[bare + '.NS'];
+    let cached = marketDataService.cache[bare];
+    let timestamp = cached?.timestamp || null;
     let price = null;
     let change = cached?.change ?? 0;
     let dayChange = cached?.dayChange ?? 0;
@@ -587,6 +558,7 @@ async function getClosedMarketPrice(symbol, fallbackPrice = null) {
             change = yData.regularMarketChange ?? 0;
             dayChange = yData.regularMarketChangePercent ?? 0;
             prevClose = yData.regularMarketPreviousClose ?? (price - change);
+            timestamp = yData.regularMarketTime;
         }
     } catch {
         // Use the last known in-memory price if chart data is unavailable.
@@ -618,7 +590,7 @@ async function getClosedMarketPrice(symbol, fallbackPrice = null) {
         dayChange,
         prevClose,
         source,
-        timestamp: new Date(),
+        timestamp: Number.isFinite(quoteTime(timestamp)) ? new Date(quoteTime(timestamp)) : null,
     };
     CLOSED_PRICE_CACHE[bare] = entry;
 
@@ -634,43 +606,15 @@ async function getClosedMarketPrice(symbol, fallbackPrice = null) {
         isClosedMarketPrice: true,
     };
     marketDataService.cache[bare] = cacheEntry;
-    marketDataService.cache[bare + '.NS'] = cacheEntry;
+    if (!bare.endsWith('.BO')) marketDataService.cache[bare + '.NS'] = cacheEntry;
 
     return entry;
 }
 
 async function resolveStockPrice(symbol) {
-    const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
-    const marketOpen = NSEClient.constructor.isMarketHours();
-    const cached = marketDataService.cache[bare] || marketDataService.cache[bare + '.NS'];
-
-    if (!marketOpen) {
-        const closed = await getClosedMarketPrice(bare, cached?.price ?? null);
-        if (closed?.price) return { symbol: bare, price: closed.price, source: `closed-${closed.source}` };
-    }
-
-    if (cached?.price) {
-        return { symbol: bare, price: cached.price, source: 'cache' };
-    }
-
-    if (marketOpen && !shouldPreferYahoo(bare) && !recentlyFailedNse(bare)) {
-        try {
-            const ns = await NSEClient.equityQuote(bare);
-            if (ns?.priceInfo?.lastPrice) {
-                const price = ns.priceInfo.lastPrice;
-                return { symbol: bare, price, source: 'nse' };
-            }
-        } catch {
-            markNseFailure(bare);
-        }
-    }
-
-    const yahooPrice = await HistoricalClient.latestPrice(bare);
-    if (yahooPrice && yahooPrice > 0) {
-        return { symbol: bare, price: yahooPrice, source: 'yahoo' };
-    }
-
-    throw new Error(`Price not available for ${bare}`);
+    const quote = await marketDataService.refreshSymbol(quoteKey(symbol), NSEClient._inBackoff);
+    if (isFreshQuote(quote)) return quote;
+    throw new Error('A fresh exchange quote is unavailable. Please retry when market data recovers.');
 }
 const resolveChallengePrice = resolveStockPrice;
 
@@ -751,7 +695,7 @@ app.get('/api/stock/:symbol', async (req, res) => {
         // Cache key includes exchange suffix to avoid NSE.NS vs NSE.BO collision
         const cacheKey = rawUpper;
         if (STOCK_CACHE[cacheKey] && Date.now() - STOCK_CACHE[cacheKey].timestamp < STOCK_CACHE_TTL) {
-            return res.json(STOCK_CACHE[cacheKey].data);
+            return await sendStockDetail(res, rawUpper, STOCK_CACHE[cacheKey].data);
         }
 
         // ── 1. Try NSE (preferred — rich data when market is open, .NS only) ──
@@ -811,7 +755,7 @@ app.get('/api/stock/:symbol', async (req, res) => {
                     dataSource:                 'nse',
                 };
                 STOCK_CACHE[cacheKey] = { timestamp: Date.now(), data };
-                return res.json(data);
+                return await sendStockDetail(res, rawUpper, data);
             }
             } catch {
                 markNseFailure(bare);
@@ -873,7 +817,7 @@ app.get('/api/stock/:symbol', async (req, res) => {
             dataSource:                 'yahoo',
         };
         STOCK_CACHE[cacheKey] = { timestamp: Date.now(), data };
-        return res.json(data);
+        return await sendStockDetail(res, rawUpper, data);
     } catch (error) {
         console.error('[Stock] Detail error:', error.message);
         res.status(500).json({ error: error.message });
@@ -887,7 +831,7 @@ const _stockNewsCache = new Map(); // key: "SYMBOL:DATE", value: newsObject
 app.get('/api/stock/:symbol/news', async (req, res) => {
     const { symbol } = req.params;
     try {
-        const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
+        const bare = quoteKey(symbol);
         const today = _todayIST ? _todayIST() : new Date().toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' });
         const cacheKey = `${bare}:${today}`;
 
@@ -1094,124 +1038,40 @@ app.get('/api/indices', async (req, res) => {
 
 
 // ─── Realtime Price (cache → NSE → Yahoo Finance fallback) ──────────────────
+async function displayQuote(symbol) {
+    const key = quoteKey(symbol);
+    if (!NSEClient.constructor.isMarketHours()) return getClosedMarketPrice(key);
+    if (key.startsWith('^')) return marketDataService.cache[key] || null;
+    marketDataService.subscribe(key);
+    return marketDataService.refreshSymbol(key, NSEClient._inBackoff);
+}
+
+async function sendStockDetail(res, symbol, details) {
+    const quote = await displayQuote(symbol);
+    return res.json({ ...details,
+        symbol: quoteKey(symbol).endsWith('.BO') ? quoteKey(symbol) : (symbol.startsWith('^') ? symbol : quoteKey(symbol) + '.NS'),
+        exchange: quoteKey(symbol).endsWith('.BO') ? 'BSE' : 'NSE',
+        regularMarketPrice: quote?.price ?? null,
+        regularMarketChange: quote?.change ?? null,
+        regularMarketChangePercent: quote?.dayChange ?? null,
+        regularMarketPreviousClose: quote?.prevClose ?? (quote ? quote.price - quote.change : null),
+        quoteTimestamp: quote?.timestamp ?? null,
+        dataSource: quote?.source || 'unavailable',
+        stale: NSEClient.constructor.isMarketHours() && !isFreshQuote(quote),
+    });
+}
+
 app.get('/api/stock/:symbol/realtime', async (req, res) => {
-    const { symbol } = req.params;
+    res.set('Cache-Control', 'no-store');
     try {
-        // Preserve .BO suffix — do NOT force NSE.BO to NSE.NS
-        const rawUpper = symbol.toUpperCase();
-        const bare = rawUpper.replace(/\.(NS|BO)$/i, '');
-        const isBo = rawUpper.endsWith('.BO');
-        const yahooPreferred = shouldPreferYahoo(bare);
-        const marketOpen = NSEClient.constructor.isMarketHours();
-        const cached = marketDataService.cache[bare] || marketDataService.cache[rawUpper] || marketDataService.cache[bare + '.NS'];
-
-        if (marketOpen && !yahooPreferred && !isBo) {
-            marketDataService.subscribe(bare);
-            const quote = await marketDataService.refreshSymbol(bare, NSEClient._inBackoff);
-            if (quote) return res.json({ ...quote, source: quote.source || 'nse', marketOpen: true });
-            return res.status(503).json({ error: 'Market quote temporarily unavailable' });
-        }
-
-        if (!marketOpen) {
-            const closedPrice = await getClosedMarketPrice(rawUpper, cached?.price ?? null);
-            const frozenCache = cached;
-
-            if (closedPrice) {
-                const change = closedPrice.change ?? frozenCache?.change ?? 0;
-                const dayChange = closedPrice.dayChange ?? frozenCache?.dayChange ?? 0;
-                const prevClose = closedPrice.prevClose ?? frozenCache?.prevClose ?? (closedPrice.price - change);
-                return res.json({
-                    symbol:    rawUpper,
-                    price:     closedPrice.price,
-                    change,
-                    dayChange,
-                    prevClose,
-                    timestamp: closedPrice.timestamp,
-                    source:    `closed-market-${closedPrice.source}`,
-                    marketOpen: false,
-                });
-            }
-
-            if (cached) {
-                return res.json({ ...cached, source: 'closed-market-cache', marketOpen: false });
-            }
-        }
-
-        // 1. Use MarketData's cache whenever it has a value. The socket
-        // service owns live subscribed symbols; a separate REST fetch here
-        // can otherwise replace its newer NSE quote with another provider.
-        if (cached) {
-            return res.json({
-                symbol:    bare,
-                price:     cached.price,
-                change:    cached.change ?? 0,
-                dayChange: cached.dayChange ?? 0,
-                prevClose: cached.prevClose ?? (cached.price - (cached.change ?? 0)),
-                timestamp: cached.timestamp,
-                source:    'cache',
-            });
-        }
-
-        // 2. Try fresh NSE fetch (works during market hours, .NS only)
-        if (!yahooPreferred && !isBo && !recentlyFailedNse(bare)) {
-            try {
-                const ns = await NSEClient.equityQuote(bare);
-                if (ns?.priceInfo?.lastPrice) {
-                    const pi = ns.priceInfo;
-                    marketDataService.subscribe(bare);
-                    const price = pi.lastPrice;
-                    const change = pi.change ?? 0;
-                    const dayChange = pi.pChange ?? 0;
-                    const prevClose = pi.previousClose ?? (price - change);
-                    const cacheEntry = {
-                        symbol:    bare,
-                        price,
-                        change,
-                        dayChange,
-                        prevClose,
-                        timestamp: new Date(),
-                        source:    'nse',
-                    };
-                    marketDataService.cache[bare] = cacheEntry;
-                    return res.json(cacheEntry);
-                }
-            } catch {
-                markNseFailure(bare);
-            }
-        }
-
-        // 3. Yahoo Finance fallback — pass rawUpper so .BO stays .BO
-        try {
-            const yData = await HistoricalClient.quoteDetail(rawUpper);
-            if (yData && typeof yData.regularMarketPrice === 'number' && yData.regularMarketPrice > 0) {
-                const price = yData.regularMarketPrice;
-                const change = yData.regularMarketChange ?? 0;
-                const dayChange = yData.regularMarketChangePercent ?? 0;
-                const prevClose = yData.regularMarketPreviousClose ?? (price - change);
-                const cacheEntry = {
-                    symbol:    rawUpper,
-                    price,
-                    change,
-                    dayChange,
-                    prevClose,
-                    timestamp: new Date(),
-                    source:    'yahoo',
-                };
-                marketDataService.cache[bare] = cacheEntry;
-                marketDataService.cache[rawUpper] = cacheEntry;
-                return res.json(cacheEntry);
-            }
-        } catch { /* Yahoo also failed */ }
-
-        // 4. Return stale cache if available (better than nothing)
-        if (cached) {
-            return res.json({ ...cached, source: 'stale-cache' });
-        }
-
-        res.status(404).json({ error: 'Price not available' });
-    } catch (error) {
-        console.error('[Realtime] Error:', error.message);
-        res.status(500).json({ error: error.message });
+        const key = quoteKey(req.params.symbol);
+        const quote = await displayQuote(key);
+        if (!quote) return res.status(503).json({ error: 'Exchange quote unavailable', symbol: key });
+        return res.json({ ...quote, symbol: key,
+            marketOpen: NSEClient.constructor.isMarketHours(),
+            stale: NSEClient.constructor.isMarketHours() && !isFreshQuote(quote) });
+    } catch {
+        return res.status(503).json({ error: 'Exchange quote temporarily unavailable' });
     }
 });
 
@@ -1223,7 +1083,7 @@ app.get('/api/stock/:symbol/history', async (req, res) => {
     try {
         let data = [];
         let prevClose = null;
-        const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
+        const bare = quoteKey(symbol);
         const yahooPreferred = shouldPreferYahoo(bare);
 
         if (period === '1d' && !yahooPreferred) {

@@ -1,6 +1,6 @@
 type Holding = { symbol: string; quantity: number };
 type Trade = { symbol: string; type: 'BUY' | 'SELL'; quantity: number; totalAmount: number; createdAt: string };
-const normalize = (symbol: string) => symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
+const normalize = (symbol: string) => symbol.replace(/\.NS$/i, '').toUpperCase();
 const istDate = (date: string) => {
     const time = Date.parse(date);
     return Number.isFinite(time) ? new Date(time + 330 * 60000).toISOString().slice(0, 10) : '';

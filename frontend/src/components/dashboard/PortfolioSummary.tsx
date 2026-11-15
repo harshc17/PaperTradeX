@@ -5,14 +5,15 @@ import { usePortfolio } from '@/context/PortfolioContext';
 import { useAuth } from '@/context/AuthContext';
 export default function PortfolioSummary() {
  const {balance}=useAuth();
- const {portfolioXirr,holdings,transactions,totalInvested,currentValue,totalReturns,totalReturnsPercent,todayReturns,todayReturnsPercent,todayReturnsReady}=usePortfolio();
- const fmt=(n:number)=>n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+ const {pricesStale,portfolioXirr,holdings,transactions,totalInvested,currentValue,totalReturns,totalReturnsPercent,todayReturns,todayReturnsPercent,todayReturnsReady}=usePortfolio();
+ const fmt=(n:number)=>Number.isFinite(n)?n.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
  return (<div className="bg-surface rounded-2xl border border-line p-4 sm:p-6 shadow-none">
                 <div className="flex items-center justify-between mb-3 sm:mb-5">
                     <h3 className="text-base font-semibold text-ink-heading font-heading">Your portfolio</h3>
                     <Link href="/holdings" className="text-[12px] text-primary hover:underline font-medium">View all →</Link>
                 </div>
 
+                {pricesStale && <p className="text-xs text-[var(--warning)] mb-3">Quotes delayed or unavailable — showing last known values.</p>}
                 <div className="mb-3 sm:mb-5 flex flex-wrap items-center justify-between gap-3">
                     <div><p className="text-[12px] text-ink-faint mb-1">Current value</p>
                     <h2 className="text-[28px] font-medium text-ink-heading tabular-nums font-num">₹{fmt(currentValue)}</h2></div>
@@ -28,7 +29,7 @@ export default function PortfolioSummary() {
                             <div key={label} className="flex flex-wrap gap-2 justify-between items-center">
                                 <span className="text-sm text-ink-faint" title={label === '1D return' ? 'Profit/loss for the latest trading session. Overnight shares use previous close; today’s buys use execution price. Includes today’s sales. Percentage uses opening holdings value plus today’s purchases.' : undefined}>{label}</span>
                                 <span className={`text-sm font-semibold tabular-nums font-num ${val >= 0 ? 'text-up' : 'text-down'}`}>
-                                    {label === '1D return' && !todayReturnsReady ? '—' : <>{val >= 0 ? '+' : '-'}₹{fmt(Math.abs(val))} ({pct < 0 ? '−' : ''}{Math.abs(pct).toFixed(2)}%)</>}
+                                    {label === '1D return' && !todayReturnsReady ? '—' : <>{val >= 0 ? '+' : '-'}₹{fmt(Math.abs(val))} ({pct < 0 ? '−' : ''}{(Number.isFinite(pct) ? Math.abs(pct).toFixed(2) : '—')}%)</>}
                                 </span>
                             </div>
                         ))}

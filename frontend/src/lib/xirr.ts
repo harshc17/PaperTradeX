@@ -73,7 +73,7 @@ export function calculateXirr(flows: CashFlow[]): XirrResult {
 
 type Trade = { symbol: string; type: 'BUY' | 'SELL'; totalAmount: number; createdAt: string };
 type Holding = { symbol: string; quantity: number };
-const symbolOf = (symbol: string) => symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
+const symbolOf = (symbol: string) => symbol.replace(/\.NS$/i, '').toUpperCase();
 export function calculatePortfolioXirr(holdings: Holding[], trades: Trade[], prices: Record<string, number>, valuationDate: string) {
     const groups = new Map<string, CashFlow[]>();
     const group = (symbol: string) => {

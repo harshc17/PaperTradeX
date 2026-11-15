@@ -46,9 +46,8 @@ function getYahooCandidates(symbol) {
     if (symbol.toUpperCase() === '^BANKEX') return ['BSE-BANK.BO'];
     if (symbol.startsWith('^')) return [symbol];
     const upper = symbol.toUpperCase();
-    if (upper.endsWith('.BO')) return [upper, upper.replace(/\.BO$/, '.NS')];
-    if (upper.endsWith('.NS')) return [upper, upper.replace(/\.NS$/, '.BO')];
-    return [upper + '.NS', upper + '.BO'];
+    if (upper.endsWith('.BO') || upper.endsWith('.NS')) return [upper];
+    return [upper + '.NS'];
 }
 
 module.exports = {
@@ -174,13 +173,13 @@ module.exports = {
         for (const yhSymbol of candidates) {
             try {
                 const data = await yf.quote(yhSymbol, {}, { validateResult: false });
-                if (data && (data.regularMarketPrice > 0 || data.regularMarketPreviousClose > 0)) {
+                if (data && data.symbol?.toUpperCase() === yhSymbol.toUpperCase() && data.regularMarketPrice > 0) {
                     return data;
                 }
             } catch (e) {
                 if (e.name === 'FailedYahooValidationError' && e.result) {
                     const r = e.result;
-                    if (r && (r.regularMarketPrice > 0 || r.regularMarketPreviousClose > 0)) return r;
+                    if (r && r.symbol?.toUpperCase() === yhSymbol.toUpperCase() && r.regularMarketPrice > 0) return r;
                 }
                 console.warn(`[Yahoo] quote failed for "${yhSymbol}": ${e.message}`);
             }

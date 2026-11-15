@@ -12,7 +12,7 @@ import { TrendingUp, TrendingDown, Package, Search, Clock, ArrowUpRight, Externa
 export default function HoldingsPage() {
     const { user, balance, loading: authLoading } = useAuth();
     const {
-        portfolioXirr,
+        portfolioXirr, pricesStale,
         holdings,
         orders,
         totalInvested,
@@ -46,7 +46,7 @@ export default function HoldingsPage() {
         setTimeout(() => setIsRefreshing(false), 600);
     };
 
-    const fmt = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fmt = (n: number) => Number.isFinite(n) ? n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
     const isProfit = totalReturns >= 0;
     const isTodayProfit = todayReturns >= 0;
 
@@ -86,7 +86,7 @@ export default function HoldingsPage() {
                             </span>
                         </div>
                         <p className="text-xs text-ink-faint">
-                            Track your virtual holdings, returns and allocation
+                            Track your virtual holdings, returns and allocation{pricesStale && <span className="block mt-1 text-[var(--warning)]">Quotes delayed or unavailable — values use last known prices.</span>}
                         </p>
                     </div>
 
@@ -159,7 +159,7 @@ export default function HoldingsPage() {
                             {isProfit ? <TrendingUp className="w-4 h-4 text-up" /> : <TrendingDown className="w-4 h-4 text-down" />}
                         </div>
                             <h2 className={`text-[28px] font-medium tabular-nums font-num mb-2 ${isProfit ? 'text-up' : 'text-down'}`}>{isProfit ? '+' : '-'}₹{fmt(Math.abs(totalReturns))}</h2>
-                            <span className={`text-xs font-num ${isProfit ? 'text-up' : 'text-down'}`}>{isProfit ? '+' : '-'}{Math.abs(totalReturnsPercent).toFixed(2)}% Overall</span>
+                            <span className={`text-xs font-num ${isProfit ? 'text-up' : 'text-down'}`}>{isProfit ? '+' : '-'}{(Number.isFinite(totalReturnsPercent) ? Math.abs(totalReturnsPercent).toFixed(2) : '—')}% Overall</span>
                             <div className="mt-3 border-t border-line pt-3"><p className="text-xs text-ink-faint mb-1">Portfolio XIRR</p><XirrValue result={portfolioXirr} /></div>
                     </div>
 
@@ -308,7 +308,7 @@ export default function HoldingsPage() {
                                                                     {cleanSymbol}
                                                                 </span>
                                                                 <span className="text-xs font-semibold text-ink-faint px-1.5 py-0.2 rounded bg-surface-2">
-                                                                    NSE
+                                                                    {h.symbol.endsWith('.BO') ? 'BSE' : 'NSE'}
                                                                 </span>
                                                             </div>
                                                             <div className="flex items-center gap-2 mt-0.5">
@@ -357,7 +357,7 @@ export default function HoldingsPage() {
                                                         {isUp ? '+' : '-'}₹{fmt(Math.abs(h.pnl ?? 0))}
                                                     </p>
                                                     <span className={`inline-block text-xs font-semibold tabular-nums font-num mt-0.5 ${isUp ? 'text-up' : 'text-down'}`}>
-                                                        {isUp ? '+' : '-'}{Math.abs(h.pnlPercent ?? 0).toFixed(2)}%
+                                                        {isUp ? '+' : '-'}{(Number.isFinite(h.pnlPercent) ? Math.abs(h.pnlPercent ?? 0).toFixed(2) : '—')}%
                                                     </span>
                                                 </td>
 
@@ -365,7 +365,7 @@ export default function HoldingsPage() {
                                                 <td className="px-5 py-4 text-center">
                                                     <button
                                                         type="button"
-                                                        onClick={() => router.push(`/stock/${encodeURIComponent(cleanSymbol)}`)}
+                                                        onClick={() => router.push(`/stock/${encodeURIComponent(h.symbol)}`)}
                                                         className="px-3 py-1.5 text-xs font-medium rounded-xl bg-surface-2 hover:bg-primary hover:text-[var(--primary-ink)] border border-line transition-colors text-ink-muted active:scale-[0.98] inline-flex items-center gap-1"
                                                     >
                                                         <span>Trade</span>

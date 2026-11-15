@@ -17,6 +17,7 @@
 const NSEClient = require('./NSEClient');
 const HistoricalClient = require('./HistoricalClient');
 const TradeEngine = require('./TradeEngine');
+const { quoteKey, quoteTime, isFreshQuote, nseQuoteTime } = require('./QuoteIdentity');
 
 // We use NSEClient.constructor.isMarketHours() instead.
 
@@ -81,7 +82,7 @@ class MarketDataService {
     /** Subscribe to live updates for a symbol (bare NSE symbol, no .NS suffix) */
     subscribe(symbol) {
         if (!symbol) return null;
-        const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
+        const bare = quoteKey(symbol);
         this.subscribers.add(bare);
         this.prioritySymbols.add(bare);
         return this.cache[bare] || null;
@@ -90,12 +91,16 @@ class MarketDataService {
     /** Unmark a symbol from priority when user navigates away */
     deprioritize(symbol) {
         if (!symbol) return;
-        const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
+        const bare = quoteKey(symbol);
         this.prioritySymbols.delete(bare);
     }
 
-    _updateCache(bare, price, change, dayChange, shortname) {
+    _updateCache(bare, price, change, dayChange, shortname, timestamp = null, source = 'nse') {
+        bare = quoteKey(bare);
         const prev = this.cache[bare];
+        const at = quoteTime(timestamp);
+        if (!(price > 0) || !Number.isFinite(at)) return prev || null;
+        if (prev && quoteTime(prev.timestamp) > at) return prev;
         const data = {
             symbol:    bare,
             shortname: shortname || bare,
@@ -103,11 +108,13 @@ class MarketDataService {
             prevPrice: prev?.price ?? price,
             change:    parseFloat((change || 0).toFixed(2)),
             dayChange: parseFloat((dayChange || 0).toFixed(2)),
-            timestamp: new Date(),
+            timestamp: new Date(at),
+            receivedAt: new Date(),
+            source,
         };
         this.cache[bare] = data;
-        TradeEngine.processMarketTick(bare, price).catch(() => {});
-        this.cache[bare + '.NS'] = data;
+        if (isFreshQuote(data)) TradeEngine.processMarketTick(bare, price).catch(() => {});
+        if (!bare.endsWith('.BO')) this.cache[bare + '.NS'] = data;
 
         // Emit lightweight price_tick for priority symbols
         if (this.prioritySymbols.has(bare)) {
@@ -118,6 +125,7 @@ class MarketDataService {
                 change:    data.change,
                 dayChange: data.dayChange,
                 timestamp: data.timestamp,
+                source: data.source,
             });
         }
         return data;
@@ -136,7 +144,9 @@ class MarketDataService {
                 s.change      ?? 0,
                 s.pChange     ?? 0,
                 s.companyName || s.symbol,
+                nseQuoteTime(data.timestamp),
             );
+            if (!d) continue;
             updates[s.symbol]          = d;
             updates[s.symbol + '.NS']  = d;
         }
@@ -217,16 +227,19 @@ class MarketDataService {
 
     /** Fetch individual quotes for extras + priority symbols */
     async refreshSymbol(bare, skipNse = false) {
+        bare = quoteKey(bare);
         if (this.quoteRequests.has(bare)) return this.quoteRequests.get(bare);
         const request = (async () => {
             const cached = this.cache[bare];
             if (cached && Date.now() - new Date(cached.timestamp).getTime() < 3000) return cached;
-            if (!skipNse) {
+            if (!skipNse && !bare.endsWith('.BO')) {
                 try {
                     const ns = await NSEClient.equityQuote(bare);
                     if (ns?.priceInfo?.lastPrice > 0) {
                         const pi = ns.priceInfo;
-                        return this._updateCache(bare, pi.lastPrice, pi.change, pi.pChange, ns.info?.companyName);
+                        const rawTime = ns.metadata?.lastUpdateTime;
+                        const at = nseQuoteTime(rawTime);
+                        if (Number.isFinite(at)) return this._updateCache(bare, pi.lastPrice, pi.change, pi.pChange, ns.info?.companyName, at);
                     }
                 } catch { /* use the shared fallback below */ }
             }
@@ -236,8 +249,7 @@ class MarketDataService {
                 const q = await HistoricalClient.quoteDetail(bare);
                 if (q?.regularMarketPrice > 0) {
                     const data = this._updateCache(bare, q.regularMarketPrice, q.regularMarketChange,
-                        q.regularMarketChangePercent, q.shortName);
-                    data.source = 'yahoo-fallback';
+                        q.regularMarketChangePercent, q.shortName, q.regularMarketTime, 'yahoo-fallback');
                     return data;
                 }
             } catch { /* preserve last known quote without inventing a price */ }
@@ -265,7 +277,7 @@ class MarketDataService {
                     const d = await this.refreshSymbol(bare, skipNse);
                     if (!d) return;
                     updates[bare]         = d;
-                    updates[bare + '.NS'] = d;
+                    if (!bare.endsWith('.BO')) updates[bare + '.NS'] = d;
                 } catch {
                     // silent — stock might not exist or NSE unavailable
                 }
@@ -332,6 +344,9 @@ class MarketDataService {
                     ...(indexRes.value || {}),
                     ...(extraRes.value || {}),
                 };
+                // The cache contains the newest accepted quote, regardless of
+                // which concurrent provider request finished first.
+                for (const key of Object.keys(allUpdates)) allUpdates[key] = this.cache[key] || allUpdates[key];
 
                 if (Object.keys(allUpdates).length > 0) {
                     this.io.emit('market_update', allUpdates);

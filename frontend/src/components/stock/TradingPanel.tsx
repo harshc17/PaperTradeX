@@ -1,9 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { getSocket } from '@/lib/socket';
+import { useStockQuote } from '@/lib/useStockQuote';
 import { useAuth } from '@/context/AuthContext';
 import { usePortfolio } from '@/context/PortfolioContext';
-import { API_URL } from '@/lib/config';
 import { CheckCircle2, XCircle, Loader2, Clock, ArrowUpRight, ArrowDownRight, Minus, Plus, Coins } from 'lucide-react';
 
 type Toast = { type: 'success' | 'error'; message: string };
@@ -16,42 +15,14 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
     const [side, setSide] = useState<'BUY' | 'SELL'>('BUY');
     const [quantity, setQuantity] = useState('1');
     const [limitPrice, setLimitPrice] = useState('');
-    const [currentPrice, setCurrentPrice] = useState<number | null>(null);
-    const [priceChange, setPriceChange] = useState<number>(0);
-    const [exchange, setExchange] = useState<'NSE' | 'BSE'>(symbol.toUpperCase().endsWith('.BO') ? 'BSE' : 'NSE');
+    const quote = useStockQuote(symbol);
+    const currentPrice = quote.price;
+    const priceChange = quote.percent;
+    const exchange = symbol.toUpperCase().endsWith('.BO') ? 'BSE' : 'NSE';
     const [loading, setLoading] = useState(false);
     const [toast, setToast] = useState<Toast | null>(null);
 
     const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
-
-    useEffect(() => {
-        const s = getSocket();
-        s.emit('subscribe', symbol);
-        s.emit('subscribe', bare);
-        const onUpdate = (payload: Record<string, any>) => {
-            const entry = payload[bare] ?? payload[symbol] ?? payload[bare + '.NS'];
-            if (typeof entry?.price === 'number') {
-                setCurrentPrice(entry.price);
-                setPriceChange(entry.dayChange ?? 0);
-            }
-        };
-        s.on('market_update', onUpdate);
-        return () => { s.off('market_update', onUpdate); };
-    }, [symbol, bare]);
-
-    useEffect(() => {
-        const fetchSym = symbol.toUpperCase().endsWith('.BO') ? symbol : bare;
-        fetch(`${API_URL}/api/stock/${encodeURIComponent(fetchSym)}/realtime`)
-            .then(r => r.ok ? r.json() : null)
-            .then(data => {
-                if (typeof data?.price === 'number' && currentPrice === null) {
-                    setCurrentPrice(data.price);
-                    setPriceChange(data.dayChange ?? 0);
-                    if (!limitPrice) setLimitPrice(data.price.toFixed(2));
-                }
-            })
-            .catch(() => {});
-    }, [symbol, bare, currentPrice, limitPrice]);
 
     useEffect(() => {
         if (currentPrice && !limitPrice) {
@@ -66,9 +37,7 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
         setTimeout(() => setToast(null), 4000);
     };
 
-    const nsePrice = currentPrice ?? 0;
-    const bsePrice = nsePrice > 0 ? +(nsePrice + 0.35).toFixed(2) : 0;
-    const displayPrice = exchange === 'NSE' ? nsePrice : bsePrice;
+    const displayPrice = currentPrice ?? 0;
     const fmt = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     const activePrice = orderType === 'MARKET' ? (displayPrice || 0) : (parseFloat(limitPrice) || displayPrice || 0);
@@ -94,6 +63,7 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
         if (!user) { showToast('error', 'Please login to trade'); return; }
         if (!marketStatus?.isOpen) { showToast('error', 'Market closed. Please trade during regular market hours.'); return; }
         if (!Number.isSafeInteger(parsedQty) || parsedQty <= 0) { showToast('error', 'Quantity must be a positive whole number'); return; }
+        if (quote.stale) { showToast('error', 'A fresh market quote is unavailable. Please wait for the feed to recover.'); return; }
         if (!activePrice || activePrice <= 0) { showToast('error', 'Valid price required'); return; }
 
         if (side === 'BUY' && balance < estimatedTotal) {
@@ -165,30 +135,14 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                         </span>
                     </div>
 
-                    {/* Exchange Switcher */}
-                    <div className="shrink-0 flex items-center gap-1 bg-[var(--surface-2)] border border-line rounded-lg p-0.5">
-                        {(['NSE', 'BSE'] as const).map(ex => (
-                            <button
-                                key={ex}
-                                type="button"
-                                onClick={() => setExchange(ex)}
-                                className={`px-2.5 py-0.5 text-xs font-medium rounded-md transition-colors ${
-                                    exchange === ex
-                                        ? 'bg-primary text-[var(--primary-ink)] shadow-none'
-                                        : 'text-ink-faint hover:text-ink'
-                                }`}
-                            >
-                                {ex}
-                            </button>
-                        ))}
-                    </div>
+                    <span className="text-xs text-ink-faint">{exchange}</span>
                 </div>
 
                 {/* Price & Day Change */}
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-2">
                     <div className="flex min-w-0 flex-wrap items-baseline gap-2">
                         <span className="whitespace-nowrap text-[22px] font-medium text-ink-heading tabular-nums font-num">
-                            ₹{fmt(displayPrice)}
+                            {currentPrice === null ? '—' : '₹' + fmt(displayPrice)}
                         </span>
                         <span className={`inline-flex items-center text-xs font-semibold tabular-nums font-num ${isUp ? 'text-up' : 'text-down'}`}>
                             {isUp ? <ArrowUpRight className="w-3.5 h-3.5 inline mr-0.5" /> : <ArrowDownRight className="w-3.5 h-3.5 inline mr-0.5" />}
@@ -438,7 +392,7 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                 <button
                     id="place-order-btn"
                     type="submit"
-                    disabled={loading || !marketStatus?.isOpen || !currentPrice || (isBuy && balance < estimatedTotal)}
+                    disabled={loading || !marketStatus?.isOpen || quote.stale || !currentPrice || (isBuy && balance < estimatedTotal)}
                     className={`w-full h-12 rounded-xl font-medium text-sm  transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] shadow-none flex items-center justify-center gap-2 ${
                         isBuy
                             ? 'bg-up text-[var(--buy-ink)] hover:brightness-110'
@@ -452,6 +406,8 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                         </>
                     ) : !marketStatus?.isOpen ? (
                         <span>{marketStatus ? 'Market closed' : 'Checking Market Hours...'}</span>
+                    ) : quote.stale ? (
+                        <span>Waiting for fresh quote</span>
                     ) : isBuy && balance < estimatedTotal ? (
                         <span>Insufficient Balance</span>
                     ) : (

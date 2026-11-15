@@ -2,6 +2,7 @@ const { User, Portfolio, TransactionHistory, Order } = require('../models');
 const NSEClient = require('./NSEClient');
 const mongoose = require('mongoose');
 const { assertTradable } = require('./MarketIndex');
+const { quoteKey } = require('./QuoteIdentity');
 
 class TradeEngine {
     /**
@@ -119,7 +120,7 @@ class TradeEngine {
             throw new Error('Symbol is required');
         }
 
-        const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
+        const bare = quoteKey(symbol);
 
         // ── LIMIT Order ────────────────────────────────────────────────────────
         if (orderType === 'LIMIT') {
@@ -219,7 +220,7 @@ class TradeEngine {
     async processMarketTick(symbol, currentPrice) {
         if (!NSEClient.isMarketHours()) return;
         if (!Number.isFinite(currentPrice) || currentPrice <= 0) return;
-        const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
+        const bare = quoteKey(symbol);
 
         const openOrders = await Order.find({ symbol: bare, status: 'OPEN' });
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { getSocket } from '@/lib/socket';
+import { useStockQuote } from '@/lib/useStockQuote';
 import { API_URL } from '@/lib/config';
 import { useTheme } from '@/context/ThemeContext';
 import {
@@ -100,9 +100,9 @@ export default function StockChart({ symbol }: { symbol: string }) {
     const [activePeriod, setActivePeriod] = useState<Period>(PERIODS[2]); // default 1M
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
-    const [livePrice, setLivePrice] = useState<number | null>(null);
-    const [isLive, setIsLive] = useState(false);
-    const [lastPriceTs, setLastPriceTs] = useState<number>(Date.now());
+    const quote = useStockQuote(symbol);
+    const livePrice = quote.price;
+    const isLive = !!quote.marketOpen && !quote.stale;
     const [hoverIdx, setHoverIdx] = useState<number | null>(null);
     // prevClose = yesterday's closing price, used as the 1D return anchor.
     // Comes from the /history API response (Yahoo chart meta or NSE cache).
@@ -155,43 +155,6 @@ export default function StockChart({ symbol }: { symbol: string }) {
             if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
         };
     }, [activePeriod, fetchHistory]);
-
-    /* ─── WebSocket — live price tick ────────────────────────────────────────────── */
-    useEffect(() => {
-        const s = getSocket();
-        s.emit('subscribe', symbol);
-
-        const onTick = (payload: any) => {
-            if (payload.symbol === bare && typeof payload.price === 'number') {
-                setLivePrice(payload.price);
-                setIsLive(true);
-                setLastPriceTs(Date.now());
-            }
-        };
-
-        const onUpdate = (payload: Record<string, any>) => {
-            const entry = payload[bare] || payload[symbol];
-            if (typeof entry?.price === 'number') {
-                setLivePrice(entry.price);
-                setIsLive(true);
-                setLastPriceTs(Date.now());
-            }
-        };
-
-        s.on('price_tick', onTick);
-        s.on('market_update', onUpdate);
-
-        // Mark stale after 8s without a tick
-        const staleTimer = setInterval(() => {
-            if (Date.now() - lastPriceTs > 8000) setIsLive(false);
-        }, 3000);
-
-        return () => {
-            s.off('price_tick', onTick);
-            s.off('market_update', onUpdate);
-            clearInterval(staleTimer);
-        };
-    }, [symbol, bare]);
 
     /* ─── Derived values ─────────────────────────────────────────────────────────── */
     const displayHistory = history;

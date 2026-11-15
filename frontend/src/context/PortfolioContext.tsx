@@ -7,7 +7,7 @@ import { calculateDailyReturn } from '@/lib/dailyReturn';
 import { calculatePortfolioXirr, type XirrResult } from '@/lib/xirr';
 
 function normalizeSymbol(symbol: string) {
-    return symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
+    return symbol.trim().toUpperCase().replace(/\.NS$/i, '');
 }
 
 export interface PortfolioItem {
@@ -68,6 +68,11 @@ export interface MarketStatusInfo {
 }
 
 interface PortfolioContextType {
+    pricesStale: boolean;
+    quoteTimes: Record<string, number>;
+    quoteSources: Record<string, string>;
+    livePreviousClose: Record<string, number>;
+    watchSymbol: (symbol: string) => () => void;
     portfolioXirr: XirrResult;
     holdings: PortfolioItem[];
     orders: Order[];
@@ -116,11 +121,21 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     const [livePrices, setLivePrices] = useState<Record<string, number>>({});
     // Prevent delayed REST responses or broadcasts from rolling a symbol back.
     const latestQuoteAt = useRef<Record<string, number>>({});
+    const [quoteTimes, setQuoteTimes] = useState<Record<string, number>>({});
+    const [quoteSources, setQuoteSources] = useState<Record<string, string>>({});
+    const [watched, setWatched] = useState<Record<string, number>>({});
+    const watchSymbol = useCallback((symbol: string) => {
+        const key = normalizeSymbol(symbol);
+        setWatched(prev => ({ ...prev, [key]: (prev[key] || 0) + 1 }));
+        return () => setWatched(prev => ({ ...prev, [key]: Math.max(0, (prev[key] || 0) - 1) }));
+    }, []);
     const lastSocketQuoteAt = useRef<Record<string, number>>({});
     const [liveChanges, setLiveChanges] = useState<Record<string, number>>({});
     const [livePreviousClose, setLivePreviousClose] = useState<Record<string, number>>({});
     const [marketOpen, setMarketOpen] = useState<boolean | null>(null);
     const [marketStatus, setMarketStatus] = useState<MarketStatusInfo | null>(null);
+    const [now, setNow] = useState(Date.now());
+    useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
 
     const getToken = () => localStorage.getItem('ptx_token') || localStorage.getItem('token') || '';
 
@@ -250,105 +265,39 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         };
     }, [holdings]);
 
-    // Socket live prices
+    const applyQuotes = useCallback((payload: Record<string, any>) => {
+        const prices: Record<string, number> = {}, changes: Record<string, number> = {};
+        const closes: Record<string, number> = {}, times: Record<string, number> = {};
+        const sources: Record<string, string> = {};
+        for (const [symbol, q] of Object.entries(payload)) {
+            const key = normalizeSymbol(symbol), at = Date.parse(q?.timestamp || '');
+            if (!(q?.price > 0) || !Number.isFinite(at) || at < (latestQuoteAt.current[key] || 0)) continue;
+            latestQuoteAt.current[key] = at;
+            prices[key] = q.price; times[key] = at; sources[key] = q.source || 'nse';
+            if (Number.isFinite(q.change)) changes[key] = q.change;
+            const close = q.prevClose ?? (Number.isFinite(q.change) ? q.price - q.change : null);
+            if (close > 0) closes[key] = close;
+        }
+        if (!Object.keys(prices).length) return;
+        setLivePrices(prev => ({ ...prev, ...prices }));
+        setLiveChanges(prev => ({ ...prev, ...changes }));
+        setLivePreviousClose(prev => ({ ...prev, ...closes }));
+        setQuoteTimes(prev => ({ ...prev, ...times }));
+        setQuoteSources(prev => ({ ...prev, ...sources }));
+    }, []);
+
     useEffect(() => {
-        const s = getSocket();
-        const handleMarketUpdate = (payload: Record<string, any>) => {
+        const socket = getSocket();
+        const update = (payload: Record<string, any>) => {
             if (marketOpen === false) return;
-
-            const updates: Record<string, number> = {};
-            const changeUpdates: Record<string, number> = {};
-            const prevCloseUpdates: Record<string, number> = {};
-            const acceptedSymbols = new Set<string>();
-            
-            Object.entries(payload).forEach(([sym, d]: [string, any]) => {
-                if (typeof d?.price === 'number') {
-                    const normalized = normalizeSymbol(sym);
-                    const parsedAt = Date.parse(d?.timestamp ?? '');
-                    const receivedAt = Number.isFinite(parsedAt) ? parsedAt : Date.now();
-                    if (receivedAt >= (latestQuoteAt.current[normalized] ?? 0)) {
-                        latestQuoteAt.current[normalized] = receivedAt;
-                        lastSocketQuoteAt.current[normalized] = Date.now();
-                        acceptedSymbols.add(normalized);
-                        updates[sym] = d.price;
-                        updates[normalized] = d.price;
-                    }
-                }
-                const normalized = normalizeSymbol(sym);
-                if (acceptedSymbols.has(normalized) && typeof d?.change === 'number') {
-                    changeUpdates[sym] = d.change;
-                    changeUpdates[normalized] = d.change;
-                }
-                if (acceptedSymbols.has(normalized) && typeof d?.price === 'number') {
-                    const prevClose = typeof d?.change === 'number' && Number.isFinite(d.change)
-                        ? d.price - d.change
-                        : typeof d?.dayChange === 'number' && Number.isFinite(d.dayChange) && d.dayChange !== 0
-                            ? d.price / (1 + (d.dayChange / 100))
-                            : null;
-
-                    if (typeof prevClose === 'number' && Number.isFinite(prevClose) && prevClose > 0) {
-                        prevCloseUpdates[sym] = prevClose;
-                        prevCloseUpdates[normalizeSymbol(sym)] = prevClose;
-                    }
-                }
-            });
-
-            if (Object.keys(updates).length > 0) {
-                setLivePrices(prev => {
-                    let changed = false;
-                    const next = { ...prev };
-                    Object.entries(updates).forEach(([sym, price]) => {
-                        if (next[sym] === price) return;
-                        next[sym] = price;
-                        changed = true;
-                    });
-                    return changed ? next : prev;
-                });
-            }
-
-            if (Object.keys(changeUpdates).length > 0) {
-                setLiveChanges(prev => {
-                    let changed = false;
-                    const next = { ...prev };
-                    Object.entries(changeUpdates).forEach(([sym, change]) => {
-                        if (next[sym] === change) return;
-                        next[sym] = change;
-                        changed = true;
-                    });
-                    return changed ? next : prev;
-                });
-            }
-
-            if (Object.keys(prevCloseUpdates).length > 0) {
-                setLivePreviousClose(prev => {
-                    let changed = false;
-                    const next = { ...prev };
-                    Object.entries(prevCloseUpdates).forEach(([sym, prevClose]) => {
-                        if (next[sym] === prevClose) return;
-                        next[sym] = prevClose;
-                        changed = true;
-                    });
-                    return changed ? next : prev;
-                });
-            }
+            applyQuotes(payload);
+            for (const key of Object.keys(payload)) lastSocketQuoteAt.current[normalizeSymbol(key)] = Date.now();
         };
-
-        // MarketData emits lightweight `price_tick` events for subscribed
-        // holdings between its broader `market_update` broadcasts. Normalize
-        // the single-symbol event through the same portfolio update path.
-        const handlePriceTick = (tick: Record<string, any>) => {
-            if (!tick?.symbol) return;
-            handleMarketUpdate({ [tick.symbol]: tick });
-        };
-
-        s.on('market_update', handleMarketUpdate);
-        s.on('price_tick', handlePriceTick);
-
-        return () => {
-            s.off('market_update', handleMarketUpdate);
-            s.off('price_tick', handlePriceTick);
-        };
-    }, [marketOpen]);
+        const tick = (q: any) => { if (q?.symbol) update({ [q.symbol]: q }); };
+        socket.on('market_update', update);
+        socket.on('price_tick', tick);
+        return () => { socket.off('market_update', update); socket.off('price_tick', tick); };
+    }, [marketOpen, applyQuotes]);
 
     // Use Auth context to trigger a refresh when user logs in
     const authContext = useAuth();
@@ -396,98 +345,35 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         };
     }, [refreshMarketStatus]);
 
-    // Fallback: refresh held-symbol prices periodically via REST in case socket ticks are missed.
+    // A single quote pipeline serves both held symbols and open stock pages.
     useEffect(() => {
-        let isCancelled = false;
+        let cancelled = false, busy = false;
+        const controller = new AbortController();
         const sessionDate = marketStatus?.returnSessionDate;
-        const soldToday = transactions.filter(t => t.type === 'SELL' && sessionDate && Number.isFinite(Date.parse(t.createdAt)) &&
+        const soldToday = transactions.filter(t => t.type === 'SELL' && sessionDate &&
             new Date(Date.parse(t.createdAt) + 330 * 60000).toISOString().slice(0, 10) === sessionDate);
-        const symbols = [...new Set([...holdings.map(h => normalizeSymbol(h.symbol)), ...soldToday.map(t => normalizeSymbol(t.symbol))])];
-        if (!symbols.length) return;
-
-        const refreshHeldPrices = async () => {
-            const socket = getSocket();
-            const responses = await Promise.allSettled(
-                symbols.map(async (sym) => {
-                    const normalized = normalizeSymbol(sym);
-                    // Socket prices are the primary stream. Poll only when it
-                    // has gone quiet, avoiding two competing live sources.
-                    if (socket.connected && Date.now() - (lastSocketQuoteAt.current[normalized] ?? 0) < 8000) return null;
-                    const r = await fetch(`${API}/api/stock/${encodeURIComponent(sym)}/realtime`);
-                    if (!r.ok) return null;
-                    const d = await r.json();
-                    return typeof d?.price === 'number'
-                        ? { symbol: sym, price: d.price, change: d.change, dayChange: d.dayChange, prevClose: d.prevClose, timestamp: d.timestamp }
-                        : null;
-                })
-            );
-
-            if (isCancelled) return;
-
-            const updates: Record<string, number> = {};
-            const changeUpdates: Record<string, number> = {};
-            const prevCloseUpdates: Record<string, number> = {};
-            
-            responses.forEach((res) => {
-                if (res.status !== 'fulfilled' || !res.value) return;
-                
-                const d = res.value;
-                const sym = d.symbol;
-                const normSym = normalizeSymbol(sym);
-                const parsedAt = Date.parse(d.timestamp ?? '');
-                const receivedAt = Number.isFinite(parsedAt) ? parsedAt : Date.now();
-                if (receivedAt < (latestQuoteAt.current[normSym] ?? 0)) return;
-                latestQuoteAt.current[normSym] = receivedAt;
-
-                updates[sym] = d.price;
-                updates[normSym] = d.price;
-                
-                if (typeof d.change === 'number') {
-                    changeUpdates[sym] = d.change;
-                    changeUpdates[normSym] = d.change;
+        const symbols = [...new Set([...holdings.map(h => h.symbol), ...soldToday.map(t => t.symbol),
+            ...Object.keys(watched).filter(key => watched[key] > 0)].map(normalizeSymbol))];
+        const socket = getSocket();
+        const subscribe = () => symbols.forEach(key => socket.emit('subscribe', key));
+        subscribe(); socket.on('connect', subscribe);
+        const refresh = async () => {
+            if (busy) return;
+            busy = true;
+            await Promise.allSettled(symbols.map(async key => {
+                if (marketOpen && socket.connected && Date.now() - (lastSocketQuoteAt.current[key] || 0) < 8000) return;
+                const response = await fetch(`${API}/api/stock/${encodeURIComponent(key)}/realtime`, { cache: 'no-store', signal: controller.signal });
+                if (response.ok) {
+                    const quote = await response.json();
+                    if (!cancelled) applyQuotes({ [key]: quote });
                 }
-
-                const prevClose = typeof d.prevClose === 'number' && d.prevClose > 0
-                    ? d.prevClose
-                    : typeof d.change === 'number' && Number.isFinite(d.change)
-                        ? d.price - d.change
-                        : typeof d.dayChange === 'number' && Number.isFinite(d.dayChange) && d.dayChange !== 0
-                            ? d.price / (1 + (d.dayChange / 100))
-                            : null;
-
-                if (typeof prevClose === 'number' && Number.isFinite(prevClose) && prevClose > 0) {
-                    prevCloseUpdates[sym] = prevClose;
-                    prevCloseUpdates[normSym] = prevClose;
-                }
-            });
-
-            if (Object.keys(updates).length > 0) {
-                setLivePrices(prev => ({ ...prev, ...updates }));
-            }
-            if (Object.keys(changeUpdates).length > 0) {
-                setLiveChanges(prev => ({ ...prev, ...changeUpdates }));
-            }
-            if (Object.keys(prevCloseUpdates).length > 0) {
-                setLivePreviousClose(prev => ({ ...prev, ...prevCloseUpdates }));
-            }
+            }));
+            busy = false;
         };
-
-        refreshHeldPrices();
-
-        if (marketOpen === null) {
-            return () => {
-                isCancelled = true;
-            };
-        }
-
-        // Closed-session endpoints return frozen prices; retry missing quotes slowly.
-        const pollId = setInterval(refreshHeldPrices, marketOpen ? 5000 : 60000);
-
-        return () => {
-            isCancelled = true;
-            clearInterval(pollId);
-        };
-    }, [holdings, transactions, marketOpen, marketStatus?.returnSessionDate]);
+        refresh();
+        const interval = setInterval(refresh, marketOpen ? 5000 : 60000);
+        return () => { cancelled = true; controller.abort(); clearInterval(interval); socket.off('connect', subscribe); };
+    }, [holdings, transactions, watched, marketOpen, marketStatus?.returnSessionDate, applyQuotes]);
 
     const valuationDate = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);
     const xirr = useMemo(() => calculatePortfolioXirr(holdings, transactions, livePrices, valuationDate), [holdings, transactions, livePrices, valuationDate]);
@@ -499,7 +385,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     // Compute derived values with live prices
     const enrichedHoldings = holdings.map(h => {
         const normalizedSymbol = normalizeSymbol(h.symbol);
-        const ltp = livePrices[h.symbol] ?? livePrices[normalizedSymbol] ?? h.averagePrice;
+        const ltp = livePrices[h.symbol] ?? livePrices[normalizedSymbol] ?? NaN;
         const currentValue = h.quantity * ltp;
         const invested = h.quantity * h.averagePrice;
         const pnl = currentValue - invested;
@@ -539,6 +425,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
 
     return (
         <PortfolioContext.Provider value={{
+            pricesStale: holdings.some(h => !quoteTimes[h.symbol] || (!!marketOpen && now - quoteTimes[h.symbol] > 60000)),
+            quoteTimes, quoteSources, livePreviousClose, watchSymbol,
             holdings: enrichedHoldings,
             portfolioXirr,
             orders,

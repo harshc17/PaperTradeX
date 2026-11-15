@@ -48,7 +48,7 @@ function resolveQuote(quotes: Record<string, QuoteData>, symbol: string): QuoteD
 
 export default function DashboardMarket() {
     const router = useRouter();
-    const { marketStatus } = usePortfolio();
+    const { marketStatus, livePrices, liveChanges, livePreviousClose, watchSymbol } = usePortfolio();
     const [showAllStocks, setShowAllStocks] = useState(false);
     const topStocksRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
@@ -61,7 +61,16 @@ export default function DashboardMarket() {
         setOpeningSymbol(symbol);
         startNavigation(() => router.push('/stock/' + encodeURIComponent(symbol)));
     };
-    const [quotes, setQuotes] = useState<Record<string, QuoteData>>({});
+    const [receivedQuotes, setQuotes] = useState<Record<string, QuoteData>>({});
+    useEffect(() => { const stop = TOP_STOCKS.map(s => watchSymbol(s.symbol)); return () => stop.forEach(fn => fn()); }, [watchSymbol]);
+    const quotes = { ...receivedQuotes };
+    for (const stock of TOP_STOCKS) {
+        const key = stock.symbol.replace(/\.NS$/i, '');
+        if (!(livePrices[key] > 0)) { delete quotes[key]; delete quotes[stock.symbol]; continue; }
+        const change = liveChanges[key] || 0, close = livePreviousClose[key];
+        const q = { symbol: key, price: livePrices[key], change, dayChange: close > 0 ? change / close * 100 : 0, shortname: stock.name };
+        quotes[key] = q; quotes[stock.symbol] = q;
+    }
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
     useEffect(() => {

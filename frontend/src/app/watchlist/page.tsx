@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Header from '@/components/dashboard/Header';
 import { Star, TrendingUp, TrendingDown, Plus, Trash2 } from 'lucide-react';
-import { getSocket } from '@/lib/socket';
+import { usePortfolio } from '@/context/PortfolioContext';
 import { API_URL } from '@/lib/config';
 
 const DEFAULT_WATCHLIST = [
@@ -26,7 +26,14 @@ function WatchlistContent() {
     const searchParams = useSearchParams();
     const addedSymbol = (searchParams.get('added') || '').toUpperCase();
     const [watchlist, setWatchlist] = useState<{ symbol: string; name: string }[]>([]);
-    const [quotes, setQuotes] = useState<Record<string, { price: number; change: number; dayChange: number }>>({});
+    const { livePrices, liveChanges, livePreviousClose, watchSymbol } = usePortfolio();
+    const quotes: Record<string, { price: number; change: number; dayChange: number }> = {};
+    for (const item of watchlist) {
+        const key = item.symbol.toUpperCase().replace(/\.NS$/i, '');
+        const price = livePrices[key], change = liveChanges[key] || 0, close = livePreviousClose[key];
+        if (price > 0) quotes[item.symbol] = { price, change, dayChange: close > 0 ? change / close * 100 : 0 };
+    }
+    useEffect(() => { const stop = watchlist.map(s => watchSymbol(s.symbol)); return () => stop.forEach(fn => fn()); }, [watchlist, watchSymbol]);
     const [addInput, setAddInput] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
 
@@ -38,19 +45,6 @@ function WatchlistContent() {
         const saved = localStorage.getItem('ptx_watchlist');
         const list = saved ? JSON.parse(saved) : DEFAULT_WATCHLIST;
         setWatchlist(list);
-        const s = getSocket();
-        list.forEach((item: any) => s.emit('subscribe', item.symbol));
-        const onUpdate = (payload: Record<string, any>) => {
-            setQuotes(prev => {
-                const next = { ...prev };
-                Object.entries(payload).forEach(([sym, d]: [string, any]) => {
-                    if (typeof d?.price === 'number') next[sym] = { price: d.price, change: d.change ?? 0, dayChange: d.dayChange ?? 0 };
-                });
-                return next;
-            });
-        };
-        s.on('market_update', onUpdate);
-        return () => { s.off('market_update', onUpdate); };
     }, []);
 
     const saveWatchlist = (list: { symbol: string; name: string }[]) => {
@@ -75,7 +69,6 @@ function WatchlistContent() {
     const addToWatchlist = (symbol: string, name: string) => {
         if (watchlist.find(w => w.symbol === symbol)) return;
         saveWatchlist([...watchlist, { symbol, name }]);
-        getSocket().emit('subscribe', symbol);
         setAddInput(''); setSearchResults([]);
     };
 

@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, Bookmark, Link2, TrendingDown, TrendingUp } from 'lucide-react';
-import { getSocket } from '@/lib/socket';
+import { useStockQuote } from '@/lib/useStockQuote';
 import { API_URL } from '@/lib/config';
 import CompanyLogo from '@/components/CompanyLogo';
 import { usePortfolio } from '@/context/PortfolioContext';
@@ -45,109 +45,29 @@ export default function StockDetail({ symbol }: { symbol: string }) {
     const { marketStatus, marketOpen } = usePortfolio();
     const [stockData, setStockData]   = useState<StockData | null>(null);
     const [loading, setLoading]       = useState(true);
-    const [livePrice, setLivePrice]   = useState<number | null>(null);
-    const [flash, setFlash]           = useState<'up' | 'down' | null>(null);
-    const [isLive, setIsLive]         = useState(false);
+    const quote = useStockQuote(symbol);
+    const flash = null;
+
     const [inWatchlist, setInWatchlist] = useState(false);
-    const [lastUpdateTs, setLastUpdateTs] = useState<number>(Date.now());
-    const [ticker, setTicker]         = useState(0); // increments every second for "X ago" label
-    const pollRef                     = useRef<ReturnType<typeof setInterval> | null>(null);
-    const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
+
+
 
     /* ─── HTTP fetch on mount ───────────────────────────────────────────────── */
     useEffect(() => {
+        setLoading(true);
+        let cancelled = false;
         fetch(`${API_URL}/api/stock/${encodeURIComponent(symbol)}`)
             .then(r => r.ok ? r.json() : null)
             .then(data => {
-                if (data) {
+                if (data && !cancelled) {
                     setStockData(data);
-                    setLivePrice(data.regularMarketPrice);
+
                 }
             })
             .catch(console.error)
-            .finally(() => setLoading(false));
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
     }, [symbol]);
-
-    /* ─── WebSocket real-time updates ──────────────────────────────────────── */
-    useEffect(() => {
-        const s = getSocket();
-        s.emit('subscribe', symbol);
-
-        const handlePriceTick = (tick: any) => {
-            if (!marketOpen) return;
-            if (tick.symbol !== bare && tick.symbol !== symbol) return;
-            updatePrice(tick.price);
-        };
-
-        const handleMarketUpdate = (payload: Record<string, any>) => {
-            if (!marketOpen) return;
-            const entry = payload[bare] || payload[symbol] || payload[bare + '.NS'];
-            if (typeof entry?.price === 'number') updatePrice(entry.price);
-        };
-
-        const updatePrice = (newPrice: number) => {
-            setLivePrice(prev => {
-                if (prev !== null) {
-                    setFlash(newPrice >= prev ? 'up' : 'down');
-                    setTimeout(() => setFlash(null), 800);
-                }
-                return newPrice;
-            });
-            setIsLive(true);
-            setLastUpdateTs(Date.now());
-        };
-
-        s.on('price_tick', handlePriceTick);
-        s.on('market_update', handleMarketUpdate);
-
-        // Mark stale if no update for 8 seconds
-        const staleTimer = setInterval(() => {
-            if (Date.now() - lastUpdateTs > 8000) setIsLive(false);
-        }, 3000);
-
-        return () => {
-            s.off('price_tick', handlePriceTick);
-            s.off('market_update', handleMarketUpdate);
-            s.emit('deprioritize', symbol);
-            clearInterval(staleTimer);
-        };
-    }, [symbol, bare, marketOpen]);
-
-    /* ─── HTTP polling fallback every 4s when not LIVE ─────────────────────── */
-    useEffect(() => {
-        if (pollRef.current) clearInterval(pollRef.current);
-
-        pollRef.current = setInterval(async () => {
-            if (!marketOpen) return; // Do not poll when market is closed (keeps price frozen to chart price)
-            if (isLive) return; // WebSocket is working — skip
-            try {
-                const fetchSym = symbol.toUpperCase().endsWith('.BO') ? symbol : bare;
-                const r = await fetch(`${API_URL}/api/stock/${encodeURIComponent(fetchSym)}/realtime`);
-                if (!r.ok) return;
-                const data = await r.json();
-                if (typeof data?.price === 'number') {
-                    setLivePrice(prev => {
-                        if (prev !== null) {
-                            setFlash(data.price >= prev ? 'up' : 'down');
-                            setTimeout(() => setFlash(null), 800);
-                        }
-                        return data.price;
-                    });
-                    setLastUpdateTs(Date.now());
-                }
-            } catch { /* silent */ }
-        }, 4000);
-
-        return () => {
-            if (pollRef.current) clearInterval(pollRef.current);
-        };
-    }, [isLive, bare, marketOpen]);
-
-    /* ─── Ticker for "Updated X ago" label ─────────────────────────────────── */
-    useEffect(() => {
-        const t = setInterval(() => setTicker(p => p + 1), 1000);
-        return () => clearInterval(t);
-    }, []);
 
     useEffect(() => {
         try {
@@ -187,14 +107,14 @@ export default function StockDetail({ symbol }: { symbol: string }) {
         );
     }
 
-    const currentPrice = livePrice ?? stockData.regularMarketPrice;
+    const currentPrice = quote.price;
 
     // Recompute change/changePercent dynamically so they stay in sync with the live
     // price as it streams in via WebSocket. Use regularMarketPreviousClose as the
     // fixed anchor (fetched once at mount, never changes within a trading session).
-    const prevClose = stockData.regularMarketPreviousClose ?? 0;
+    const prevClose = quote.previousClose ?? 0;
     const change = prevClose > 0
-        ? parseFloat((currentPrice - prevClose).toFixed(2))
+        ? parseFloat(((currentPrice ?? 0) - prevClose).toFixed(2))
         : (stockData.regularMarketChange ?? 0);
     const changePercent = prevClose > 0
         ? parseFloat(((change / prevClose) * 100).toFixed(2))
@@ -242,7 +162,7 @@ export default function StockDetail({ symbol }: { symbol: string }) {
                         flash === 'up' ? 'text-up' : flash === 'down' ? 'text-down' : 'text-ink-heading'
                     }`}>
                         <span className="text-[24px] sm:text-[28px] font-semibold tabular-nums">
-                            ₹{currentPrice.toLocaleString('en-IN', {
+                            {currentPrice === null ? '—' : '₹' + currentPrice.toLocaleString('en-IN', {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                             })}
@@ -256,7 +176,7 @@ export default function StockDetail({ symbol }: { symbol: string }) {
 
                     <div className="flex flex-wrap items-center gap-2 mt-2">
                         <p className="text-xs text-ink-faint">
-                            Updated {timeAgo(lastUpdateTs)} · {marketOpen ? (isLive ? 'Live NSE Feed' : 'Delayed') : 'Market closed (LTP)'}
+                            {quote.timestamp ? 'Quote ' + timeAgo(quote.timestamp) : 'Waiting for quote'} · {marketOpen ? (quote.stale ? 'Quote stale — trading paused' : 'Latest quote') : 'Market closed (LTP)'} · {quote.source || 'unavailable'}
                         </p>
                         {!marketOpen && marketStatus && (
                             <span className="text-xs font-semibold px-2 py-0.5 rounded-lg bg-surface-2 border border-line text-ink-muted">

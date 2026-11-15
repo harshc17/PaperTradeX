@@ -3,7 +3,7 @@ import CompanyLogo from '@/components/CompanyLogo';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { TrendingUp, TrendingDown } from 'lucide-react';
-import { getSocket } from '@/lib/socket';
+import { usePortfolio } from '@/context/PortfolioContext';
 
 const STOCKS = [
     { symbol: 'RELIANCE.NS', name: 'Reliance' },
@@ -28,32 +28,15 @@ function resolveMoverQuote(quotes: Record<string, QuoteData>, symbol: string): Q
 
 export default function MarketMovers({ sourceQuotes = {} }: { sourceQuotes?: Record<string, { price: number; change: number; dayChange: number }> }) {
     const router = useRouter();
-    const [quotes, setQuotes] = useState<Record<string, QuoteData>>({});
+    const { livePrices, liveChanges, livePreviousClose, watchSymbol } = usePortfolio();
     const [tab, setTab] = useState<'gainers' | 'losers'>('gainers');
 
-    useEffect(() => {
-        const s = getSocket();
-        STOCKS.forEach(st => s.emit('subscribe', st.symbol));
-        const onMarketUpdate = (payload: Record<string, any>) => {
-            setQuotes(prev => {
-                const next = { ...prev };
-                Object.entries(payload).forEach(([sym, d]: [string, any]) => {
-                    const normalizedSym = sym.endsWith('.NS') ? sym : `${sym}.NS`;
-                    const meta = STOCKS.find(s => s.symbol === sym) || STOCKS.find(s => s.symbol === normalizedSym);
-                    if (meta && typeof d?.price === 'number') {
-                        next[meta.symbol] = { symbol: meta.symbol, name: meta.name, price: d.price, dayChange: d.dayChange ?? 0, change: d.change ?? 0 };
-                    }
-                });
-                return next;
-            });
-        };
-
-        s.on('market_update', onMarketUpdate);
-        return () => { s.off('market_update', onMarketUpdate); };
-    }, []);
+    useEffect(() => { const stop = STOCKS.map(s => watchSymbol(s.symbol)); return () => stop.forEach(fn => fn()); }, [watchSymbol]);
 
     const resolved = STOCKS.map(st => {
-        const q = resolveMoverQuote(quotes, st.symbol) || sourceQuotes[st.symbol];
+        const key = st.symbol.replace(/\.NS$/i, '');
+        const price = livePrices[key], change = liveChanges[key] || 0, close = livePreviousClose[key];
+        const q = price > 0 ? { price, change, dayChange: close > 0 ? change / close * 100 : 0 } : undefined;
         return q ? { ...q, symbol: st.symbol, name: st.name } : undefined;
     }).filter((q): q is QuoteData => Boolean(q));
     const sorted = resolved
