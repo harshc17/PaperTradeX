@@ -14,15 +14,16 @@ const INDICES = [
 ];
 
 export default function IndicesBanner() {
-    const [quotes, setQuotes] = useState<Record<string, { price: number; change: number; dayChange: number }>>({});
+    const [quotes, setQuotes] = useState<Record<string, { price: number; change: number; dayChange: number; source?: string; asOf?: string }>>({});
+    const [attempted, setAttempted] = useState(false);
 
     useEffect(() => {
         const s = getSocket();
         INDICES.forEach(i => s.emit('subscribe', i.symbol));
 
         const applyQuote = (sym: string, d: any) => {
-            if (typeof d?.price !== 'number') return;
-            setQuotes(prev => ({ ...prev, [sym]: { price: d.price, change: d.change ?? 0, dayChange: d.dayChange ?? 0 } }));
+            if (!(d?.price > 0)) return;
+            setQuotes(prev => ({ ...prev, [sym]: { price: d.price, change: d.change ?? 0, dayChange: d.dayChange ?? 0, source: d.source, asOf: d.asOf } }));
         };
 
         const onUpdate = (payload: Record<string, any>) => Object.entries(payload).forEach(([sym, d]: [string, any]) => applyQuote(sym, d));
@@ -38,11 +39,11 @@ export default function IndicesBanner() {
                     setQuotes(prev => {
                         const next = { ...prev };
                         Object.entries(data).forEach(([sym, d]: [string, any]) => {
-                            if (typeof d?.price === 'number') next[sym] = { price: d.price, change: d.change ?? 0, dayChange: d.dayChange ?? 0 };
+                            if (d?.price > 0) next[sym] = { price: d.price, change: d.change ?? 0, dayChange: d.dayChange ?? 0, source: d.source, asOf: d.asOf };
                         });
                         return next;
                     });
-                }).catch(() => {});
+                }).catch(() => {}).finally(() => setAttempted(true));
 
         fetchIndices();
         const refreshTimer = setInterval(fetchIndices, 10000);
@@ -61,7 +62,7 @@ export default function IndicesBanner() {
                     return (
                         <Link href={`/stock/${encodeURIComponent(symbol)}`} key={symbol}
                             className="shrink-0 min-h-12 py-3 flex items-center gap-2 hover:bg-surface-3 cursor-pointer transition-colors group">
-                            <span className="text-[13px] sm:text-sm font-semibold text-ink-heading group-hover:text-ink transition-colors">{label}</span>
+                            <span className="text-[13px] sm:text-sm font-semibold text-ink-heading group-hover:text-ink transition-colors">{label}{q?.source === 'official-nse-close' && <span className="block text-[10px] font-normal text-ink-faint">Close · {q.asOf}</span>}</span>
                             {q ? (
                                 <div className="flex items-baseline gap-2 whitespace-nowrap">
                                     <span className="text-[13px] sm:text-sm font-medium text-ink tabular-nums font-num">{fmt(q.price)}</span>
@@ -69,7 +70,7 @@ export default function IndicesBanner() {
                                         {q.change < 0 ? '−' : ''}{fmt(Math.abs(q.change))} ({q.dayChange < 0 ? '−' : ''}{Math.abs(q.dayChange).toFixed(2)}%)
                                     </span>
                                 </div>
-                            ) : (
+                            ) : attempted ? <span className="text-xs text-ink-faint">Unavailable</span> : (
                                 <div className="w-28 h-4 shimmer rounded" />
                             )}
                         </Link>

@@ -33,11 +33,11 @@ const TOP_STOCKS = [
     { symbol: 'BAJFINANCE.NS', name: 'Bajaj Finance' },
 ];
 
-type QuoteData = { symbol: string; price: number; change: number; dayChange: number; shortname?: string };
+type QuoteData = { symbol: string; price: number; change: number; dayChange: number; shortname?: string; source?: string; asOf?: string };
 
 function normalizeQuote(sym: string, d: any): QuoteData | null {
-    if (typeof d?.price !== 'number') return null;
-    return { symbol: sym, price: d.price, change: d.change ?? 0, dayChange: d.dayChange ?? 0, shortname: d.shortname };
+    if (!(d?.price > 0)) return null;
+    return { symbol: sym, price: d.price, change: d.change ?? 0, dayChange: d.dayChange ?? 0, shortname: d.shortname, source: d.source, asOf: d.asOf };
 }
 
 function resolveQuote(quotes: Record<string, QuoteData>, symbol: string): QuoteData | undefined {
@@ -169,6 +169,7 @@ export default function DashboardMarket() {
                                     {q ? (
                                         <>
                                             <p className="text-lg sm:text-xl font-medium text-ink-heading tabular-nums font-num">{fmt(q.price)}</p>
+                                            {q.source === 'official-nse-close' && <p className="text-[10px] text-ink-faint mt-1">Official close · {q.asOf}</p>}
                                             <div className={`flex flex-wrap items-center gap-1 mt-2 text-xs font-normal tabular-nums font-num ${isUp ? 'text-up' : 'text-down'}`}>
                                                 {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                                 {isUp ? '+' : ''}{fmt(q.change)} ({isUp ? '+' : ''}{q.dayChange.toFixed(2)}%)

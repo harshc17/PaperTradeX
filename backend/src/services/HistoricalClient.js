@@ -238,7 +238,7 @@ module.exports = {
                 ? parseFloat(((change / prevClose) * 100).toFixed(2))
                 : 0;
 
-            return { price, prevClose, change, dayChange };
+            return { price, prevClose, change, dayChange, timestamp: last.date, source: 'yahoo-delayed' };
         } catch {
             return null;
         }

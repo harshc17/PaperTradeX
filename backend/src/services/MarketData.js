@@ -18,6 +18,8 @@ const NSEClient = require('./NSEClient');
 const HistoricalClient = require('./HistoricalClient');
 const TradeEngine = require('./TradeEngine');
 const { quoteKey, quoteTime, isFreshQuote, nseQuoteTime } = require('./QuoteIdentity');
+const OfficialIndexSnapshot = require('./OfficialIndexSnapshot');
+const PublicReadCache = require('./PublicReadCache');
 
 // We use NSEClient.constructor.isMarketHours() instead.
 
@@ -40,8 +42,9 @@ const TRACKED_INDICES = [
     { key: '^NSEI',       name: 'NIFTY 50',    yahooSymbol: '^NSEI'       },
     { key: '^BSESN',      name: 'SENSEX',       yahooSymbol: '^BSESN'      },
     { key: '^NSEBANK',    name: 'BANK NIFTY',   yahooSymbol: '^NSEBANK'    },
-    { key: '^MIDCPNIFTY', name: 'MIDCPNIFTY',  yahooSymbol: '^NSMIDCP'    },
-    { key: '^FINNIFTY',   name: 'FINNIFTY',    yahooSymbol: '^CNXFIN'     },
+    // Those Yahoo symbols identify different indices; use exact NSE names only.
+    { key: '^MIDCPNIFTY', name: 'MIDCPNIFTY',  yahooSymbol: null          },
+    { key: '^FINNIFTY',   name: 'FINNIFTY',    yahooSymbol: null          },
     { key: '^BANKEX',     name: 'BANKEX',      yahooSymbol: 'BSE-BANK.BO' },
 ];
 
@@ -67,6 +70,7 @@ class MarketDataService {
         this.cache = {};
         this.quoteRequests = new Map();
         this.lastFallbackAttempt = new Map();
+        this.indexReads = new PublicReadCache(1);
         this._broadcastInterval = null;
         this._lastAllIndicesErrorLogTs = 0;
         this._allIndicesCooldownUntil = 0;
@@ -155,6 +159,10 @@ class MarketDataService {
 
     /** Fetch all major indices in one call (NSE) + SENSEX fallback via Yahoo */
     async _fetchIndices() {
+        return this.indexReads.load('indices', NSEClient.constructor.isMarketHours() ? 3000 : 60000, () => this._loadIndices());
+    }
+
+    async _loadIndices() {
         const updates = {};
 
         const now = Date.now();
@@ -200,7 +208,7 @@ class MarketDataService {
         // Keeps index points live even when NSE omits an index or blocks requests.
         await Promise.allSettled(
             TRACKED_INDICES.map(async ({ key, name, yahooSymbol }) => {
-                if (updates[key]) return;
+                if (updates[key] || !yahooSymbol) return;
                 try {
                     const q = await HistoricalClient.indexQuote(yahooSymbol || key);
                     if (!q) return;
@@ -212,7 +220,8 @@ class MarketDataService {
                         prevPrice: prev?.price ?? q.prevClose,
                         change:    q.change,
                         dayChange: q.dayChange,
-                        timestamp: new Date(),
+                        timestamp: q.timestamp,
+                        source: q.source,
                     };
                     this.cache[key] = d;
                     updates[key] = d;
@@ -221,6 +230,16 @@ class MarketDataService {
                 }
             })
         );
+
+        if (!updates['^MIDCPNIFTY'] || !updates['^FINNIFTY']) {
+            const closes = await OfficialIndexSnapshot.latest();
+            for (const [key, quote] of Object.entries(closes)) {
+                if (updates[key]) continue;
+                if (this.cache[key] && quoteTime(this.cache[key].timestamp) > quoteTime(quote.timestamp)) continue;
+                this.cache[key] = quote;
+                updates[key] = quote;
+            }
+        }
 
         return updates;
     }

@@ -111,7 +111,8 @@ const QUICK_SYMBOLS = [
     { symbol: '^NSEBANK', shortname: 'BANK NIFTY', exchange: 'NSE' },
     { symbol: '^NSMIDCP100', shortname: 'NIFTY MIDCAP 100', exchange: 'NSE' },
     { symbol: '^CNXIT', shortname: 'NIFTY IT', exchange: 'NSE' },
-    { symbol: '^CNXFIN', shortname: 'FINNIFTY', exchange: 'NSE' },
+    { symbol: '^FINNIFTY', shortname: 'FINNIFTY', exchange: 'NSE' },
+    { symbol: '^MIDCPNIFTY', shortname: 'MIDCPNIFTY', exchange: 'NSE' },
     // ETFs
     { symbol: 'NIFTYBEES.NS', shortname: 'Nippon India Nifty BeES ETF', exchange: 'NSE' },
     { symbol: 'GOLDBEES.NS', shortname: 'Nippon India Gold BeES ETF', exchange: 'NSE' },

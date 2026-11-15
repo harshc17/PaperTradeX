@@ -406,7 +406,8 @@ const LOCAL_STOCK_INDEX = [
     { symbol: '^NSEBANK', shortname: 'BANK NIFTY', quoteType: 'INDEX', exchange: 'NSE' },
     { symbol: '^NSMIDCP100', shortname: 'NIFTY MIDCAP 100', quoteType: 'INDEX', exchange: 'NSE' },
     { symbol: '^CNXIT', shortname: 'NIFTY IT', quoteType: 'INDEX', exchange: 'NSE' },
-    { symbol: '^CNXFIN', shortname: 'FINNIFTY', quoteType: 'INDEX', exchange: 'NSE' },
+    { symbol: '^FINNIFTY', shortname: 'FINNIFTY', quoteType: 'INDEX', exchange: 'NSE' },
+    { symbol: '^MIDCPNIFTY', shortname: 'MIDCPNIFTY', quoteType: 'INDEX', exchange: 'NSE' },
 
     // ── BSE Listed Stocks ──
     { symbol: 'NSE.BO', shortname: 'National Stock Exchange of India', quoteType: 'EQUITY', exchange: 'BSE' },
@@ -535,6 +536,10 @@ function getClosedMarketSessionKey(date = new Date()) {
 
 async function getClosedMarketPrice(symbol, fallbackPrice = null) {
     const bare = quoteKey(symbol);
+    if (bare === '^MIDCPNIFTY' || bare === '^FINNIFTY') {
+        await marketDataService._fetchIndices();
+        return marketDataService.cache[bare] || null;
+    }
     const dateKey = getClosedMarketSessionKey();
     const frozen = CLOSED_PRICE_CACHE[bare];
 
@@ -686,6 +691,13 @@ async function computeChallengeSnapshot(challengeDoc) {
 app.get('/api/stock/:symbol', async (req, res) => {
     const { symbol } = req.params;
     try {
+        if (['^MIDCPNIFTY', '^FINNIFTY'].includes(symbol.toUpperCase())) {
+            await marketDataService._fetchIndices();
+            const quote = marketDataService.cache[symbol.toUpperCase()];
+            return await sendStockDetail(res, symbol.toUpperCase(), {
+                shortName: quote?.shortname || symbol.slice(1), quoteType: 'INDEX', exchange: 'NSE',
+            });
+        }
         // Preserve full exchange suffix (e.g. NSE.BO must NOT be forced to NSE.NS)
         const rawUpper = symbol.toUpperCase();
         const bare = rawUpper.replace(/\.(NS|BO)$/i, '');
@@ -945,94 +957,10 @@ app.post('/api/ai/market-news/refresh', authenticateToken, async (req, res) => {
 
 
 app.get('/api/indices', async (req, res) => {
-    const INDEX_KEYS = ['^NSEI', '^BSESN', '^NSEBANK', '^MIDCPNIFTY', '^FINNIFTY', '^BANKEX'];
-    const INDEX_LABELS = {
-        '^NSEI': 'NIFTY 50',
-        '^BSESN': 'SENSEX',
-        '^NSEBANK': 'BANK NIFTY',
-        '^MIDCPNIFTY': 'MIDCPNIFTY',
-        '^FINNIFTY': 'FINNIFTY',
-        '^BANKEX': 'BANKEX',
-    };
-    // Yahoo Finance symbols for the indices it supports
-    const YAHOO_SYMBOLS = {
-        '^NSEI': '^NSEI',
-        '^BSESN': '^BSESN',
-        '^NSEBANK': '^NSEBANK',
-        '^BANKEX': 'BSE-BANK.BO',
-        // MIDCPNIFTY and FINNIFTY are NOT on Yahoo — use NSE allIndices only
-    };
-    // NSE allIndices name → our key (for direct NSE fallback)
-    const NSE_NAME_MAP = {
-        'NIFTY 50':                  '^NSEI',
-        'NIFTY BANK':                '^NSEBANK',
-        'NIFTY MIDCAP SELECT':       '^MIDCPNIFTY',
-        'NIFTY FINANCIAL SERVICES':  '^FINNIFTY',
-        'S&P BSE SENSEX':            '^BSESN',
-        'S&P BSE Sensex':            '^BSESN',
-        'BSE SENSEX':                '^BSESN',
-        'SENSEX':                    '^BSESN',
-    };
-
-    const result = {};
-
-    // Step 1: check in-memory cache
-    for (const key of INDEX_KEYS) {
-        const cached = marketDataService.cache[key];
-        if (cached) result[key] = cached;
-    }
-
-    const missing = INDEX_KEYS.filter(k => !result[k]);
-    if (missing.length > 0) {
-        // Step 2: call NSE allIndices directly for any missing (catches MIDCPNIFTY & FINNIFTY)
-        try {
-            const nseData = await NSEClient.allIndices();
-            const indices = nseData?.data || [];
-            for (const idx of indices) {
-                const key = NSE_NAME_MAP[idx.index];
-                if (!key || result[key]) continue;
-                const d = {
-                    symbol:    key,
-                    shortname: INDEX_LABELS[key] || idx.index,
-                    price:     idx.last         ?? 0,
-                    prevPrice: marketDataService.cache[key]?.price ?? (idx.last ?? 0),
-                    change:    idx.variation     ?? 0,
-                    dayChange: idx.percentChange ?? 0,
-                    timestamp: new Date(),
-                };
-                marketDataService.cache[key] = d;
-                result[key] = d;
-            }
-        } catch {
-            // NSE unavailable — fall through to Yahoo for the ones it supports
-        }
-
-        // Step 3: Yahoo Finance fallback for remaining missing (NSEI, BSESN, NSEBANK only)
-        await Promise.allSettled(
-            missing.map(async (key) => {
-                if (result[key] || !YAHOO_SYMBOLS[key]) return;
-                try {
-                    const q = await HistoricalClient.indexQuote(YAHOO_SYMBOLS[key]);
-                    if (!q) return;
-                    const d = {
-                        symbol:    key,
-                        shortname: INDEX_LABELS[key] || key,
-                        price:     q.price,
-                        prevPrice: q.prevClose,
-                        change:    q.change,
-                        dayChange: q.dayChange,
-                        timestamp: new Date(),
-                    };
-                    marketDataService.cache[key] = d;
-                    result[key] = d;
-                } catch {
-                    // silent
-                }
-            })
-        );
-    }
-
-    res.json(result);
+    res.set('Cache-Control', 'no-store');
+    await marketDataService._fetchIndices();
+    const keys = ['^NSEI', '^BSESN', '^NSEBANK', '^MIDCPNIFTY', '^FINNIFTY', '^BANKEX'];
+    res.json(Object.fromEntries(keys.filter(key => marketDataService.cache[key]).map(key => [key, marketDataService.cache[key]])));
 });
 
 
@@ -1040,6 +968,10 @@ app.get('/api/indices', async (req, res) => {
 // ─── Realtime Price (cache → NSE → Yahoo Finance fallback) ──────────────────
 async function displayQuote(symbol) {
     const key = quoteKey(symbol);
+    if (key === '^MIDCPNIFTY' || key === '^FINNIFTY') {
+        await marketDataService._fetchIndices();
+        return marketDataService.cache[key] || null;
+    }
     if (!NSEClient.constructor.isMarketHours()) return getClosedMarketPrice(key);
     if (key.startsWith('^')) return marketDataService.cache[key] || null;
     marketDataService.subscribe(key);
