@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useStockQuote } from '@/lib/useStockQuote';
 import { API_URL } from '@/lib/config';
 import { useTheme } from '@/context/ThemeContext';
@@ -19,7 +20,7 @@ import {
     ChartType,
 } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
-import { RefreshCw, WifiOff } from 'lucide-react';
+import { Maximize2, RefreshCw, WifiOff, X } from 'lucide-react';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Filler);
 
@@ -138,6 +139,21 @@ type ChartFeed = { source?: string; resolution?: string; note?: string; delayed?
 const chartCache = new Map<string, { data: HistoryPoint[]; prevClose: number | null; fetchedAt: number; feed: ChartFeed }>();
 export default function StockChart({ symbol }: { symbol: string }) {
     const { theme } = useTheme();
+    const [fullScreen, setFullScreen] = useState(false);
+    const dialogRef = useRef<HTMLDialogElement>(null);
+    const expandRef = useRef<HTMLButtonElement>(null);
+    useEffect(() => {
+        if (!fullScreen) return;
+        const dialog = dialogRef.current;
+        dialog?.showModal();
+        const overflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            dialog?.close();
+            document.body.style.overflow = overflow;
+            expandRef.current?.focus({ preventScroll: true });
+        };
+    }, [fullScreen]);
     const [history, setHistory] = useState<HistoryPoint[]>([]);
     const [activePeriod, setActivePeriod] = useState<Period>(PERIODS[0]);
     const [loading, setLoading] = useState(true);
@@ -387,25 +403,31 @@ export default function StockChart({ symbol }: { symbol: string }) {
     };
 
     /* ─── Render ──────────────────────────────────────────────────────────────────── */
-    return (
-        <div className="bg-transparent">
+    const content = (
+        <div className={fullScreen ? 'h-full min-h-0 flex flex-col' : 'bg-transparent'}>
+            {fullScreen && <div className="shrink-0 mb-2 flex items-center justify-between gap-3">
+                <h2 id="full-chart-title" className="text-base sm:text-lg font-semibold text-ink-heading">{symbol.replace(/^\^/, '').replace(/\.(NS|BO)$/, '')} chart</h2>
+                <button type="button" onClick={() => { clearCursor(); setFullScreen(false); }} aria-label="Close full-screen chart" className="w-11 h-11 shrink-0 grid place-items-center rounded-full border border-line text-ink-muted hover:text-primary">
+                    <X className="w-5 h-5" />
+                </button>
+            </div>}
             <div className="min-h-6 mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-faint" data-testid="chart-readout">
                 {activePeriod.value !== '1d' && <><span>{activePeriod.label} return</span>
                 {selectedChange != null && selectedPercent != null && <span className={`font-num tabular-nums ${selectedChange >= 0 ? 'text-up' : 'text-down'}`}>{selectedChange >= 0 ? '+' : '−'}{formatChartPrice(Math.abs(selectedChange))} ({Math.abs(selectedPercent).toFixed(2)}%)</span>}</>}
             </div>
             {feed.note && <p className="text-xs text-ink-muted mb-2" role="status">{feed.note}</p>}
             {refreshError && <p className="text-xs text-[var(--warning)] mb-2" role="status">Chart refresh unavailable. Showing saved candles.</p>}
-            <div className="relative h-[320px] sm:h-[420px] pt-6" data-testid="price-plot">
+            <div className={fullScreen ? 'relative flex-1 min-h-0 flex flex-col pt-6' : 'relative sm:h-[420px] pt-6'} data-testid="price-plot">
                 {hoverPt && <div data-testid="chart-cursor-label" className="absolute top-0 w-[180px] max-w-full text-center text-[11px] text-ink-heading whitespace-nowrap pointer-events-none" style={{ left: `clamp(0px, ${hoverX - 90}px, max(0px, 100% - 180px))` }}>
                     {formatChartPrice(hoverPt.close)} <span className="text-ink-faint">|</span> {activePeriod.value === '1d' ? new Date(hoverPt.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : new Date(hoverPt.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: ['1y', '3y', '5y', 'max'].includes(activePeriod.value) ? 'numeric' : undefined, timeZone: 'Asia/Kolkata' })}
                 </div>}
                 {loading ? (
-                    <div className="h-full flex flex-col items-center justify-center gap-3">
+                    <div className={`${fullScreen ? 'flex-1 min-h-0' : 'h-[clamp(180px,52vw,230px)] sm:h-full'} flex flex-col items-center justify-center gap-3`}>
                         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                         <p className="text-xs text-ink-muted">Loading chart...</p>
                     </div>
                 ) : error ? (
-                    <div className="h-full flex flex-col items-center justify-center gap-2">
+                    <div className={`${fullScreen ? 'flex-1 min-h-0' : 'h-[clamp(180px,52vw,230px)] sm:h-full'} flex flex-col items-center justify-center gap-2`}>
                         <WifiOff className="w-8 h-8 text-ink-faint" />
                         <p className="text-sm text-ink-muted">Failed to load chart data</p>
                         <button
@@ -416,16 +438,16 @@ export default function StockChart({ symbol }: { symbol: string }) {
                         </button>
                     </div>
                 ) : displayHistory.length === 0 ? (
-                    <div className="h-full flex items-center justify-center">
+                    <div className={`${fullScreen ? 'flex-1 min-h-0' : 'h-[clamp(180px,52vw,230px)] sm:h-full'} flex items-center justify-center`}>
                         <p className="text-sm text-ink-muted">No data for this period</p>
                     </div>
                 ) : (
                     <>
-                        <div className="h-[255px] sm:h-[350px] relative cursor-crosshair touch-pan-y" onMouseLeave={clearCursor} onTouchStartCapture={() => { touchEndedAt.current = 0; }} onTouchEnd={endTouch} onTouchCancel={endTouch}>
+                        <div className={`${fullScreen ? 'flex-1 min-h-0' : 'h-[clamp(180px,52vw,230px)] sm:h-[350px]'} relative cursor-crosshair touch-pan-y`} onMouseLeave={clearCursor} onTouchStartCapture={() => { touchEndedAt.current = 0; }} onTouchEnd={endTouch} onTouchCancel={endTouch}>
                             <Line ref={chartRef} data={lineData} options={lineOptions} plugins={[priceCursor]} aria-label={`${symbol} ${activePeriod.label} price chart. Use arrow keys to inspect prices; Escape clears selection.`} role="img" tabIndex={0} onKeyDown={inspectWithKey} onBlur={clearCursor} />
                         </div>
                         {hasVolume && (
-                            <div className="h-10 mt-1 relative opacity-70">
+                            <div className="h-10 shrink-0 mt-1 relative opacity-70">
                                 <Bar data={volData} options={volOptions} />
                             </div>
                         )}
@@ -433,7 +455,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
                 )}
             </div>
 
-            <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1 border-t border-line pt-3">
+            <div className="shrink-0 mt-3 flex items-center gap-2 overflow-x-auto pb-1 border-t border-line pt-3">
                 {PERIODS.map((p) => (
                     <button
                         key={p.value}
@@ -459,9 +481,17 @@ export default function StockChart({ symbol }: { symbol: string }) {
                 </button>
             </div>
 
-            <div className="mt-1 text-xs text-ink-faint">
+            <div className="shrink-0 mt-1 text-xs text-ink-faint">
                 {feed.resolution === 'daily' ? 'Daily history' : feed.delayed ? 'Delayed intraday' : isLive ? 'Chart feed connected' : 'Chart feed delayed'} · {displayHistory.length} points · {feed.source || 'Historical OHLCV'}
             </div>
+            {!fullScreen && <button ref={expandRef} type="button" onClick={() => { clearCursor(); setFullScreen(true); }} aria-label="Open full-screen chart" className="mt-2 min-h-11 inline-flex items-center gap-2 rounded-lg border border-line px-3 text-xs font-medium text-ink-muted hover:text-primary hover:bg-surface-2">
+                <Maximize2 className="w-4 h-4" /> Full view
+            </button>}
         </div>
     );
+    return fullScreen ? createPortal(
+        <dialog ref={dialogRef} aria-labelledby="full-chart-title" onCancel={() => { clearCursor(); setFullScreen(false); }} onClose={() => setFullScreen(false)} className="fixed inset-0 m-0 h-[100dvh] max-h-none w-full max-w-none border-0 bg-surface p-3 sm:p-6 text-ink backdrop:bg-black/60">
+            {content}
+        </dialog>, document.body,
+    ) : content;
 }
