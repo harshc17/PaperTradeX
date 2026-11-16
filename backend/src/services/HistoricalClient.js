@@ -229,11 +229,29 @@ module.exports = {
             () => this._quoteDetail(symbol));
     },
 
+    async quoteBatch(symbols) {
+        const requests = [...new Set(symbols)].filter(symbol => !['^MIDCPNIFTY', '^FINNIFTY'].includes(symbol)).sort();
+        const providers = [...new Set(requests.map(symbol => getYahooCandidates(symbol)[0]))].sort();
+        if (!providers.length) return {};
+        return readCache.load(`batch:${requests.join(',')}`, 0, async () => {
+            const quotes = [];
+            for (let offset = 0; offset < providers.length; offset += 100) {
+                const result = await yf.quote(providers.slice(offset, offset + 100), {}, { validateResult: false });
+                quotes.push(...(Array.isArray(result) ? result : []));
+            }
+            const exact = new Map(quotes.filter(q => q?.symbol && q.regularMarketPrice > 0).map(q => [q.symbol.toUpperCase(), q]));
+            return Object.fromEntries(requests.flatMap(symbol => {
+                const quote = exact.get(getYahooCandidates(symbol)[0].toUpperCase());
+                return quote ? [[symbol, quote]] : [];
+            }));
+        }, value => Object.keys(value).length > 0);
+    },
+
     async _quoteDetail(symbol) {
         const candidates = getYahooCandidates(symbol);
         for (const yhSymbol of candidates) {
             try {
-                const data = await yf.quote(yhSymbol, {}, { validateResult: false });
+                const data = await yf.quoteCombine(yhSymbol, {}, { validateResult: false });
                 if (data && data.symbol?.toUpperCase() === yhSymbol.toUpperCase() && data.regularMarketPrice > 0) {
                     return data;
                 }

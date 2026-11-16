@@ -386,7 +386,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
             busy = false;
         };
         refresh();
-        const interval = setInterval(refresh, marketOpen ? 5000 : 60000);
+        const interval = setInterval(refresh, marketOpen ? 1000 : 60000);
         return () => { cancelled = true; controller.abort(); clearInterval(interval); socket.off('connect', subscribe); };
     }, [holdings, transactions, watched, marketOpen, marketStatus?.returnSessionDate, applyQuotes]);
 

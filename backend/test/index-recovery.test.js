@@ -16,6 +16,36 @@ test('official fallback selects exact index names and keeps the report timestamp
     assert.deepEqual(parseSnapshot('<html>blocked</html>', '2026-11-13', 'bad-report'), {});
 });
 
+test('live intraday recovery replaces an old close and older index replies cannot roll it back', async () => {
+    const nse = require('../src/services/NSEClient');
+    const history = require('../src/services/HistoricalClient');
+    const official = require('../src/services/OfficialIndexSnapshot');
+    const intraday = require('../src/services/IndexIntraday');
+    const MarketData = require('../src/services/MarketData');
+    const saved = { open: nse.constructor.isMarketHours, all: nse.allIndices, index: history.indexQuote, latest: official.latest, intraday: intraday.historical };
+    const at = Date.now() - 120000;
+    try {
+        nse.constructor.isMarketHours = () => true;
+        nse.allIndices = async () => { throw new Error('blocked'); };
+        history.indexQuote = async () => null;
+        official.latest = async () => parseSnapshot(report, '2026-11-13', 'official-report');
+        intraday.historical = async key => ({ data: [{ date: new Date(at).toISOString(), close: key === '^MIDCPNIFTY' ? 14500 : 28000 }], prevClose: 14000 });
+        const service = new MarketData({ emit() {} });
+        await service._fetchIndices();
+        assert.equal(service.cache['^MIDCPNIFTY'].price, 14500);
+        assert.equal(service.cache['^FINNIFTY'].price, 28000);
+        assert.equal(+service.cache['^FINNIFTY'].timestamp, at);
+        service._allIndicesCooldownUntil = 0;
+        nse.allIndices = async () => ({ timestamp: '13-Nov-2026 15:30:00', data: [{ index: 'NIFTY FINANCIAL SERVICES', last: 27000, variation: 100, percentChange: .3 }] });
+        await service._loadIndices();
+        assert.equal(service.cache['^FINNIFTY'].price, 28000);
+        assert(!service.cache['^FINNIFTY.NS']);
+    } finally {
+        nse.constructor.isMarketHours = saved.open; nse.allIndices = saved.all;
+        history.indexQuote = saved.index; official.latest = saved.latest; intraday.historical = saved.intraday;
+    }
+});
+
 test('NIFTY previous close is derived from the official session change', () => {
     const quotes = parseSnapshot(`${headers}\nNifty 50,13-11-2026,25144.3,-155.05,-.61`, '2026-11-13', 'official-report');
     assert.equal(quotes['^NSEI'].prevClose, 25299.35);
@@ -40,7 +70,9 @@ test('blocked NSE recovers both exact indices without using misleading Yahoo sym
     const history = require('../src/services/HistoricalClient');
     const official = require('../src/services/OfficialIndexSnapshot');
     const MarketData = require('../src/services/MarketData');
-    const original = { allIndices: nse.allIndices, indexQuote: history.indexQuote, latest: official.latest };
+    const intraday = require('../src/services/IndexIntraday');
+    const original = { allIndices: nse.allIndices, indexQuote: history.indexQuote, latest: official.latest, intraday: intraday.historical };
+    intraday.historical = async () => { throw new Error('Intraday unavailable in this fixture'); };
     const seen = [];
     nse.allIndices = async () => { throw new Error('NSE blocked'); };
     history.indexQuote = async symbol => { seen.push(symbol); return null; };
@@ -53,6 +85,7 @@ test('blocked NSE recovers both exact indices without using misleading Yahoo sym
         assert(!seen.includes('^NSMIDCP') && !seen.includes('^CNXFIN'));
         assert.equal(seen.length, 4);
     } finally {
+        intraday.historical = original.intraday;
         nse.allIndices = original.allIndices;
         history.indexQuote = original.indexQuote;
         official.latest = original.latest;

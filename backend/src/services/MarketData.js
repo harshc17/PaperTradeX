@@ -1,17 +1,8 @@
 /**
- * MarketData.js — Real-time market dataadd this project to https://github.com/harshc17/PapertTradeX repo with readme service using NSE India's API
- *
- * Strategy:
- *   Market OPEN (Mon–Fri, 9:15–15:30 IST):
- *     - Every 3s:  fetch ALL Nifty 50 stocks from NSE's index endpoint (single call)
- *     - Every 3s:  fetch individual quotes for extra + priority stocks
- *     - Every 1s:  broadcast cached data via WebSocket → UI feels live/1s
- *
- *   Market CLOSED:
- *     - Every 60s: attempt NSE refresh (will hit backoff, mostly serves cached data)
- *     - Every 5s:  broadcast cached prices (still useful for limit order engine)
- *
- * price_tick: lightweight event { symbol, price, change, timestamp } on each update
+ * Shared market-data service. NSE reads keep their existing backoff; active
+ * instruments share a one-second batched quote read and WebSocket broadcast.
+ * Provider timestamps remain authoritative, including delayed free feeds.
+ * Closed-market snapshots and quote freshness checks remain unchanged.
  */
 
 const NSEClient = require('./NSEClient');
@@ -19,6 +10,7 @@ const HistoricalClient = require('./HistoricalClient');
 const TradeEngine = require('./TradeEngine');
 const { quoteKey, quoteTime, isFreshQuote, nseQuoteTime } = require('./QuoteIdentity');
 const OfficialIndexSnapshot = require('./OfficialIndexSnapshot');
+const IndexIntraday = require('./IndexIntraday');
 const PublicReadCache = require('./PublicReadCache');
 
 // We use NSEClient.constructor.isMarketHours() instead.
@@ -71,6 +63,7 @@ class MarketDataService {
         this.quoteRequests = new Map();
         this.lastFallbackAttempt = new Map();
         this.indexReads = new PublicReadCache(1);
+        this.intradayReads = new PublicReadCache(2);
         this._broadcastInterval = null;
         this._lastAllIndicesErrorLogTs = 0;
         this._allIndicesCooldownUntil = 0;
@@ -118,7 +111,7 @@ class MarketDataService {
         };
         this.cache[bare] = data;
         if (isFreshQuote(data)) TradeEngine.processMarketTick(bare, price).catch(() => {});
-        if (!bare.endsWith('.BO')) this.cache[bare + '.NS'] = data;
+        if (!bare.startsWith('^') && !bare.endsWith('.BO')) this.cache[bare + '.NS'] = data;
 
         // Emit lightweight price_tick for priority symbols
         if (this.prioritySymbols.has(bare)) {
@@ -183,17 +176,10 @@ class MarketDataService {
                 for (const idx of indices) {
                     const key = NSE_INDEX_MAP[idx.index];
                     if (!key) continue;
-                    const d = {
-                        symbol:    key,
-                        shortname: idx.index,
-                        price:     idx.last           ?? 0,
-                        prevPrice: this.cache[key]?.price ?? (idx.last ?? 0),
-                        change:    idx.variation       ?? 0,
-                        dayChange: idx.percentChange   ?? 0,
-                        timestamp: new Date(),
-                    };
-                    this.cache[key] = d;
-                    updates[key]    = d;
+                    const at = nseQuoteTime(data.timestamp || idx.lastUpdateTime);
+                    if (!Number.isFinite(at)) continue;
+                    const d = this._updateCache(key, idx.last, idx.variation, idx.percentChange, idx.index, at);
+                    if (d) updates[key] = d;
                 }
             } catch (e) {
                 this._allIndicesCooldownUntil = Date.now() + 5 * 60 * 1000;
@@ -212,24 +198,25 @@ class MarketDataService {
                 try {
                     const q = await HistoricalClient.indexQuote(yahooSymbol || key);
                     if (!q) return;
-                    const prev = this.cache[key];
-                    const d = {
-                        symbol:    key,
-                        shortname: name,
-                        price:     q.price,
-                        prevPrice: prev?.price ?? q.prevClose,
-                        change:    q.change,
-                        dayChange: q.dayChange,
-                        timestamp: q.timestamp,
-                        source: q.source,
-                    };
-                    this.cache[key] = d;
-                    updates[key] = d;
+                    const d = this._updateCache(key, q.price, q.change, q.dayChange, name, q.timestamp, q.source);
+                    if (d) updates[key] = d;
                 } catch {
                     // silent fallback failure
                 }
             })
         );
+
+        if (NSEClient.constructor.isMarketHours()) {
+            await Promise.allSettled(['^MIDCPNIFTY', '^FINNIFTY'].filter(key => !updates[key]).map(async key => {
+                const series = await this.intradayReads.load(key, 5000, () => IndexIntraday.historical(key));
+                const point = series.data.at(-1);
+                if (!point || !(series.prevClose > 0)) return;
+                const change = point.close - series.prevClose;
+                const quote = this._updateCache(key, point.close, change, change / series.prevClose * 100,
+                    key.slice(1), point.date, 'groww-delayed');
+                if (quote) updates[key] = quote;
+            }));
+        }
 
         if (!updates['^MIDCPNIFTY'] || !updates['^FINNIFTY'] || !NSEClient.constructor.isMarketHours()) {
             const closes = await OfficialIndexSnapshot.latest();
@@ -303,6 +290,16 @@ class MarketDataService {
             })
         );
         return updates;
+    }
+
+    async _fetchFastQuotes() {
+        const symbols = [...new Set([...this.prioritySymbols, ...TRACKED_INDICES.filter(index => index.yahooSymbol).map(index => index.key)])];
+        const quotes = await HistoricalClient.quoteBatch(symbols);
+        if (!Object.keys(quotes).length) throw new Error('No batch quotes');
+        for (const [key, quote] of Object.entries(quotes)) {
+            this._updateCache(key, quote.regularMarketPrice, quote.regularMarketChange,
+                quote.regularMarketChangePercent, quote.shortName, quote.regularMarketTime, 'yahoo-fallback');
+        }
     }
 
     startPolling() {
@@ -386,6 +383,21 @@ class MarketDataService {
 
         // First fetch shortly after startup
         setTimeout(fetchLoop, 1000);
+
+        // One shared batched read avoids one provider request per viewer or symbol.
+        let fastErrors = 0;
+        const fastLoop = async () => {
+            const started = Date.now();
+            if (NSEClient.constructor.isMarketHours()) {
+                try {
+                    await this._fetchFastQuotes();
+                    fastErrors = 0;
+                } catch { fastErrors = Math.min(fastErrors + 1, 5); }
+            }
+            const cadence = NSEClient.constructor.isMarketHours() ? Math.min(30000, 1000 * 2 ** fastErrors) : 5000;
+            setTimeout(fastLoop, Math.max(0, cadence - (Date.now() - started)));
+        };
+        setTimeout(fastLoop, 1000);
 
         // Broadcast loop — adapts to market hours
         const startBroadcast = () => {

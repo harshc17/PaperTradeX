@@ -11,7 +11,6 @@ import {
     LinearScale,
     PointElement,
     LineElement,
-    BarElement,
     Tooltip,
     Filler,
     ChartOptions,
@@ -19,12 +18,12 @@ import {
     Plugin,
     ChartType,
 } from 'chart.js';
-import { Line, Bar } from 'react-chartjs-2';
+import { Line } from 'react-chartjs-2';
 import { Maximize2, RefreshCw, WifiOff, X } from 'lucide-react';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Filler);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler);
 
-type PriceCursorOptions = { previousClose: number | null; light: boolean };
+type PriceCursorOptions = { previousClose: number | null; light: boolean; cursorVisible: boolean };
 declare module 'chart.js' {
     interface PluginOptionsByType<TType extends ChartType> { priceCursor: PriceCursorOptions }
 }
@@ -39,10 +38,17 @@ const priceCursor: Plugin<'line', PriceCursorOptions> = {
         ctx.lineWidth = 1; ctx.setLineDash([4.5, 2.5]); ctx.beginPath();
         ctx.moveTo(chartArea.left, y); ctx.lineTo(chartArea.right, y); ctx.stroke(); ctx.restore();
     },
-    afterDatasetsDraw(chart, _args, { light }) {
+    afterDatasetsDraw(chart, _args, { light, cursorVisible }) {
+        const { ctx, chartArea } = chart;
+        const latest = chart.getDatasetMeta(0).data.at(-1);
+        const color = String(chart.data.datasets[0].borderColor);
+        if (latest && Number.isFinite(latest.x) && Number.isFinite(latest.y) && latest.x >= chartArea.left && latest.x <= chartArea.right) {
+            ctx.save(); ctx.fillStyle = color;
+            ctx.beginPath(); ctx.arc(latest.x, latest.y, 4, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        }
+        if (!cursorVisible) return;
         const active = chart.getActiveElements()[0];
         if (!active || !Number.isFinite(active.element.x) || !Number.isFinite(active.element.y)) return;
-        const { ctx, chartArea } = chart;
         ctx.save();
         ctx.strokeStyle = light ? '#e0e3e7' : '#34373b';
         ctx.lineWidth = 1;
@@ -51,9 +57,6 @@ const priceCursor: Plugin<'line', PriceCursorOptions> = {
         ctx.moveTo(active.element.x, chartArea.top);
         ctx.lineTo(active.element.x, chartArea.bottom);
         ctx.stroke();
-        const color = String(chart.data.datasets[0].borderColor);
-        ctx.beginPath(); ctx.arc(active.element.x, active.element.y, 7.5, 0, Math.PI * 2);
-        ctx.strokeStyle = color; ctx.globalAlpha = 0.25; ctx.lineWidth = 2.25; ctx.stroke(); ctx.globalAlpha = 1;
         ctx.beginPath(); ctx.arc(active.element.x, active.element.y, 4.5, 0, Math.PI * 2);
         ctx.fillStyle = color; ctx.fill(); ctx.strokeStyle = light ? '#ffffff' : '#101010'; ctx.lineWidth = 3; ctx.stroke();
         ctx.restore();
@@ -124,14 +127,6 @@ function formatINR(v: number, decimals = 2): string {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
     });
-}
-
-function formatVol(v: number): string {
-    if (!v) return '—';
-    if (v >= 1e7) return `${(v / 1e7).toFixed(2)} Cr`;
-    if (v >= 1e5) return `${(v / 1e5).toFixed(2)} L`;
-    if (v >= 1000) return `${(v / 1000).toFixed(0)} K`;
-    return String(v);
 }
 
 /* ─── Component ──────────────────────────────────────────────────────────────── */
@@ -269,8 +264,6 @@ export default function StockChart({ symbol }: { symbol: string }) {
 
     const labels = displayHistory.map(h => formatLabel(h.date, feed.resolution === 'daily' ? 'date' : activePeriod.fmt));
     const closes = displayHistory.map(h => h.close);
-    const volumes = displayHistory.map(h => h.volume ?? 0);
-    const hasVolume = volumes.some(v => v > 0);
 
     // If on 1D and we have livePrice, extend chart with current live point
     const chartLabels = [...labels];
@@ -288,12 +281,19 @@ export default function StockChart({ symbol }: { symbol: string }) {
         }
     }
 
+    // Reserve the complete 09:15–15:30 IST session without filling future time with prices.
+    const sessionDate = plotPoints[0]?.date ? new Date(plotPoints[0].date).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) : null;
+    const sessionStart = sessionDate ? Date.parse(`${sessionDate}T09:15:00+05:30`) : 0;
+    const sessionEnd = sessionDate ? Date.parse(`${sessionDate}T15:30:00+05:30`) : 0;
+    const sessionTimeline = activePeriod.value === '1d' && feed.resolution !== 'daily' && plotPoints.length > 0
+        && plotPoints.every(point => Date.parse(point.date) >= sessionStart && Date.parse(point.date) <= sessionEnd);
+
     /* ─── Chart.js datasets ────────────────────────────────────────────────────── */
     const lineData: ChartData<'line'> = {
         labels: chartLabels,
         datasets: [{
             label: 'Price',
-            data: chartCloses,
+            data: sessionTimeline ? plotPoints.map(point => ({ x: Date.parse(point.date), y: point.close })) : chartCloses,
             borderColor: color,
             fill: false,
             tension: 0,
@@ -309,15 +309,19 @@ export default function StockChart({ symbol }: { symbol: string }) {
     const lineOptions: ChartOptions<'line'> = {
         responsive: true,
         maintainAspectRatio: false,
+        layout: { padding: { left: 7, right: 8, top: 8, bottom: 8 } },
         interaction: { mode: 'index', axis: 'x', intersect: false },
-        onHover: (_: any, elements: any[], chart) => {
+        onHover: (event, elements, chart) => {
             // Mobile browsers can emit a mouse event after touch release.
             if (Date.now() - touchEndedAt.current < 800) { chart.setActiveElements([]); return; }
+            if (sessionTimeline && event.x != null && Number(chart.scales.x.getValueForPixel(event.x)) > Date.parse(plotPoints[plotPoints.length - 1].date) + 30000) {
+                chart.setActiveElements([]); setHoverIdx(null); return;
+            }
             setHoverIdx(elements.length > 0 ? elements[0].index : null);
             setHoverX(elements[0]?.element.x ?? 0);
         },
         plugins: {
-            priceCursor: { previousClose: activePeriod.value === '1d' ? prevClose : null, light },
+            priceCursor: { previousClose: activePeriod.value === '1d' ? prevClose : null, light, cursorVisible: hoverIdx != null },
             legend: { display: false },
             tooltip: {
                 enabled: false,
@@ -325,6 +329,9 @@ export default function StockChart({ symbol }: { symbol: string }) {
         },
         scales: {
             x: {
+                type: sessionTimeline ? 'linear' : 'category',
+                min: sessionTimeline ? sessionStart : undefined,
+                max: sessionTimeline ? sessionEnd : undefined,
                 display: false,
                 grid: { display: false },
                 ticks: {
@@ -353,35 +360,6 @@ export default function StockChart({ symbol }: { symbol: string }) {
             },
         },
         animation: { duration: 0 },
-    };
-
-    const volData: ChartData<'bar'> = {
-        labels: chartLabels,
-        datasets: [{
-            label: 'Volume',
-            data: volumes,
-            backgroundColor: volumes.map((_, i) => {
-                const isGreen = i === 0 || closes[i] >= closes[i - 1];
-                return light ? (isGreen ? 'rgba(82,82,91,0.35)' : 'rgba(82,82,91,0.20)') : (isGreen ? 'rgba(177,177,183,0.30)' : 'rgba(177,177,183,0.18)');
-            }),
-            borderRadius: 2,
-            borderSkipped: false,
-        }],
-    };
-
-    const volOptions: ChartOptions<'bar'> = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { enabled: false } },
-        scales: {
-            x: { display: false, grid: { display: false } },
-            y: {
-                display: false,
-                grid: { display: false },
-                border: { display: false },
-            },
-        },
-        animation: { duration: 200 },
     };
 
     /* ─── Hover tooltip ──────────────────────────────────────────────────────────── */
@@ -446,11 +424,6 @@ export default function StockChart({ symbol }: { symbol: string }) {
                         <div className={`${fullScreen ? 'flex-1 min-h-0' : 'h-[clamp(180px,52vw,230px)] sm:h-[350px]'} relative cursor-crosshair touch-pan-y`} onMouseLeave={clearCursor} onTouchStartCapture={() => { touchEndedAt.current = 0; }} onTouchEnd={endTouch} onTouchCancel={endTouch}>
                             <Line ref={chartRef} data={lineData} options={lineOptions} plugins={[priceCursor]} aria-label={`${symbol} ${activePeriod.label} price chart. Use arrow keys to inspect prices; Escape clears selection.`} role="img" tabIndex={0} onKeyDown={inspectWithKey} onBlur={clearCursor} />
                         </div>
-                        {hasVolume && (
-                            <div className={`h-10 shrink-0 mt-1 relative opacity-70 ${fullScreen ? '[@media(max-height:500px)]:hidden' : ''}`}>
-                                <Bar data={volData} options={volOptions} />
-                            </div>
-                        )}
                     </>
                 )}
             </div>

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getSocket } from '@/lib/socket';
 import { API_URL } from '@/lib/config';
+import { keepNewestQuote } from '@/lib/keepNewestQuote';
 
 const INDICES = [
     { symbol: '^NSEI',       label: 'NIFTY 50'   },
@@ -14,7 +15,7 @@ const INDICES = [
 ];
 
 export default function IndicesBanner() {
-    const [quotes, setQuotes] = useState<Record<string, { price: number; change: number; dayChange: number; source?: string; asOf?: string }>>({});
+    const [quotes, setQuotes] = useState<Record<string, { price: number; change: number; dayChange: number; source?: string; asOf?: string; timestamp?: string }>>({});
     const [attempted, setAttempted] = useState(false);
 
     useEffect(() => {
@@ -23,7 +24,7 @@ export default function IndicesBanner() {
 
         const applyQuote = (sym: string, d: any) => {
             if (!(d?.price > 0)) return;
-            setQuotes(prev => ({ ...prev, [sym]: { price: d.price, change: d.change ?? 0, dayChange: d.dayChange ?? 0, source: d.source, asOf: d.asOf } }));
+            setQuotes(prev => ({ ...prev, [sym]: keepNewestQuote(prev[sym], { price: d.price, change: d.change ?? 0, dayChange: d.dayChange ?? 0, source: d.source, asOf: d.asOf, timestamp: d.timestamp }) }));
         };
 
         const onUpdate = (payload: Record<string, any>) => Object.entries(payload).forEach(([sym, d]: [string, any]) => applyQuote(sym, d));
@@ -39,7 +40,7 @@ export default function IndicesBanner() {
                     setQuotes(prev => {
                         const next = { ...prev };
                         Object.entries(data).forEach(([sym, d]: [string, any]) => {
-                            if (d?.price > 0) next[sym] = { price: d.price, change: d.change ?? 0, dayChange: d.dayChange ?? 0, source: d.source, asOf: d.asOf };
+                            if (d?.price > 0) next[sym] = keepNewestQuote(next[sym], { price: d.price, change: d.change ?? 0, dayChange: d.dayChange ?? 0, source: d.source, asOf: d.asOf, timestamp: d.timestamp });
                         });
                         return next;
                     });

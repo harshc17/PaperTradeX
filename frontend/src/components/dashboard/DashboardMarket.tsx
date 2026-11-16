@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getSocket } from '@/lib/socket';
 import { API_URL } from '@/lib/config';
+import { keepNewestQuote } from '@/lib/keepNewestQuote';
 import { usePortfolio } from '@/context/PortfolioContext';
 import { TrendingUp, TrendingDown, ArrowUpRight, Loader2 } from 'lucide-react';
 import MarketMovers from './MarketMovers';
@@ -33,11 +34,11 @@ const TOP_STOCKS = [
     { symbol: 'BAJFINANCE.NS', name: 'Bajaj Finance' },
 ];
 
-type QuoteData = { symbol: string; price: number; change: number; dayChange: number; shortname?: string; source?: string; asOf?: string };
+type QuoteData = { symbol: string; price: number; change: number; dayChange: number; shortname?: string; source?: string; asOf?: string; timestamp?: string };
 
 function normalizeQuote(sym: string, d: any): QuoteData | null {
     if (!(d?.price > 0)) return null;
-    return { symbol: sym, price: d.price, change: d.change ?? 0, dayChange: d.dayChange ?? 0, shortname: d.shortname, source: d.source, asOf: d.asOf };
+    return { symbol: sym, price: d.price, change: d.change ?? 0, dayChange: d.dayChange ?? 0, shortname: d.shortname, source: d.source, asOf: d.asOf, timestamp: d.timestamp };
 }
 
 function resolveQuote(quotes: Record<string, QuoteData>, symbol: string): QuoteData | undefined {
@@ -84,10 +85,10 @@ export default function DashboardMarket() {
                 Object.entries(payload).forEach(([sym, d]: [string, any]) => {
                     const q = normalizeQuote(sym, d);
                     if (!q) return;
-                    next[sym] = q;
+                    next[sym] = keepNewestQuote(next[sym], q);
                     if (!sym.startsWith('^')) {
-                        if (sym.endsWith('.NS')) next[sym.replace(/\.NS$/i, '')] = { ...q, symbol: sym.replace(/\.NS$/i, '') };
-                        else next[`${sym}.NS`] = { ...q, symbol: `${sym}.NS` };
+                        if (sym.endsWith('.NS')) next[sym.replace(/\.NS$/i, '')] = { ...next[sym], symbol: sym.replace(/\.NS$/i, '') };
+                        else next[`${sym}.NS`] = { ...next[sym], symbol: `${sym}.NS` };
                     }
                 });
                 return next;
@@ -101,10 +102,10 @@ export default function DashboardMarket() {
             if (!q) return;
             setQuotes(prev => {
                 const next = { ...prev };
-                next[tick.symbol] = q;
+                next[tick.symbol] = keepNewestQuote(next[tick.symbol], q);
                 if (!tick.symbol.startsWith('^')) {
-                    if (tick.symbol.endsWith('.NS')) next[tick.symbol.replace(/\.NS$/i, '')] = { ...q, symbol: tick.symbol.replace(/\.NS$/i, '') };
-                    else next[`${tick.symbol}.NS`] = { ...q, symbol: `${tick.symbol}.NS` };
+                    if (tick.symbol.endsWith('.NS')) next[tick.symbol.replace(/\.NS$/i, '')] = { ...next[tick.symbol], symbol: tick.symbol.replace(/\.NS$/i, '') };
+                    else next[`${tick.symbol}.NS`] = { ...next[tick.symbol], symbol: `${tick.symbol}.NS` };
                 }
                 return next;
             });
@@ -125,12 +126,12 @@ export default function DashboardMarket() {
                 ]);
                 setQuotes(prev => {
                     const next = { ...prev };
-                    if (indicesRes) Object.entries(indicesRes).forEach(([sym, d]: [string, any]) => { const q = normalizeQuote(sym, d); if (q) next[sym] = q; });
+                    if (indicesRes) Object.entries(indicesRes).forEach(([sym, d]: [string, any]) => { const q = normalizeQuote(sym, d); if (q) next[sym] = keepNewestQuote(next[sym], q); });
                     stockRes.forEach((d: any) => {
                         const sym = String(d?.symbol || '').toUpperCase();
                         if (!sym || typeof d?.price !== 'number') return;
                         const key = sym.endsWith('.NS') ? sym : `${sym}.NS`;
-                        next[key] = { symbol: key, price: d.price, change: d.change ?? 0, dayChange: d.dayChange ?? 0, shortname: key };
+                        next[key] = keepNewestQuote(next[key], { symbol: key, price: d.price, change: d.change ?? 0, dayChange: d.dayChange ?? 0, shortname: key, timestamp: d.timestamp });
                     });
                     return next;
                 });
