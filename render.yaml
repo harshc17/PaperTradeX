@@ -1,10 +1,11 @@
 services:
-  # Backend API + WebSockets
+  # Recovery backend. Railway remains primary; see docs/render-backup.md.
   - type: web
-    name: papertradex-backend
+    name: PaperTradeX
     runtime: node
     plan: free
     region: singapore
+    branch: main
     rootDir: backend
     buildCommand: npm ci --omit=dev
     startCommand: node src/server.js
@@ -17,10 +18,18 @@ services:
       - key: MONGODB_URI
         sync: false
       - key: JWT_SECRET
-        generateValue: true
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: EMAIL_FROM
+        value: "harsh@papertradex.in"
+      - key: MARKET_POLLING_ENABLED
+        value: "false"
       - key: CORS_ORIGIN
-        value: "https://papertradex.vercel.app"
+        value: "https://papertradex.in,https://www.papertradex.in,https://papertradex.vercel.app"
       - key: NODE_VERSION
         value: "22"
       - key: FRONTEND_URL
-        value: "https://papertradex.vercel.app"
+        value: "https://papertradex.in"

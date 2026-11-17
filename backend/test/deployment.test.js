@@ -26,7 +26,7 @@ test('protected routes reject missing/forged tokens and non-admin refresh reques
 });
 
 // Exercise real Express/Socket.IO listeners without external databases or market APIs.
-async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1 } = {}) {
+async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, marketPolling = 'true' } = {}) {
     const filename = path.resolve(__dirname, '../src/server.js');
     const realRequire = createRequire(filename);
     const state = { readyState: ready };
@@ -36,7 +36,8 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1 } = {})
         setTimeout, clearTimeout, setInterval, clearInterval, Buffer, URL,
         process: {
             env: { NODE_ENV: 'production', JWT_SECRET: 'deployment-test-secret',
-                MONGODB_URI: uri, PORT: '0', FRONTEND_URL: 'https://papertradex.vercel.app' },
+                MONGODB_URI: uri, PORT: '0', FRONTEND_URL: 'https://papertradex.vercel.app',
+                MARKET_POLLING_ENABLED: marketPolling },
             exit(code) { exitCode = code; },
         },
         require(name) {
@@ -52,6 +53,7 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1 } = {})
             };
             if (name === './services/MarketData') return class {
                 cache = { RELIANCE: { price: 1300 } };
+                async tradeQuote() { return { price: 1300, timestamp: Date.now() }; }
                 startPolling() { polling = true; }
             };
             if (name === './services/NSEClient') return { getMarketStatus: () => ({ isOpen: false }), constructor: { isMarketHours: () => true, HOLIDAYS: {} } };
@@ -59,7 +61,7 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1 } = {})
                 assertMarketOpen() {},
                 executeTrade: async (user, type, symbol, quantity, price) => ({ success: true, price }),
             };
-            if (['./services/PasswordReset', './services/SignupVerification', './services/ReturnSession'].includes(name)) return realRequire(name);
+            if (['./services/PasswordReset', './services/SignupVerification', './services/ReturnSession', './services/MarketIndex', './services/QuoteIdentity'].includes(name)) return realRequire(name);
             if (name.startsWith('./services/')) return {};
             return realRequire(name);
         },
@@ -105,4 +107,12 @@ test('production requires an explicit database URI', async t => {
     const app = await boot(t, { uri: '' });
     assert.equal(app.exitCode, 1);
     assert.equal(app.server.listening, false);
+});
+
+test('inactive recovery instance serves health without starting market polling', async t => {
+    const app = await boot(t, { marketPolling: 'false' });
+    assert.equal(app.polling, false);
+    assert.equal((await fetch(app.url + '/health')).status, 200);
+    app.state.readyState = 0;
+    assert.equal((await fetch(app.url + '/health')).status, 503);
 });

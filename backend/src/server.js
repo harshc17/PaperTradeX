@@ -1306,7 +1306,10 @@ async function start() {
         await seedAdmin();
         server.listen(PORT, '0.0.0.0', () => {
             console.log(`Server listening on port ${PORT}`);
-            marketDataService.startPolling();
+            // A recovery instance stays idle until promoted to avoid duplicate feed traffic.
+            if (process.env.MARKET_POLLING_ENABLED !== 'false') {
+                marketDataService.startPolling();
+            }
         });
     } catch (error) {
         console.error('[Startup] Database initialization failed:', error.message);
