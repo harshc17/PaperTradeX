@@ -168,6 +168,10 @@ export default function StockChart({ symbol }: { symbol: string }) {
     const [prevClose, setPrevClose] = useState<number | null>(null);
     const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const bare = symbol.replace(/\.(NS|BO)$/i, '').toUpperCase();
+    const plotSize = bare.startsWith('^')
+        ? 'h-[clamp(180px,52vw,230px)] sm:h-[350px] lg:h-auto lg:aspect-[2.35/1]'
+        : 'h-[clamp(180px,52vw,230px)] sm:h-[350px]';
+    const placeholderSize = bare.startsWith('^') ? plotSize : 'h-[clamp(180px,52vw,230px)] sm:h-full';
     const formatChartPrice = (value: number) => bare.startsWith('^')
         ? value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : formatINR(value);
 
@@ -387,23 +391,23 @@ export default function StockChart({ symbol }: { symbol: string }) {
                     <X className="w-5 h-5" />
                 </button>
             </div>}
-            <div className="min-h-6 mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-faint" data-testid="chart-readout">
-                {activePeriod.value !== '1d' && <><span>{activePeriod.label} return</span>
-                {selectedChange != null && selectedPercent != null && <span className={`font-num tabular-nums ${selectedChange >= 0 ? 'text-up' : 'text-down'}`}>{selectedChange >= 0 ? '+' : '−'}{formatChartPrice(Math.abs(selectedChange))} ({Math.abs(selectedPercent).toFixed(2)}%)</span>}</>}
-            </div>
+            {activePeriod.value !== '1d' && <div className="min-h-6 mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-faint" data-testid="chart-readout">
+                <><span>{activePeriod.label} return</span>
+                {selectedChange != null && selectedPercent != null && <span className={`font-num tabular-nums ${selectedChange >= 0 ? 'text-up' : 'text-down'}`}>{selectedChange >= 0 ? '+' : '−'}{formatChartPrice(Math.abs(selectedChange))} ({Math.abs(selectedPercent).toFixed(2)}%)</span>}</>
+            </div>}
             {feed.note && <p className="text-xs text-ink-muted mb-2" role="status">{feed.note}</p>}
             {refreshError && <p className="text-xs text-[var(--warning)] mb-2" role="status">Chart refresh unavailable. Showing saved candles.</p>}
-            <div className={fullScreen ? 'relative flex-1 min-h-0 flex flex-col pt-6' : 'relative sm:h-[420px] pt-6'} data-testid="price-plot">
+            <div className={fullScreen ? 'relative flex-1 min-h-0 flex flex-col pt-6' : bare.startsWith('^') ? 'relative pt-6' : 'relative sm:h-[420px] pt-6'} data-testid="price-plot">
                 {hoverPt && <div data-testid="chart-cursor-label" className="absolute top-0 w-[180px] max-w-full text-center text-[11px] text-ink-heading whitespace-nowrap pointer-events-none" style={{ left: `clamp(0px, ${hoverX - 90}px, max(0px, 100% - 180px))` }}>
                     {formatChartPrice(hoverPt.close)} <span className="text-ink-faint">|</span> {activePeriod.value === '1d' ? new Date(hoverPt.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : new Date(hoverPt.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: ['1y', '3y', '5y', 'max'].includes(activePeriod.value) ? 'numeric' : undefined, timeZone: 'Asia/Kolkata' })}
                 </div>}
                 {loading ? (
-                    <div className={`${fullScreen ? 'flex-1 min-h-0' : 'h-[clamp(180px,52vw,230px)] sm:h-full'} flex flex-col items-center justify-center gap-3`}>
+                    <div className={`${fullScreen ? 'flex-1 min-h-0' : placeholderSize} flex flex-col items-center justify-center gap-3`}>
                         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                         <p className="text-xs text-ink-muted">Loading chart...</p>
                     </div>
                 ) : error ? (
-                    <div className={`${fullScreen ? 'flex-1 min-h-0' : 'h-[clamp(180px,52vw,230px)] sm:h-full'} flex flex-col items-center justify-center gap-2`}>
+                    <div className={`${fullScreen ? 'flex-1 min-h-0' : placeholderSize} flex flex-col items-center justify-center gap-2`}>
                         <WifiOff className="w-8 h-8 text-ink-faint" />
                         <p className="text-sm text-ink-muted">Failed to load chart data</p>
                         <button
@@ -414,12 +418,12 @@ export default function StockChart({ symbol }: { symbol: string }) {
                         </button>
                     </div>
                 ) : displayHistory.length === 0 ? (
-                    <div className={`${fullScreen ? 'flex-1 min-h-0' : 'h-[clamp(180px,52vw,230px)] sm:h-full'} flex items-center justify-center`}>
+                    <div className={`${fullScreen ? 'flex-1 min-h-0' : placeholderSize} flex items-center justify-center`}>
                         <p className="text-sm text-ink-muted">No data for this period</p>
                     </div>
                 ) : (
                     <>
-                        <div className={`${fullScreen ? 'flex-1 min-h-0' : 'h-[clamp(180px,52vw,230px)] sm:h-[350px]'} relative cursor-crosshair touch-pan-y`} onMouseLeave={clearCursor} onTouchStartCapture={() => { touchEndedAt.current = 0; }} onTouchEnd={endTouch} onTouchCancel={endTouch}>
+                        <div className={`${fullScreen ? 'flex-1 min-h-0' : plotSize} relative cursor-crosshair touch-pan-y`} onMouseLeave={clearCursor} onTouchStartCapture={() => { touchEndedAt.current = 0; }} onTouchEnd={endTouch} onTouchCancel={endTouch}>
                             <Line ref={chartRef} data={lineData} options={lineOptions} plugins={[priceCursor]} aria-label={`${symbol} ${activePeriod.label} price chart. Use arrow keys to inspect prices; Escape clears selection.`} role="img" tabIndex={0} onKeyDown={inspectWithKey} onBlur={clearCursor} />
                         </div>
                     </>
