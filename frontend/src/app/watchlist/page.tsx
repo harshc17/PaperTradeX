@@ -1,4 +1,6 @@
 'use client';
+import { apiFetch as fetch } from '@/lib/backend';
+
 import CompanyLogo from '@/components/CompanyLogo';
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';

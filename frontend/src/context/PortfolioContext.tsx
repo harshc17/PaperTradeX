@@ -1,4 +1,6 @@
 'use client';
+import { apiFetch as fetch } from '@/lib/backend';
+
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import { getSocket } from '@/lib/socket';
 import { API_URL as API } from '@/lib/config';
@@ -121,6 +123,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     const [holdingsLoaded, setHoldingsLoaded] = useState(false);
     const [portfolioError, setPortfolioError] = useState<string | null>(null);
     const portfolioRequest = useRef(0);
+    const pendingTrades = useRef(new Map<string, string>());
     const [transactionsLoaded, setTransactionsLoaded] = useState(false);
     const [livePrices, setLivePrices] = useState<Record<string, number>>({});
     // Prevent delayed REST responses or broadcasts from rolling a symbol back.
@@ -226,12 +229,23 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     ) => {
         const token = getToken();
         if (!token) throw new Error('Not authenticated');
+        // Keep an unresolved order's ID across manual retries and reloads too.
+        const pendingKey = `ptx_pending_trade:${authContext.user?.id}:${JSON.stringify([normalizeSymbol(symbol), type, quantity, orderType, limitPrice ?? null])}`;
+        let requestKey = pendingTrades.current.get(pendingKey);
+        try { requestKey ||= sessionStorage.getItem(pendingKey) || undefined; } catch { /* storage may be disabled */ }
+        requestKey ||= crypto.randomUUID();
+        pendingTrades.current.set(pendingKey, requestKey);
+        try { sessionStorage.setItem(pendingKey, requestKey); } catch { /* retain the in-memory key */ }
         const res = await fetch(`${API}/api/trade`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'Idempotency-Key': requestKey },
             body: JSON.stringify({ symbol, type, quantity, price, orderType, limitPrice })
         });
         const data = await res.json();
+        if (res.ok || (res.status >= 400 && res.status < 500)) {
+            pendingTrades.current.delete(pendingKey);
+            try { sessionStorage.removeItem(pendingKey); } catch { /* storage may be disabled */ }
+        }
         if (res.status === 401 || res.status === 403) {
             clearAuthState();
             throw new Error(data.error || 'Session expired. Please login again.');

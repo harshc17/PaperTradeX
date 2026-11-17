@@ -1,4 +1,6 @@
 'use client';
+import { apiFetch as fetch } from '@/lib/backend';
+
 import BrandLogo from '@/components/BrandLogo';
 import CompanyLogo from '@/components/CompanyLogo';
 import IndicesBanner from '@/components/dashboard/IndicesBanner';

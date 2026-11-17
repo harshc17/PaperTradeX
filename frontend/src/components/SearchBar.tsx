@@ -1,4 +1,6 @@
 'use client';
+import { apiFetch as fetch } from '@/lib/backend';
+
 import { API_URL } from '@/lib/config';
 
 import { useState, useEffect, useRef } from 'react';

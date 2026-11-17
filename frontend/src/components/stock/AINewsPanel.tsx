@@ -1,4 +1,6 @@
 'use client';
+import { apiFetch as fetch } from '@/lib/backend';
+
 
 import { useState, useEffect } from 'react';
 import { Clock, RefreshCw, Newspaper } from 'lucide-react';

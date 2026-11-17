@@ -1,4 +1,6 @@
 'use client';
+import { apiFetch as fetch } from '@/lib/backend';
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getSocket } from '@/lib/socket';

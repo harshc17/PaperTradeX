@@ -1,4 +1,6 @@
 'use client';
+import { apiFetch as fetch } from '@/lib/backend';
+
 import { API_URL } from '@/lib/config';
 import { useState } from 'react';
 import { CheckCircle2, AlertCircle, Lightbulb, RefreshCw } from 'lucide-react';

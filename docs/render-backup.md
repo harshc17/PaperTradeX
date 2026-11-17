@@ -1,50 +1,59 @@
-# Render recovery backend
+# Automatic Render recovery
 
-Railway is the primary API and Socket.IO server. `render.yaml` prepares a free
-Render recovery service tracking `main`. It does not switch production traffic.
-The existing service is `PaperTradeX` in `My Workspace`, at
-https://papertradex-roib.onrender.com (service `srv-dbb96t8m7kps73ekrb1g`).
-Its environment is currently managed directly in Render; the Blueprint is a
-recovery template, not an additional service to create alongside it.
-Render must be connected and the service successfully deployed before it is a
-usable backup.
+Railway remains the preferred backend. The browser checks both database-backed
+`/health` endpoints every 15 seconds while the app is open. When Railway is
+unreachable and Render is healthy, API calls and the live-price socket switch to
+Render. When Railway recovers, both switch back automatically. Existing tabs
+must load the new frontend once to receive this behavior.
 
-## Provision
+## Configuration
 
-1. Reuse the existing service. If recreating it in a future recovery, use
-   `render.yaml`; do not create a duplicate while the existing service is present.
-2. Privately copy the existing Railway **MONGODB_URI** and **JWT_SECRET** into
-   Render. Use the identical database, database name and signing secret so
-   accounts, holdings and existing sessions remain valid. Never generate a
-   separate secret for the backup or put secrets in Git.
-3. Copy **BREVO_API_KEY** and **GOOGLE_CLIENT_ID** privately from Railway.
-   Copy any configured AI provider keys as well if those features are required.
-   Leave **ADMIN_PASSWORD** unset: recovery must not seed a new administrator.
-4. Authorize the service's outbound IP ranges in MongoDB Atlas and Brevo where
-   allowlists apply. Obtain the actual ranges from Render's service dashboard;
-   Railway's outbound IP is not the Render server's IP.
-5. Confirm `/health` returns HTTP 200 and test API CORS using the production
-   website origin. Confirm email delivery and login before considering the
-   backup ready. Keep `MARKET_POLLING_ENABLED=false` while inactive.
+- Vercel production: `NEXT_PUBLIC_API_URL` is the Railway URL and
+  `NEXT_PUBLIC_BACKUP_API_URL=https://papertradex-roib.onrender.com`.
+- Both backends use identical `MONGODB_URI` (including database name),
+  `JWT_SECRET`, sender settings and account data. Never generate an independent
+  backup signing secret or database.
+- Render service `PaperTradeX`, workspace `My Workspace`, service ID
+  `srv-dbb96t8m7kps73ekrb1g`, tracks GitHub `main` with auto-deploy enabled.
+- Render uses `MARKET_POLLING_ENABLED=true` and
+  `STANDBY_PRIMARY_URL=https://paperttradex-production.up.railway.app`.
+  Its feed loops run when serving connected users or its primary health probe
+  fails; otherwise it avoids duplicate background quote fetching.
+- Render environment settings are managed directly in Render. `render.yaml`
+  is the recreation template; do not create a duplicate service.
+- Authorize both hosts' outbound IPs/ranges in MongoDB Atlas and Brevo where
+  required. Copy any configured Google/AI credentials privately too.
 
-## Recover from a Railway outage
+## Account and order safety
 
-1. Set Render's `MARKET_POLLING_ENABLED=true`, deploy, wait for `/health` HTTP
-   200, and verify fresh stock/index quotes and Socket.IO subscriptions.
-2. Change Vercel's production **NEXT_PUBLIC_API_URL** to the verified Render
-   service URL and redeploy the frontend. The same setting controls both HTTP
-   and WebSocket connections. Changing the variable alone does not change an
-   already built frontend.
-3. Verify login, signup/reset email, charts, dashboard/holdings consistency and
-   order status. Check an interrupted order's status before resubmitting it;
-   a failed connection does not prove a trade was not recorded.
-4. Once Railway recovers, verify its health and quotes, restore the Railway API
-   URL in Vercel and redeploy. Then disable Render polling again.
+JWTs and persisted accounts survive server changes. HTTP and socket clients
+share one selected backend; stock subscriptions and event listeners survive
+reconnection. Health checks never clear account state. Auth errors, rate limits
+and provider-specific failures are not treated as whole-server outages.
 
-There is no automatic request replay or automatic failover in this setup.
-Free Render services sleep after 15 minutes without inbound traffic and take
-time to wake up. This is a recovery option, not uninterrupted availability or a
-separate database backup. A shared database outage affects both servers.
+Read requests can retry on the selected healthy backend. Paper trade requests
+use a unique request ID retained for unresolved manual retries/reloads. A
+partial unique MongoDB index on user/request ID and the same transaction as the
+balance, position, transaction and order writes prevent duplicate execution.
+Reusing an ID for different trade parameters is rejected. A committed request
+can be recovered even after market close. Signup, reset, challenge and other
+mutations are not automatically replayed after an ambiguous connection loss.
+
+## Limits and verification
+
+This is automatic application recovery, not uninterrupted availability or a
+separate database backup. Detection/reconnection takes time. Free Render
+instances can sleep without inbound traffic and need time to wake; a shared
+MongoDB outage affects both hosts. Provider quote freshness checks and regular
+trading hours remain enforced.
+
+Verify simulated primary loss and recovery locally without stopping production:
+`design/failover-proxy.cjs` exposes local Railway/Render routes on 3015/3016 and
+can disable only the primary test route. Point the local frontend at those two
+origins. Never expose this test proxy publicly. Check login retention, matching
+holdings/balance, unchanged order IDs, socket subscription replay and recovery.
+Unit checks cover safe read retries, provider/auth errors, cancelled requests,
+lost trade responses, duplicate buys/sells and queued limit orders.
 
 References: [Free service limits](https://render.com/docs/free),
 [Blueprint configuration](https://render.com/docs/blueprint-spec),
