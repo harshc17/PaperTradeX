@@ -9,6 +9,7 @@ test('1D reference line uses session previous close instead of the chart-window 
     assert.equal(chartPreviousClose({ regularMarketPreviousClose: 112.71 }, { previousClose: 112.71, chartPreviousClose: 116.86 }), 112.71);
     assert.equal(chartPreviousClose(null, { previousClose: 112.71, chartPreviousClose: 116.86 }), 112.71);
     assert.equal(chartPreviousClose({ regularMarketPreviousClose: 0 }, { chartPreviousClose: 116.86 }), 116.86);
+    assert.equal(chartPreviousClose({ regularMarketPrice: 82778.38, regularMarketChange: 673.59375, regularMarketPreviousClose: 81592.5 }), 82104.79);
 });
 
 test('official history keeps the exact index, date range, ordering and unique sessions', () => {

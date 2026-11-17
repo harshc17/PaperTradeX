@@ -41,6 +41,10 @@ function aggregateDaily(quotes) {
 }
 
 function chartPreviousClose(quote, meta = {}) {
+    if (Number.isFinite(quote?.regularMarketPrice) && quote.regularMarketPrice > 0 && Number.isFinite(quote?.regularMarketChange)) {
+        const previous = Math.round((quote.regularMarketPrice - quote.regularMarketChange) * 100) / 100;
+        if (previous > 0) return previous;
+    }
     return [quote?.regularMarketPreviousClose, meta.regularMarketPreviousClose, meta.previousClose, meta.chartPreviousClose]
         .find(value => typeof value === 'number' && Number.isFinite(value) && value > 0) ?? null;
 }
