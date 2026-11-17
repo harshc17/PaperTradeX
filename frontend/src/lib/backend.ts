@@ -6,6 +6,7 @@ let active = API_URL;
 let lastCheck = 0;
 let checking: Promise<string> | null = null;
 let started = false;
+const degradedUntil = new Map<string, number>();
 const rawFetch = (...args: Parameters<typeof fetch>) => globalThis.fetch(...args);
 
 export function getBackend() { return active; }
@@ -35,8 +36,9 @@ export function checkBackend(force = false): Promise<string> {
     checking = (async () => {
         const [primary, backup] = await Promise.all([healthy(API_URL), healthy(BACKUP_API_URL)]);
         lastCheck = Date.now();
-        if (primary) select(API_URL);
+        if (primary && Date.now() >= (degradedUntil.get(API_URL) || 0)) select(API_URL);
         else if (backup) select(BACKUP_API_URL);
+        else if (primary) select(API_URL);
         // Retain selection and account state when neither server is reachable.
         return active;
     })().finally(() => { checking = null; });
@@ -62,6 +64,7 @@ export async function apiFetch(input: string | URL, init: RequestInit = {}): Pro
     const trade = method === 'POST' && path === '/api/trade';
     if (trade && !headers.has('Idempotency-Key')) headers.set('Idempotency-Key', crypto.randomUUID());
     const safeReplay = method === 'GET' || method === 'HEAD' || trade;
+    const recoverableRead = method === 'GET';
     if (method !== 'GET' && method !== 'HEAD') await checkBackend();
     const target = active;
     const send = async (base: string) => {
@@ -76,6 +79,27 @@ export async function apiFetch(input: string | URL, init: RequestInit = {}): Pro
     let response: Response | undefined;
     try {
         response = await send(target);
+        // Database readiness alone cannot detect a host-specific market-provider failure.
+        if (recoverableRead && BACKUP_API_URL && BACKUP_API_URL !== API_URL) {
+            const indices = path === '/api/indices';
+            const original = indices && response.ok ? await response.clone().json() : null;
+            const indexKeys = ['^NSEI', '^BSESN', '^NSEBANK', '^MIDCPNIFTY', '^FINNIFTY', '^BANKEX'];
+            const count = (data: Record<string, any> | null) => indexKeys.filter(key => data?.[key]?.price > 0).length;
+            if ([502, 503, 504].includes(response.status) || (indices && response.ok && count(original) < indexKeys.length)) {
+                const alternate = target === API_URL ? BACKUP_API_URL : API_URL;
+                try {
+                    const recovered = await send(alternate);
+                    if (recovered.ok) {
+                        const other = indices ? await recovered.clone().json() : null;
+                        if (!indices || count(other) > count(original)) {
+                            degradedUntil.set(target, Date.now() + 60000);
+                            select(alternate);
+                            return recovered;
+                        }
+                    }
+                } catch { /* keep the original response when neither provider can serve this request */ }
+            }
+        }
         if (![502, 503, 504].includes(response.status)) return response;
         // Provider outages can produce a 503 from an otherwise healthy backend.
         if (await healthy(target)) return response;

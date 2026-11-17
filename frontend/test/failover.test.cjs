@@ -69,6 +69,32 @@ test('caller cancellations never replay a request', async () => {
     await assert.rejects(api.apiFetch(primary + '/api/search', { signal: controller.signal }));
     assert.equal(calls.length, 1);
 });
+test('a healthy Railway API with missing quotes switches to Render and avoids immediate failback', async () => {
+    const { api } = setup(url => {
+        if (url.endsWith('/health')) return ok({ status: 'ok' });
+        return url.startsWith(primary) ? new Response('{}', { status: 503 }) : ok({ price: 814.95 });
+    });
+    assert.equal((await (await api.apiFetch(primary + '/api/stock/HDFCBANK/realtime')).json()).price, 814.95);
+    assert.equal(api.getBackend(), backup);
+    await api.checkBackend(true);
+    assert.equal(api.getBackend(), backup);
+});
+test('incomplete index lists recover all six indices from the alternate host', async () => {
+    const keys = ['^NSEI', '^BSESN', '^NSEBANK', '^MIDCPNIFTY', '^FINNIFTY', '^BANKEX'];
+    const { api } = setup(url => url.endsWith('/health') ? ok({ status: 'ok' })
+        : ok(Object.fromEntries((url.startsWith(primary) ? keys.slice(0, 4) : keys).map(key => [key, { price: 100 }]))));
+    const data = await (await api.apiFetch(primary + '/api/indices')).json();
+    assert.equal(Object.keys(data).length, 6);
+    assert.equal(api.getBackend(), backup);
+});
+test('a temporary account-service error recovers the portfolio without treating it as a logout', async () => {
+    const { api } = setup(url => url.endsWith('/health') ? ok({ status: 'ok' }) : url.startsWith(primary)
+        ? new Response('{}', { status: 503 }) : ok({ balance: 97721.39, holdings: [{ symbol: 'GOLDBEES' }] }));
+    const response = await api.apiFetch(primary + '/api/portfolio');
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).balance, 97721.39);
+    assert.equal(api.getBackend(), backup);
+});
 test('socket failover preserves listeners, replays subscriptions and detaches the old host', async () => {
     const sockets = []; let change;
     class FakeSocket {

@@ -261,7 +261,7 @@ const authenticateToken = (req, res, next) => {
             if (!account || (account.tokenVersion || 0) !== (user.tokenVersion || 0)) return res.status(403).json({ error: 'Session expired. Please login again.' });
             req.user = { ...user, role: account.role };
             return next();
-        } catch { return res.status(403).json({ error: 'Session expired. Please login again.' }); }
+        } catch { return res.status(503).json({ error: 'Account service temporarily unavailable. Please retry.' }); }
     });
 }
 

@@ -26,7 +26,7 @@ test('protected routes reject missing/forged tokens and non-admin refresh reques
 });
 
 // Exercise real Express/Socket.IO listeners without external databases or market APIs.
-async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, marketPolling = 'true' } = {}) {
+async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, marketPolling = 'true', authDBUnavailable = false } = {}) {
     const filename = path.resolve(__dirname, '../src/server.js');
     const realRequire = createRequire(filename);
     const state = { readyState: ready };
@@ -49,7 +49,10 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, market
             if (name === './models') return {
                 async connectDB() { if (fail) throw new Error('Database unavailable'); },
                 async seedAdmin() {},
-                User: { findById: async () => ({ role: 'USER', tokenVersion: 0 }) },
+                User: { findById: async () => {
+                    if (authDBUnavailable) throw Error('Database temporarily unavailable');
+                    return { role: 'USER', tokenVersion: 0 };
+                } },
             };
             if (name === './services/MarketData') return class {
                 cache = { RELIANCE: { price: 1300 } };
@@ -116,4 +119,12 @@ test('inactive recovery instance serves health without starting market polling',
     assert.equal((await fetch(app.url + '/health')).status, 200);
     app.state.readyState = 0;
     assert.equal((await fetch(app.url + '/health')).status, 503);
+});
+
+test('temporary account database errors do not invalidate a valid login', async t => {
+    const app = await boot(t, { authDBUnavailable: true });
+    const token = jwt.sign({ id: 'test', role: 'USER' }, 'deployment-test-secret');
+    const response = await fetch(app.url + '/api/portfolio', { headers: { Authorization: `Bearer ${token}` } });
+    assert.equal(response.status, 503);
+    assert.doesNotMatch((await response.json()).error, /expired/i);
 });
