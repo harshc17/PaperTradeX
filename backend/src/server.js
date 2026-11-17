@@ -16,6 +16,7 @@ const { assertTradable } = require('./services/MarketIndex');
 const { connectDB, User, PendingSignup, Order, TransactionHistory, WeeklyChallenge, WeeklyChallengeTrade, seedAdmin } = require('./models');
 const NSEClient = require('./services/NSEClient');
 const HistoricalClient = require('./services/HistoricalClient');
+const closingQuote = require('./services/ClosingQuote');
 const { quoteKey, quoteTime, isFreshQuote } = require('./services/QuoteIdentity');
 const AIService = require('./services/AIService');
 const Mailer = require('./services/Mailer');
@@ -567,6 +568,13 @@ async function getClosedMarketPrice(symbol, fallbackPrice = null) {
         }
     } catch {
         // Use the last known in-memory price if chart data is unavailable.
+    }
+
+    if (!(price > 0)) {
+        try {
+            const quote = await closingQuote(bare, dateKey, (symbol, period) => HistoricalClient.historical(symbol, period));
+            if (quote) ({ price, change, dayChange, prevClose, timestamp, source } = quote);
+        } catch { /* an unavailable close remains unavailable; never use a different session */ }
     }
 
     if (!(price > 0) && typeof fallbackPrice === 'number' && fallbackPrice > 0) {

@@ -13,6 +13,8 @@ const OfficialIndexSnapshot = require('./OfficialIndexSnapshot');
 const IndexIntraday = require('./IndexIntraday');
 const PublicReadCache = require('./PublicReadCache');
 const { isMarketIndex } = require('./MarketIndex');
+const closingQuote = require('./ClosingQuote');
+const returnSessionDate = require('./ReturnSession');
 
 // We use NSEClient.constructor.isMarketHours() instead.
 
@@ -201,7 +203,11 @@ class MarketDataService {
             TRACKED_INDICES.map(async ({ key, name, yahooSymbol }) => {
                 if (updates[key] || !yahooSymbol) return;
                 try {
-                    const q = await HistoricalClient.indexQuote(yahooSymbol || key);
+                    let q = await HistoricalClient.indexQuote(yahooSymbol || key);
+                    if (!q && !NSEClient.constructor.isMarketHours()) {
+                        q = await closingQuote(key, returnSessionDate(new Date(), NSEClient.constructor.HOLIDAYS),
+                            (symbol, period) => HistoricalClient.historical(symbol, period));
+                    }
                     if (!q) return;
                     const d = this._updateCache(key, q.price, q.change, q.dayChange, name, q.timestamp, q.source);
                     if (d) updates[key] = d;
