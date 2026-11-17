@@ -6,7 +6,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '../src/services');
 let processed = [];
 for (const [file, exports] of Object.entries({
-    'NSEClient.js': { equityQuote: async () => { throw Error('blocked'); } },
+    'NSEClient.js': { _inBackoff: false, equityQuote: async () => { throw Error('blocked'); } },
     'HistoricalClient.js': { quoteDetail: async symbol => ({ regularMarketPrice: symbol.endsWith('.BO') ? 140 : 110,
         regularMarketChange: 10, regularMarketChangePercent: 10, regularMarketTime: new Date() }) },
     'TradeEngine.js': { processMarketTick: async (...tick) => { processed.push(tick); } },
@@ -81,4 +81,17 @@ test('view-only index ticks never invoke order processing', () => {
         assert.equal(service.cache[symbol].price, 100);
     }
     assert.equal(processed.length, 0);
+});
+
+test('trades reuse an accepted fresh shared quote and refresh only when stale', async () => {
+    const service = new MarketData({ emit() {} });
+    const fresh = { price: 100, timestamp: new Date(Date.now() - 10000) };
+    service.cache.RELIANCE = fresh;
+    let refreshes = 0;
+    service.refreshSymbol = async key => { refreshes++; assert.equal(key, 'RELIANCE'); return { price: 101, timestamp: new Date() }; };
+    assert.equal(await service.tradeQuote('RELIANCE.NS'), fresh);
+    assert.equal(refreshes, 0);
+    service.cache.RELIANCE = { price: 100, timestamp: new Date(Date.now() - 61000) };
+    assert.equal((await service.tradeQuote('RELIANCE')).price, 101);
+    assert.equal(refreshes, 1);
 });

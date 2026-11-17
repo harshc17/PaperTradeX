@@ -237,6 +237,12 @@ class MarketDataService {
     }
 
     /** Fetch individual quotes for extras + priority symbols */
+    async tradeQuote(symbol) {
+        const key = quoteKey(symbol);
+        if (isFreshQuote(this.cache[key])) return this.cache[key];
+        return this.refreshSymbol(key, NSEClient._inBackoff);
+    }
+
     async refreshSymbol(bare, skipNse = false) {
         bare = quoteKey(bare);
         if (this.quoteRequests.has(bare)) return this.quoteRequests.get(bare);

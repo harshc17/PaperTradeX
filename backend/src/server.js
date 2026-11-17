@@ -617,7 +617,7 @@ async function getClosedMarketPrice(symbol, fallbackPrice = null) {
 }
 
 async function resolveStockPrice(symbol) {
-    const quote = await marketDataService.refreshSymbol(quoteKey(symbol), NSEClient._inBackoff);
+    const quote = await marketDataService.tradeQuote(symbol);
     if (isFreshQuote(quote)) return quote;
     throw new Error('A fresh exchange quote is unavailable. Please retry when market data recovers.');
 }
