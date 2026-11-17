@@ -21,6 +21,8 @@ test('regular session boundaries, midnight, weekends and holidays use IST', () =
 function engine(open) {
     let reads = 0;
     const context = { module: { exports: {} }, console, require(name) {
+        if (name === './MarketIndex') return require('../src/services/MarketIndex');
+        if (name === './QuoteIdentity') return require('../src/services/QuoteIdentity');
         if (name === 'mongoose') return { connection: { transaction: callback => callback({}) } };
         if (name === './NSEClient') return {
             getMarketStatus: () => ({ isOpen: open, nextOpenFormatted: 'next session' }),

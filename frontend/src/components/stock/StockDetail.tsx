@@ -6,6 +6,7 @@ import { Bell, Bookmark, Link2, TrendingDown, TrendingUp } from 'lucide-react';
 import { useStockQuote } from '@/lib/useStockQuote';
 import { API_URL } from '@/lib/config';
 import CompanyLogo from '@/components/CompanyLogo';
+import { isMarketIndex } from '@/lib/marketIndex';
 
 type StockData = {
     symbol: string;
@@ -124,6 +125,8 @@ export default function StockDetail({ symbol }: { symbol: string }) {
     const isNegative = change < 0;
     const changeClass = isNegative ? 'text-down' : 'text-up';
     const prettySymbol = String(details.symbol || symbol).replace(/\.NS$/i, '');
+    const index = isMarketIndex(symbol);
+    const indexNames: Record<string, string> = { '^NSEI': 'NIFTY 50', '^BSESN': 'BSE SENSEX', '^NSEBANK': 'BANKNIFTY', '^MIDCPNIFTY': 'MIDCPNIFTY', '^FINNIFTY': 'FINNIFTY', '^BANKEX': 'BANKEX' };
 
     const addToWatchlistAndOpen = () => {
         try {
@@ -150,19 +153,19 @@ export default function StockDetail({ symbol }: { symbol: string }) {
         <div className="bg-transparent">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0 flex-1 basis-72">
-                    <div className="text-[20px] break-words text-ink-muted leading-6 mb-1">
+                    {!index && <div className="text-sm break-words text-ink-muted leading-6 mb-1">
                         {prettySymbol} · {details.exchange}
-                    </div>
-                    <h1 className="flex items-center gap-3 text-[24px] sm:text-[28px] font-semibold text-ink-heading leading-[1.15] mb-2.5">
-                        <CompanyLogo symbol={symbol} />
-                        <span className="min-w-0 break-words">{details.shortName}</span>
+                    </div>}
+                    <h1 className={`flex ${index ? 'flex-col items-start gap-2' : 'items-center gap-3'} text-[24px] sm:text-[28px] font-semibold text-ink-heading leading-[1.15] mb-4`}>
+                        <CompanyLogo symbol={symbol} className={index ? 'h-12 w-12' : 'h-10 w-10'} />
+                        <span className="min-w-0 break-words">{indexNames[symbol.toUpperCase()] || details.shortName}</span>
                     </h1>
 
                     <div className={`flex flex-wrap items-baseline gap-2 transition-colors duration-300 ${
                         flash === 'up' ? 'text-up' : flash === 'down' ? 'text-down' : 'text-ink-heading'
                     }`}>
                         <span className="text-[24px] sm:text-[28px] font-semibold tabular-nums">
-                            {currentPrice === null ? '—' : '₹' + currentPrice.toLocaleString('en-IN', {
+                            {currentPrice === null ? '—' : (index ? '' : '₹') + currentPrice.toLocaleString('en-IN', {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                             })}

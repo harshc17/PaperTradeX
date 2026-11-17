@@ -12,6 +12,7 @@ const { quoteKey, quoteTime, isFreshQuote, nseQuoteTime } = require('./QuoteIden
 const OfficialIndexSnapshot = require('./OfficialIndexSnapshot');
 const IndexIntraday = require('./IndexIntraday');
 const PublicReadCache = require('./PublicReadCache');
+const { isMarketIndex } = require('./MarketIndex');
 
 // We use NSEClient.constructor.isMarketHours() instead.
 
@@ -98,19 +99,23 @@ class MarketDataService {
         const at = quoteTime(timestamp);
         if (!(price > 0) || !Number.isFinite(at)) return prev || null;
         if (prev && quoteTime(prev.timestamp) > at) return prev;
+        const sameTick = prev && prev.price === price && quoteTime(prev.timestamp) === at;
+        const normalizedChange = parseFloat((change || 0).toFixed(2));
+        const normalizedDayChange = parseFloat((dayChange || 0).toFixed(2));
+        if (sameTick && prev.change === normalizedChange && prev.dayChange === normalizedDayChange && prev.source === source) return prev;
         const data = {
             symbol:    bare,
             shortname: shortname || bare,
             price:     price,
             prevPrice: prev?.price ?? price,
-            change:    parseFloat((change || 0).toFixed(2)),
-            dayChange: parseFloat((dayChange || 0).toFixed(2)),
+            change:    normalizedChange,
+            dayChange: normalizedDayChange,
             timestamp: new Date(at),
             receivedAt: new Date(),
             source,
         };
         this.cache[bare] = data;
-        if (isFreshQuote(data)) TradeEngine.processMarketTick(bare, price).catch(() => {});
+        if (!sameTick && !isMarketIndex(bare) && isFreshQuote(data)) TradeEngine.processMarketTick(bare, price).catch(() => {});
         if (!bare.startsWith('^') && !bare.endsWith('.BO')) this.cache[bare + '.NS'] = data;
 
         // Emit lightweight price_tick for priority symbols

@@ -235,10 +235,14 @@ module.exports = {
         if (!providers.length) return {};
         return readCache.load(`batch:${requests.join(',')}`, 0, async () => {
             const quotes = [];
+            let lastError;
             for (let offset = 0; offset < providers.length; offset += 100) {
-                const result = await yf.quote(providers.slice(offset, offset + 100), {}, { validateResult: false });
-                quotes.push(...(Array.isArray(result) ? result : []));
+                try {
+                    const result = await yf.quote(providers.slice(offset, offset + 100), {}, { validateResult: false });
+                    quotes.push(...(Array.isArray(result) ? result : []));
+                } catch (error) { lastError = error; }
             }
+            if (!quotes.length && lastError) throw lastError;
             const exact = new Map(quotes.filter(q => q?.symbol && q.regularMarketPrice > 0).map(q => [q.symbol.toUpperCase(), q]));
             return Object.fromEntries(requests.flatMap(symbol => {
                 const quote = exact.get(getYahooCandidates(symbol)[0].toUpperCase());
@@ -257,8 +261,12 @@ module.exports = {
                 }
             } catch (e) {
                 if (e.name === 'FailedYahooValidationError' && e.result) {
-                    const r = e.result;
-                    if (r && r.symbol?.toUpperCase() === yhSymbol.toUpperCase() && r.regularMarketPrice > 0) return r;
+                    // quoteCombine validates the entire batch even when validation
+                    // is disabled; recover only this exact, usable instrument.
+                    const results = Array.isArray(e.result) ? e.result : [e.result];
+                    const quote = results.find(r => typeof r?.symbol === 'string' &&
+                        r.symbol.toUpperCase() === yhSymbol.toUpperCase() && Number.isFinite(r.regularMarketPrice) && r.regularMarketPrice > 0);
+                    if (quote) return quote;
                 }
                 console.warn(`[Yahoo] quote failed for "${yhSymbol}": ${e.message}`);
             }
@@ -275,11 +283,11 @@ module.exports = {
         try {
             const now = new Date();
             const period1 = new Date(now - 3 * 86400000); // enough to include previous trading session
-            const result = await yf.chart(symbol, {
+            const [result, quote] = await Promise.all([yf.chart(symbol, {
                 period1,
                 period2: now,
                 interval: '1m',
-            }, { validateResult: false });
+            }, { validateResult: false }), this.quoteDetail(symbol).catch(() => null)]);
 
             const quotes = (result?.quotes || []).filter(q => q?.close > 0);
             if (quotes.length === 0) return null;
@@ -288,11 +296,7 @@ module.exports = {
             const meta = result?.meta || {};
 
             const price = last.close;
-            const prevClose =
-                meta?.regularMarketPreviousClose ??
-                meta?.chartPreviousClose ??
-                meta?.previousClose ??
-                price;
+            const prevClose = chartPreviousClose(quote, meta) ?? price;
             const change    = parseFloat((price - prevClose).toFixed(2));
             const dayChange = prevClose > 0
                 ? parseFloat(((change / prevClose) * 100).toFixed(2))

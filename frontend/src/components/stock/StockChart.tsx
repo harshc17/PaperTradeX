@@ -31,9 +31,9 @@ const priceCursor: Plugin<'line', PriceCursorOptions> = {
     id: 'priceCursor',
     beforeDatasetsDraw(chart, _args, { previousClose, light }) {
         if (!(previousClose && previousClose > 0)) return;
-        const y = chart.scales.y.getPixelForValue(previousClose);
+        const referenceY = chart.scales.y.getPixelForValue(previousClose);
         const { ctx, chartArea } = chart;
-        if (y < chartArea.top || y > chartArea.bottom) return;
+        const y = Math.max(chartArea.top, Math.min(chartArea.bottom, referenceY));
         ctx.save(); ctx.strokeStyle = light ? 'rgba(83,91,99,0.3)' : 'rgba(190,195,201,0.3)';
         ctx.lineWidth = 1; ctx.setLineDash([4.5, 2.5]); ctx.beginPath();
         ctx.moveTo(chartArea.left, y); ctx.lineTo(chartArea.right, y); ctx.stroke(); ctx.restore();
@@ -345,8 +345,6 @@ export default function StockChart({ symbol }: { symbol: string }) {
             },
             y: {
                 grace: '5%',
-                suggestedMin: activePeriod.value === '1d' && prevClose ? Math.min(prevClose, ...chartCloses) : undefined,
-                suggestedMax: activePeriod.value === '1d' && prevClose ? Math.max(prevClose, ...chartCloses) : undefined,
                 display: false,
                 position: 'right' as const,
                 grid: { display: false },

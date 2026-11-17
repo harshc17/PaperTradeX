@@ -57,3 +57,28 @@ test('stale and unknown timestamps never fill paper orders or appear fresh', () 
     assert.equal(service._updateCache('SBIN', 100, 0, 0, 'SBI'), null);
     assert.equal(processed.length, 0);
 });
+
+test('duplicate ticks do not reprocess orders, but new timestamps and price corrections do', () => {
+    const service = new MarketData({ emit() {} });
+    processed = [];
+    const at = Date.now() - 1000;
+    const first = service._updateCache('RELIANCE', 100, 1, 1, 'Reliance', at);
+    assert.equal(service._updateCache('RELIANCE.NS', 100, 1, 1, 'Reliance', at), first);
+    assert.equal(processed.length, 1);
+    service._updateCache('RELIANCE', 100, 2, 2, 'Reliance', at);
+    assert.equal(service.cache.RELIANCE.change, 2);
+    assert.equal(processed.length, 1);
+    service._updateCache('RELIANCE', 100, 2, 2, 'Reliance', at + 100);
+    service._updateCache('RELIANCE', 101, 3, 3, 'Reliance', at + 100);
+    assert.equal(processed.length, 3);
+});
+
+test('view-only index ticks never invoke order processing', () => {
+    const service = new MarketData({ emit() {} });
+    processed = [];
+    for (const symbol of ['^NSEI', '^BSESN', '^NSEBANK', '^MIDCPNIFTY', '^FINNIFTY', '^BANKEX']) {
+        service._updateCache(symbol, 100, 1, 1, symbol, Date.now());
+        assert.equal(service.cache[symbol].price, 100);
+    }
+    assert.equal(processed.length, 0);
+});
