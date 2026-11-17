@@ -26,7 +26,9 @@ services:
       - key: EMAIL_FROM
         value: "harsh@papertradex.in"
       - key: MARKET_POLLING_ENABLED
-        value: "false"
+        value: "true"
+      - key: STANDBY_PRIMARY_URL
+        value: "https://paperttradex-production.up.railway.app"
       - key: CORS_ORIGIN
         value: "https://papertradex.in,https://www.papertradex.in,https://papertradex.vercel.app"
       - key: NODE_VERSION

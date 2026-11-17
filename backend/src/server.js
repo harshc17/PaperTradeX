@@ -63,7 +63,7 @@ app.use(cors({
     origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),
     credentials: true,
     methods: ['GET', 'POST', 'DELETE', 'PUT', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Idempotency-Key']
 }));
 app.use(express.json({ limit: '1mb' }));
 
@@ -1213,10 +1213,16 @@ app.post('/api/trade', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     try {
         assertTradable(symbol);
-        TradeEngine.assertMarketOpen();
         if (typeof symbol !== 'string' || !/^[A-Z0-9&-]{1,30}(\.(NS|BO))?$/i.test(symbol)) {
             return res.status(400).json({ error: 'Invalid stock symbol' });
         }
+        const requestKey = req.get('Idempotency-Key') || null;
+        if (requestKey && !/^[a-zA-Z0-9-]{16,80}$/.test(requestKey)) {
+            return res.status(400).json({ error: 'Invalid order request ID' });
+        }
+        const replay = await TradeEngine.findTradeReplay(userId, requestKey, type, symbol, quantity, orderType, limitPrice);
+        if (replay) return res.json(replay);
+        TradeEngine.assertMarketOpen();
         const resolved = await resolveStockPrice(symbol);
         const effectivePrice = resolved?.price;
 
@@ -1224,9 +1230,14 @@ app.post('/api/trade', authenticateToken, async (req, res) => {
             return res.status(400).json({ error: `Price not available for ${symbol}` });
         }
 
-        const result = await TradeEngine.executeTrade(userId, type, symbol, quantity, effectivePrice, orderType, limitPrice, false);
+        const result = await TradeEngine.executeTrade(userId, type, symbol, quantity, effectivePrice, orderType, limitPrice, requestKey);
         res.json(result);
-    } catch (e) { res.status(400).json({ error: e.message }); }
+    } catch (e) {
+        // Database/commit failures can be ambiguous: retain the client's request ID for recovery.
+        const businessError = e.name === 'Error' && !e.errorLabels?.length;
+        res.status(businessError ? 400 : 503).json({ error: businessError ? e.message
+            : 'Trading service temporarily unavailable. Check order history before retrying.' });
+    }
 });
 
 app.get('/api/orders', authenticateToken, async (req, res) => {
@@ -1308,7 +1319,23 @@ async function start() {
             console.log(`Server listening on port ${PORT}`);
             // A recovery instance stays idle until promoted to avoid duplicate feed traffic.
             if (process.env.MARKET_POLLING_ENABLED !== 'false') {
-                marketDataService.startPolling();
+                const primary = process.env.STANDBY_PRIMARY_URL;
+                let primaryHealthy = true;
+                let checkingPrimary = false;
+                const checkPrimary = async () => {
+                    if (!primary || checkingPrimary) return;
+                    checkingPrimary = true;
+                    try {
+                        const response = await fetch(`${primary.replace(/\/$/, '')}/health`, {
+                            signal: AbortSignal.timeout(3500),
+                        });
+                        primaryHealthy = response.ok && (await response.json()).status === 'ok';
+                    } catch { primaryHealthy = false; }
+                    finally { checkingPrimary = false; }
+                };
+                if (primary) { void checkPrimary(); setInterval(checkPrimary, 10000).unref(); }
+                // The standby fetches feeds when serving users or the primary is down.
+                marketDataService.startPolling(() => !primary || !primaryHealthy || io.engine.clientsCount > 0);
             }
         });
     } catch (error) {

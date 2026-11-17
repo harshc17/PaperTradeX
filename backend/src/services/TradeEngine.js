@@ -85,14 +85,37 @@ class TradeEngine {
         }
     }
 
-    async executeTrade(userId, type, symbol, quantity, currentPrice, orderType = 'MARKET', limitPrice = null) {
-        assertTradable(symbol);
-        this.assertMarketOpen();
-        return mongoose.connection.transaction(session =>
-            this._executeTrade(userId, type, symbol, quantity, currentPrice, orderType, limitPrice, session));
+    async findTradeReplay(userId, requestKey, type, symbol, quantity, orderType, limitPrice, session = null) {
+        if (!requestKey) return null;
+        const order = await Order.findOne({ user: userId, requestKey }).session(session);
+        if (!order) return null;
+        if (order.symbol !== quoteKey(symbol) || order.side !== type || order.quantity !== Number(quantity)
+            || order.orderType !== orderType || (orderType === 'LIMIT' && order.limitPrice !== Number(limitPrice))) {
+            throw new Error('Order request ID was already used for a different trade');
+        }
+        const user = await User.findById(userId).session(session);
+        return { success: true, orderId: order.orderId, status: order.status,
+            newBalance: user.balance, price: order.price ?? undefined };
     }
 
-    async _executeTrade(userId, type, symbol, quantity, currentPrice, orderType, limitPrice, session) {
+    async executeTrade(userId, type, symbol, quantity, currentPrice, orderType = 'MARKET', limitPrice = null, requestKey = null) {
+        assertTradable(symbol);
+        try {
+            return await mongoose.connection.transaction(async session => {
+                const replay = await this.findTradeReplay(userId, requestKey, type, symbol, quantity, orderType, limitPrice, session);
+                if (replay) return replay;
+                return this._executeTrade(userId, type, symbol, quantity, currentPrice, orderType, limitPrice, session, requestKey);
+            });
+        } catch (error) {
+            if (requestKey && error.code === 11000) {
+                const replay = await this.findTradeReplay(userId, requestKey, type, symbol, quantity, orderType, limitPrice);
+                if (replay) return replay;
+            }
+            throw error;
+        }
+    }
+
+    async _executeTrade(userId, type, symbol, quantity, currentPrice, orderType, limitPrice, session, requestKey = null) {
         this.assertMarketOpen();
         // ── Input Validation ────────────────────────────────────────────────────
         const user = await User.findById(userId).session(session);
@@ -141,6 +164,7 @@ class TradeEngine {
                 await this._applyTradeExecution(user, type, bare, qty, execPrice, totalAmount, session);
 
                 const order = new Order({
+                    ...(requestKey ? { requestKey } : {}),
                     user:        userId,
                     symbol:      bare,
                     side:        type,
@@ -158,6 +182,7 @@ class TradeEngine {
 
             // Queued limit order
             const order = new Order({
+                ...(requestKey ? { requestKey } : {}),
                 user:      userId,
                 symbol:    bare,
                 side:      type,
@@ -177,6 +202,7 @@ class TradeEngine {
 
         // Save completed MARKET order for history
         const order = new Order({
+            ...(requestKey ? { requestKey } : {}),
             user:        userId,
             symbol:      bare,
             side:        type,

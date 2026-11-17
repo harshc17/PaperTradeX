@@ -313,7 +313,7 @@ class MarketDataService {
         }
     }
 
-    startPolling() {
+    startPolling(allowed = () => true) {
         const isOpen = NSEClient.constructor.isMarketHours();
 
         console.log(
@@ -325,6 +325,7 @@ class MarketDataService {
         let consecutiveErrors = 0;
 
         const fetchLoop = async () => {
+            if (!allowed()) { setTimeout(fetchLoop, 1000); return; }
             const marketOpen = NSEClient.constructor.isMarketHours();
             const pollMs = marketOpen ? NSE_POLL_OPEN : NSE_POLL_CLOSED;
 
@@ -399,7 +400,7 @@ class MarketDataService {
         let fastErrors = 0;
         const fastLoop = async () => {
             const started = Date.now();
-            if (NSEClient.constructor.isMarketHours()) {
+            if (allowed() && NSEClient.constructor.isMarketHours()) {
                 try {
                     await this._fetchFastQuotes();
                     fastErrors = 0;

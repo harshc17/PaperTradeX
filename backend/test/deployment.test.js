@@ -59,6 +59,7 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, market
             if (name === './services/NSEClient') return { getMarketStatus: () => ({ isOpen: false }), constructor: { isMarketHours: () => true, HOLIDAYS: {} } };
             if (name === './services/TradeEngine') return {
                 assertMarketOpen() {},
+                findTradeReplay: async () => null,
                 executeTrade: async (user, type, symbol, quantity, price) => ({ success: true, price }),
             };
             if (['./services/PasswordReset', './services/SignupVerification', './services/ReturnSession', './services/MarketIndex', './services/QuoteIdentity'].includes(name)) return realRequire(name);

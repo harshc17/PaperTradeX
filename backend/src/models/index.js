@@ -78,6 +78,7 @@ const Counter = mongoose.models.Counter || mongoose.model('Counter', counterSche
 
 const orderSchema = new mongoose.Schema({
     orderId:     { type: String, unique: true, sparse: true },
+    requestKey:  { type: String },
     user:        { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     symbol:      { type: String, required: true },
     side:        { type: String, enum: ['BUY', 'SELL'], required: true },
@@ -90,6 +91,8 @@ const orderSchema = new mongoose.Schema({
 }, { timestamps: true });
 orderSchema.index({ user: 1, createdAt: -1 });
 orderSchema.index({ symbol: 1, status: 1 });
+orderSchema.index({ user: 1, requestKey: 1 }, { unique: true,
+    partialFilterExpression: { requestKey: { $type: 'string' } } });
 
 orderSchema.pre('save', async function () {
     if (!this.orderId) {
@@ -158,6 +161,7 @@ async function connectDB() {
         });
         // Signup throttling and one-account-per-email depend on these indexes.
         await PendingSignup.init();
+        await Order.init();
         const safeUri = MONGODB_URI.replace(/\/\/[^@]+@/, '//***:***@');
         console.log(`[MongoDB] Connected successfully to ${safeUri} ✓`);
     } catch (err) {
