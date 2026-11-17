@@ -150,14 +150,14 @@ export default function StockDetail({ symbol }: { symbol: string }) {
     };
 
     return (
-        <div className="bg-transparent">
+        <div className="bg-transparent" data-testid="stock-summary">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0 flex-1 basis-72">
-                    {!index && <div className="text-sm break-words text-ink-muted leading-6 mb-1">
+                    {!index && <div className="text-sm break-words text-ink-muted leading-6 mb-1 [@media(max-height:600px)]:hidden">
                         {prettySymbol} · {details.exchange}
                     </div>}
-                    <h1 className={`flex ${index ? 'flex-col items-start gap-2' : 'items-center gap-3'} text-[24px] sm:text-[28px] font-semibold text-ink-heading leading-[1.15] mb-4`}>
-                        <CompanyLogo symbol={symbol} className={index ? 'h-12 w-12' : 'h-10 w-10'} />
+                    <h1 className="flex items-center gap-2 sm:gap-3 text-[20px] sm:text-[26px] font-semibold text-ink-heading leading-[1.15] mb-2">
+                        <CompanyLogo symbol={symbol} className="h-8 w-8 sm:h-10 sm:w-10" />
                         <span className="min-w-0 break-words">{indexNames[symbol.toUpperCase()] || details.shortName}</span>
                     </h1>
 

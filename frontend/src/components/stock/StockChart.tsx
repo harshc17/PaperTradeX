@@ -162,6 +162,8 @@ export default function StockChart({ symbol }: { symbol: string }) {
     const [hoverIdx, setHoverIdx] = useState<number | null>(null);
     const [hoverX, setHoverX] = useState(0);
     const chartRef = useRef<ChartJS<'line'>>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const canvasFrameRef = useRef<HTMLDivElement>(null);
     const touchEndedAt = useRef(0);
     // prevClose = yesterday's closing price, used as the 1D return anchor.
     // Comes from the /history API response (Yahoo chart meta or NSE cache).
@@ -172,6 +174,34 @@ export default function StockChart({ symbol }: { symbol: string }) {
         ? 'h-[clamp(180px,52vw,230px)] sm:h-[350px] lg:h-auto lg:aspect-[2.35/1]'
         : 'h-[clamp(180px,52vw,230px)] sm:h-[350px]';
     const placeholderSize = bare.startsWith('^') ? plotSize : 'h-[clamp(180px,52vw,230px)] sm:h-full';
+    useEffect(() => {
+        if (fullScreen || loading || error) return;
+        const content = contentRef.current, canvas = canvasFrameRef.current;
+        if (!content || !canvas) return;
+        let animationFrame = 0;
+        const measure = () => {
+            const bounds = canvas.getBoundingClientRect();
+            const tail = content.getBoundingClientRect().bottom - bounds.bottom;
+            const viewport = window.visualViewport?.height || window.innerHeight;
+            const preferred = window.innerWidth < 640 ? Math.max(180, Math.min(230, window.innerWidth * .52))
+                : bare.startsWith('^') && window.innerWidth >= 1024 ? bounds.width / 2.35 : 350;
+            const height = Math.max(96, Math.min(preferred, viewport - (bounds.top + window.scrollY) - tail - 12));
+            const value = `${Math.floor(height)}px`;
+            if (content.style.getPropertyValue('--chart-fit-height') !== value) content.style.setProperty('--chart-fit-height', value);
+        };
+        const schedule = () => { cancelAnimationFrame(animationFrame); animationFrame = requestAnimationFrame(measure); };
+        const observer = new ResizeObserver(schedule);
+        observer.observe(content);
+        observer.observe(document.body);
+        window.addEventListener('resize', schedule);
+        window.visualViewport?.addEventListener('resize', schedule);
+        schedule();
+        return () => {
+            cancelAnimationFrame(animationFrame); observer.disconnect();
+            window.removeEventListener('resize', schedule);
+            window.visualViewport?.removeEventListener('resize', schedule);
+        };
+    }, [fullScreen, loading, error, activePeriod.value, history.length, bare]);
     const formatChartPrice = (value: number) => bare.startsWith('^')
         ? value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : formatINR(value);
 
@@ -384,7 +414,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
 
     /* ─── Render ──────────────────────────────────────────────────────────────────── */
     const content = (
-        <div className={fullScreen ? 'h-full min-h-0 flex flex-col' : 'bg-transparent'}>
+        <div ref={contentRef} className={fullScreen ? 'h-full min-h-0 flex flex-col' : 'bg-transparent'}>
             {fullScreen && <div className="shrink-0 mb-2 flex items-center justify-between gap-3">
                 <h2 id="full-chart-title" className="text-base sm:text-lg font-semibold text-ink-heading">{symbol.replace(/^\^/, '').replace(/\.(NS|BO)$/, '')} chart</h2>
                 <button type="button" onClick={() => { clearCursor(); setFullScreen(false); }} aria-label="Close full-screen chart" className="w-11 h-11 shrink-0 grid place-items-center rounded-full border border-line text-ink-muted hover:text-primary">
@@ -397,7 +427,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
             </div>}
             {feed.note && <p className="text-xs text-ink-muted mb-2" role="status">{feed.note}</p>}
             {refreshError && <p className="text-xs text-[var(--warning)] mb-2" role="status">Chart refresh unavailable. Showing saved candles.</p>}
-            <div className={fullScreen ? 'relative flex-1 min-h-0 flex flex-col pt-6' : bare.startsWith('^') ? 'relative pt-6' : 'relative sm:h-[420px] pt-6'} data-testid="price-plot">
+            <div className={fullScreen ? 'relative flex-1 min-h-0 flex flex-col pt-6' : 'relative pt-6'} data-testid="price-plot">
                 {hoverPt && <div data-testid="chart-cursor-label" className="absolute top-0 w-[180px] max-w-full text-center text-[11px] text-ink-heading whitespace-nowrap pointer-events-none" style={{ left: `clamp(0px, ${hoverX - 90}px, max(0px, 100% - 180px))` }}>
                     {formatChartPrice(hoverPt.close)} <span className="text-ink-faint">|</span> {activePeriod.value === '1d' ? new Date(hoverPt.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : new Date(hoverPt.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: ['1y', '3y', '5y', 'max'].includes(activePeriod.value) ? 'numeric' : undefined, timeZone: 'Asia/Kolkata' })}
                 </div>}
@@ -423,14 +453,15 @@ export default function StockChart({ symbol }: { symbol: string }) {
                     </div>
                 ) : (
                     <>
-                        <div className={`${fullScreen ? 'flex-1 min-h-0' : plotSize} relative cursor-crosshair touch-pan-y`} onMouseLeave={clearCursor} onTouchStartCapture={() => { touchEndedAt.current = 0; }} onTouchEnd={endTouch} onTouchCancel={endTouch}>
+                        <div ref={canvasFrameRef} style={fullScreen ? undefined : { height: 'var(--chart-fit-height, 200px)' }} className={`${fullScreen ? 'flex-1 min-h-0' : 'min-h-24'} relative cursor-crosshair touch-pan-y`} onMouseLeave={clearCursor} onTouchStartCapture={() => { touchEndedAt.current = 0; }} onTouchEnd={endTouch} onTouchCancel={endTouch}>
                             <Line ref={chartRef} data={lineData} options={lineOptions} plugins={[priceCursor]} aria-label={`${symbol} ${activePeriod.label} price chart. Use arrow keys to inspect prices; Escape clears selection.`} role="img" tabIndex={0} onKeyDown={inspectWithKey} onBlur={clearCursor} />
                         </div>
                     </>
                 )}
             </div>
 
-            <div className="shrink-0 mt-3 flex items-center gap-2 overflow-x-auto pb-1 border-t border-line pt-3">
+            <div className="shrink-0 mt-2 flex items-center gap-2 pb-1 border-t border-line pt-2">
+                <div className="min-w-0 flex-1 flex items-center gap-2 overflow-x-auto">
                 {PERIODS.map((p) => (
                     <button
                         key={p.value}
@@ -455,14 +486,15 @@ export default function StockChart({ symbol }: { symbol: string }) {
                 >
                     <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                 </button>
+                </div>
+                {!fullScreen && <button ref={expandRef} type="button" onClick={() => { clearCursor(); setFullScreen(true); }} aria-label="Open full-screen chart" title="Full view" className="h-11 w-11 sm:w-auto shrink-0 inline-flex items-center justify-center gap-2 rounded-lg border border-line sm:px-3 text-xs font-medium text-ink-muted hover:text-primary hover:bg-surface-2">
+                    <Maximize2 className="w-4 h-4" /><span className="hidden sm:inline">Full view</span>
+                </button>}
             </div>
 
             <div className="shrink-0 mt-1 text-xs text-ink-faint">
                 {feed.resolution === 'daily' ? 'Daily history' : feed.delayed ? 'Delayed intraday' : isLive ? 'Chart feed connected' : 'Chart feed delayed'} · {displayHistory.length} points · {feed.source || 'Historical OHLCV'}
             </div>
-            {!fullScreen && <button ref={expandRef} type="button" onClick={() => { clearCursor(); setFullScreen(true); }} aria-label="Open full-screen chart" className="mt-2 min-h-11 inline-flex items-center gap-2 rounded-lg border border-line px-3 text-xs font-medium text-ink-muted hover:text-primary hover:bg-surface-2">
-                <Maximize2 className="w-4 h-4" /> Full view
-            </button>}
         </div>
     );
     return fullScreen ? createPortal(
