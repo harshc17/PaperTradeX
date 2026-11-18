@@ -54,8 +54,10 @@ function chartPreviousClose(quote, meta = {}) {
 function indexPreviousClose(quote, meta, quotes, official) {
     const session = date => new Date(+new Date(date) + 330 * 60000).toISOString().slice(0, 10);
     const last = quotes.at(-1);
+    if (!last) return null;
     const day = session(last.date);
     const priorDay = returnSessionDate(new Date(`${day}T00:00:00+05:30`), NSEClient.constructor.HOLIDAYS);
+    if (official?.asOf === day && official.prevClose > 0) return official.prevClose;
     if (official?.asOf === priorDay && official.price > 0) return official.price;
     if (quote && quote.regularMarketTime && session(quote.regularMarketTime) === day) {
         const previous = chartPreviousClose(quote);
@@ -128,7 +130,10 @@ module.exports = {
         const open = NSEClient.constructor.isMarketHours();
         const session = returnSessionDate(new Date(), NSEClient.constructor.HOLIDAYS);
         const key = `chart:${getYahooCandidates(symbol).join(',')}:${period}:${session}:${open}`;
-        return readCache.load(key, open ? 30000 : 3600000,
+        // Delayed feeds can deliver the final candles after the exchange closes.
+        const closeTime = Date.parse(`${session}T15:30:00+05:30`);
+        const settling = Date.now() >= closeTime && Date.now() < closeTime + 3600000;
+        return readCache.load(key, open || period === '1d' || settling ? 30000 : 3600000,
             () => this._historical(symbol, period), value => value?.data?.length > 0);
     },
 
@@ -154,6 +159,7 @@ module.exports = {
                     period2: now,
                     interval: cfg.interval,
                 }, { validateResult: false });
+                if (r?.meta?.symbol && r.meta.symbol.toUpperCase() !== yhSymbol.toUpperCase()) continue;
                 const quotes = r?.quotes || [];
                 if (quotes.some(q => q?.close > 0)) {
                     result = r;
@@ -200,11 +206,9 @@ module.exports = {
         let prevClose = null;
         if (period === '1d') {
             const meta = result?.meta || {};
-            prevClose = chartPreviousClose(await quoteRead, meta);
+            const quote = await quoteRead;
             const official = (await officialRead)[symbol.toUpperCase()];
-            const chartSession = filteredPoints.at(-1)?.date?.slice(0, 10);
-            if (official && chartSession) prevClose = official.asOf === chartSession ? official.prevClose
-                : official.asOf < chartSession ? official.price : prevClose;
+            prevClose = indexPreviousClose(quote, meta, points, official);
         }
 
         const resolution = source.includes('aggregated') || cfg.interval === '1d' ? 'daily'

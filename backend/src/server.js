@@ -12,7 +12,7 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const MarketDataService = require('./services/MarketData');
 const TradeEngine = require('./services/TradeEngine');
-const { assertTradable } = require('./services/MarketIndex');
+const { assertTradable, isMarketIndex } = require('./services/MarketIndex');
 const { connectDB, User, PendingSignup, Order, TransactionHistory, WeeklyChallenge, WeeklyChallengeTrade, seedAdmin } = require('./models');
 const NSEClient = require('./services/NSEClient');
 const HistoricalClient = require('./services/HistoricalClient');
@@ -537,14 +537,14 @@ function getClosedMarketSessionKey(date = new Date()) {
 
 async function getClosedMarketPrice(symbol, fallbackPrice = null) {
     const bare = quoteKey(symbol);
-    if (['^MIDCPNIFTY', '^FINNIFTY', '^NSEI', '^NSEBANK'].includes(bare)) {
+    if (isMarketIndex(bare)) {
         await marketDataService._fetchIndices();
         return marketDataService.cache[bare] || null;
     }
     const dateKey = getClosedMarketSessionKey();
     const frozen = CLOSED_PRICE_CACHE[bare];
 
-    if (frozen?.dateKey === dateKey && typeof frozen.price === 'number') {
+    if (frozen?.dateKey === dateKey && typeof frozen.price === 'number' && Date.now() - frozen.checkedAt < 60000) {
         return frozen;
     }
 
@@ -558,14 +558,8 @@ async function getClosedMarketPrice(symbol, fallbackPrice = null) {
 
     try {
         const yData = await HistoricalClient.quoteDetail(bare);
-        if (yData && typeof yData.regularMarketPrice === 'number' && yData.regularMarketPrice > 0) {
-            price = yData.regularMarketPrice;
-            source = 'close';
-            change = yData.regularMarketChange ?? 0;
-            dayChange = yData.regularMarketChangePercent ?? 0;
-            prevClose = yData.regularMarketPreviousClose ?? (price - change);
-            timestamp = yData.regularMarketTime;
-        }
+        const quote = closingQuote.fromProvider(yData, dateKey);
+        if (quote) ({ price, change, dayChange, prevClose, timestamp, source } = quote);
     } catch {
         // Use the last known in-memory price if chart data is unavailable.
     }
@@ -577,12 +571,14 @@ async function getClosedMarketPrice(symbol, fallbackPrice = null) {
         } catch { /* an unavailable close remains unavailable; never use a different session */ }
     }
 
-    if (!(price > 0) && typeof fallbackPrice === 'number' && fallbackPrice > 0) {
+    const cachedDay = Number.isFinite(quoteTime(cached?.timestamp))
+        ? new Date(quoteTime(cached.timestamp) + 330 * 60000).toISOString().slice(0, 10) : null;
+    if (!(price > 0) && cachedDay === dateKey && typeof fallbackPrice === 'number' && fallbackPrice > 0) {
         price = fallbackPrice;
         source = 'fallback';
     }
 
-    if (!(price > 0) && typeof cached?.price === 'number' && cached.price > 0) {
+    if (!(price > 0) && cachedDay === dateKey && typeof cached?.price === 'number' && cached.price > 0) {
         price = cached.price;
         source = 'cache';
         change = cached.change ?? change;
@@ -598,6 +594,7 @@ async function getClosedMarketPrice(symbol, fallbackPrice = null) {
 
     const entry = {
         dateKey,
+        checkedAt: Date.now(),
         price,
         change,
         dayChange,
@@ -976,7 +973,7 @@ app.get('/api/indices', async (req, res) => {
 // ─── Realtime Price (cache → NSE → Yahoo Finance fallback) ──────────────────
 async function displayQuote(symbol) {
     const key = quoteKey(symbol);
-    if (key === '^MIDCPNIFTY' || key === '^FINNIFTY') {
+    if (isMarketIndex(key)) {
         await marketDataService._fetchIndices();
         return marketDataService.cache[key] || null;
     }

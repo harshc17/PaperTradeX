@@ -2,6 +2,39 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { parseSnapshot, latest } = require('../src/services/OfficialIndexSnapshot');
 const headers = 'Index Name,Index Date,Closing Index Value,Points Change,Change(%)';
+
+test('delayed intraday indices continue recovering after close without an older report rolling them back', async () => {
+    const nse = require('../src/services/NSEClient');
+    const history = require('../src/services/HistoricalClient');
+    const official = require('../src/services/OfficialIndexSnapshot');
+    const intraday = require('../src/services/IndexIntraday');
+    const MarketData = require('../src/services/MarketData');
+    const saved = { open: nse.constructor.isMarketHours, all: nse.allIndices, index: history.indexQuote,
+        history: history.historical, latest: official.latest, intraday: intraday.historical };
+    const at = Date.now() - 60000;
+    try {
+        nse.constructor.isMarketHours = () => false;
+        nse.allIndices = async () => ({ data: [] });
+        history.indexQuote = async () => null;
+        history.historical = async () => ({ data: [] });
+        official.latest = async () => ({ '^FINNIFTY': { price: 90, timestamp: new Date(at - 86400000) } });
+        intraday.historical = async () => ({ data: [{ date: new Date(at).toISOString(), close: 105 }], prevClose: 100 });
+        const service = new MarketData({ emit() {} });
+        for (const key of ['^MIDCPNIFTY', '^FINNIFTY']) {
+            service._updateCache(key, 101, 1, 1, key, at - 1800000);
+        }
+        await service._fetchIndices();
+        for (const key of ['^MIDCPNIFTY', '^FINNIFTY']) {
+            assert.equal(service.cache[key].price, 105);
+            assert.equal(service.cache[key].prevClose, 100);
+            assert.equal(+service.cache[key].timestamp, at);
+        }
+    } finally {
+        nse.constructor.isMarketHours = saved.open; nse.allIndices = saved.all;
+        history.indexQuote = saved.index; history.historical = saved.history;
+        official.latest = saved.latest; intraday.historical = saved.intraday;
+    }
+});
 const report = `${headers}\nNifty Midcap Select,13-11-2026,14346.45,23.7,.17\nNifty Financial Services,13-11-2026,27855.5,-201.65,-.72\nNifty Financial Services 25/50,13-11-2026,29863.6,-235.95,-.78\nNifty Next 50,13-11-2026,72874.7,-611.5,-.83`;
 
 test('official fallback selects exact index names and keeps the report timestamp', () => {

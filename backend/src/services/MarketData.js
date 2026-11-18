@@ -111,6 +111,7 @@ class MarketDataService {
             price:     price,
             prevPrice: prev?.price ?? price,
             change:    normalizedChange,
+            prevClose: Math.round((price - normalizedChange) * 100) / 100,
             dayChange: normalizedDayChange,
             timestamp: new Date(at),
             receivedAt: new Date(),
@@ -217,7 +218,9 @@ class MarketDataService {
             })
         );
 
-        if (NSEClient.constructor.isMarketHours()) {
+        // Continue collecting late candles after close; a delayed 15:00 point
+        // must not become the permanent closing quote for the whole evening.
+        {
             await Promise.allSettled(['^MIDCPNIFTY', '^FINNIFTY'].filter(key => !updates[key]).map(async key => {
                 const series = await this.intradayReads.load(key, 5000, () => IndexIntraday.historical(key));
                 const point = series.data.at(-1);
@@ -233,7 +236,7 @@ class MarketDataService {
             const closes = await OfficialIndexSnapshot.latest();
             for (const [key, quote] of Object.entries(closes)) {
                 if (NSEClient.constructor.isMarketHours() && updates[key]) continue;
-                if (NSEClient.constructor.isMarketHours() && this.cache[key] && quoteTime(this.cache[key].timestamp) > quoteTime(quote.timestamp)) continue;
+                if (this.cache[key] && quoteTime(this.cache[key].timestamp) > quoteTime(quote.timestamp)) continue;
                 this.cache[key] = quote;
                 updates[key] = quote;
             }

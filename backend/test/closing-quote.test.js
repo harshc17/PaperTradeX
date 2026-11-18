@@ -1,6 +1,21 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const closingQuote = require('../src/services/ClosingQuote');
+
+test('closing quotes keep price, daily change and previous close consistent for all assets', () => {
+    for (const values of [
+        { regularMarketPrice: 82031.81, regularMarketChange: -500.38, regularMarketPreviousClose: 82104.8, expected: 82532.19 },
+        { regularMarketPrice: 105, regularMarketChange: 5, regularMarketPreviousClose: 98, expected: 100 },
+        { regularMarketPrice: 110, regularMarketPreviousClose: 100, expected: 100 },
+    ]) {
+        const q = closingQuote.fromProvider({ ...values, regularMarketTime: new Date('2026-11-18T10:02:11Z') }, '2026-11-18');
+        assert.equal(q.prevClose, values.expected);
+        assert.equal(q.change, Math.round((q.price - q.prevClose) * 100) / 100);
+        assert.equal(q.dayChange, q.change / q.prevClose * 100);
+    }
+    assert.equal(closingQuote.fromProvider({ regularMarketPrice: 105, regularMarketChange: 5,
+        regularMarketTime: new Date('2026-11-17T10:02:11Z') }, '2026-11-18'), null);
+});
 test('quote failure can recover the real latest session close with its original timestamp', async () => {
     const quote = await closingQuote('HDFCBANK', '2026-11-17', async (symbol, period) => {
         assert.equal(symbol, 'HDFCBANK'); assert.equal(period, '1d');

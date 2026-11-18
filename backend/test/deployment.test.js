@@ -26,7 +26,7 @@ test('protected routes reject missing/forged tokens and non-admin refresh reques
 });
 
 // Exercise real Express/Socket.IO listeners without external databases or market APIs.
-async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, marketPolling = 'true', authDBUnavailable = false } = {}) {
+async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, marketPolling = 'true', authDBUnavailable = false, marketOpen = true, providerQuote = null, indexQuotes = {} } = {}) {
     const filename = path.resolve(__dirname, '../src/server.js');
     const realRequire = createRequire(filename);
     const state = { readyState: ready };
@@ -55,11 +55,14 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, market
                 } },
             };
             if (name === './services/MarketData') return class {
-                cache = { RELIANCE: { price: 1300 } };
+                cache = { RELIANCE: { price: 1300 }, ...indexQuotes };
+                async _fetchIndices() {}
                 async tradeQuote() { return { price: 1300, timestamp: Date.now() }; }
                 startPolling() { polling = true; }
             };
-            if (name === './services/NSEClient') return { getMarketStatus: () => ({ isOpen: false }), constructor: { isMarketHours: () => true, HOLIDAYS: {} } };
+            if (name === './services/NSEClient') return { getMarketStatus: () => ({ isOpen: marketOpen }), constructor: { isMarketHours: () => marketOpen, HOLIDAYS: {} } };
+            if (name === './services/HistoricalClient') return { quoteDetail: async () => providerQuote };
+            if (name === './services/ClosingQuote') return realRequire(name);
             if (name === './services/TradeEngine') return {
                 assertMarketOpen() {},
                 findTradeReplay: async () => null,
@@ -77,6 +80,27 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, market
     }
     return { server, state, exitCode, polling, url: server.listening ? `http://127.0.0.1:${server.address().port}` : null };
 }
+
+test('closed-market display preserves daily return and all index pages share the ticker quote', async t => {
+    const session = require('../src/services/ReturnSession')();
+    const timestamp = `${session}T10:00:00Z`;
+    const keys = ['^NSEI', '^BSESN', '^NSEBANK', '^MIDCPNIFTY', '^FINNIFTY', '^BANKEX'];
+    const indexQuotes = Object.fromEntries(keys.map(symbol => [symbol,
+        { symbol, price: 82031.81, prevClose: 82532.19, change: -500.38, dayChange: -.61, timestamp }]));
+    const app = await boot(t, { marketOpen: false, indexQuotes,
+        providerQuote: { regularMarketPrice: 105, regularMarketChange: 5,
+            regularMarketPreviousClose: 98, regularMarketTime: new Date(timestamp) } });
+    const stock = await fetch(app.url + '/api/stock/TEST/realtime').then(r => r.json());
+    assert.equal(stock.prevClose, 100);
+    assert.equal(stock.change, 5);
+    const ticker = await fetch(app.url + '/api/indices').then(r => r.json());
+    for (const symbol of keys) {
+        const quote = await fetch(app.url + `/api/stock/${encodeURIComponent(symbol)}/realtime`).then(r => r.json());
+        assert.equal(quote.price, ticker[symbol].price);
+        assert.equal(quote.prevClose, ticker[symbol].prevClose);
+        assert.equal(quote.change, ticker[symbol].change);
+    }
+});
 
 test('health follows database readiness; API and Socket.IO enforce frontend origin', async t => {
     const app = await boot(t);
