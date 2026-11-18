@@ -26,6 +26,7 @@ const OfficialIndexHistory = require('./OfficialIndexHistory');
 const IndexIntraday = require('./IndexIntraday');
 const OfficialIndexSnapshot = require('./OfficialIndexSnapshot');
 const BankexHistory = require('./BankexHistory');
+const BseIntraday = require('./BseIntraday');
 
 function aggregateDaily(quotes) {
     const days = new Map();
@@ -139,6 +140,11 @@ module.exports = {
 
     async _historical(symbol, period) {
         const cfg = PERIOD_CONFIG[period] || PERIOD_CONFIG['1mo'];
+        const bseIntraday = ['^BSESN', '^BANKEX'].includes(symbol.toUpperCase()) && period === '1d';
+        if (bseIntraday) {
+            try { return await BseIntraday.historical(symbol, () => this.historical(symbol, '1mo')); }
+            catch { /* only use the fallback below if its bars pass the daily-range check */ }
+        }
         if (symbol.toUpperCase() === '^BANKEX' && ['3mo', '6mo', '1y', '3y', '5y', 'max'].includes(period)) return BankexHistory.historical(period);
         if (OfficialIndexHistory.NAMES[symbol.toUpperCase()]) {
             if (period === '1d') return IndexIntraday.historical(symbol);
@@ -210,7 +216,7 @@ module.exports = {
             let official = (await officialRead)[symbol.toUpperCase()];
             const sessionDay = filteredPoints.at(-1)?.date?.slice(0, 10);
             let dailyBars = [];
-            if (sessionDay && (!quote || !NSEClient.constructor.isMarketHours())) {
+            if (sessionDay && (bseIntraday || !quote || !NSEClient.constructor.isMarketHours())) {
                 try { dailyBars = (await this.historical(symbol, '1mo')).data || []; }
                 catch { /* use the validated intraday reference below */ }
                 const priorDay = returnSessionDate(new Date(`${sessionDay}T00:00:00+05:30`), NSEClient.constructor.HOLIDAYS);
@@ -219,6 +225,10 @@ module.exports = {
             }
             prevClose = indexPreviousClose(quote, meta, points, official);
             const finalBar = dailyBars.at(-1);
+            if (bseIntraday && finalBar?.date.slice(0, 10) === sessionDay &&
+                !BseIntraday.withinSessionRange(filteredPoints, finalBar)) {
+                throw Error('BSE fallback candles conflict with daily session range');
+            }
             const end = sessionDay && Date.parse(`${sessionDay}T15:30:00+05:30`);
             if (!NSEClient.constructor.isMarketHours() && end && +now >= end &&
                 finalBar?.date.slice(0, 10) === sessionDay && finalBar.close > 0 &&
