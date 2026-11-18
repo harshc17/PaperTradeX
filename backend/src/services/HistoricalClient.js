@@ -49,6 +49,22 @@ function chartPreviousClose(quote, meta = {}) {
         .find(value => typeof value === 'number' && Number.isFinite(value) && value > 0) ?? null;
 }
 
+// A multi-session chart's metadata can refer to the beginning of its window.
+// Use the preceding session's final bar when the quote endpoint is unavailable.
+function indexPreviousClose(quote, meta, quotes, official) {
+    const session = date => new Date(+new Date(date) + 330 * 60000).toISOString().slice(0, 10);
+    const last = quotes.at(-1);
+    const day = session(last.date);
+    const priorDay = returnSessionDate(new Date(`${day}T00:00:00+05:30`), NSEClient.constructor.HOLIDAYS);
+    if (official?.asOf === priorDay && official.price > 0) return official.price;
+    if (quote && quote.regularMarketTime && session(quote.regularMarketTime) === day) {
+        const previous = chartPreviousClose(quote);
+        if (previous > 0) return previous;
+    }
+    const prior = quotes.findLast(point => session(point.date) < day);
+    return prior?.close > 0 ? prior.close : chartPreviousClose(null, meta);
+}
+
 // Period → { lookbackDays, interval }
 const PERIOD_CONFIG = {
     '1d':  { lookbackDays: 5,    interval: '1m'  }, // One-minute bars, last 5 days (covers weekends)
@@ -286,12 +302,13 @@ module.exports = {
     async indexQuote(symbol) {
         try {
             const now = new Date();
-            const period1 = new Date(now - 3 * 86400000); // enough to include previous trading session
-            const [result, quote] = await Promise.all([yf.chart(symbol, {
+            const period1 = new Date(now - 7 * 86400000); // includes Friday's close on Mondays
+            const [result, quote, official] = await Promise.all([yf.chart(symbol, {
                 period1,
                 period2: now,
                 interval: '1m',
-            }, { validateResult: false }), this.quoteDetail(symbol).catch(() => null)]);
+            }, { validateResult: false }), this.quoteDetail(symbol).catch(() => null),
+                OfficialIndexSnapshot.latest().catch(() => ({}))]);
 
             const quotes = (result?.quotes || []).filter(q => q?.close > 0);
             if (quotes.length === 0) return null;
@@ -300,7 +317,8 @@ module.exports = {
             const meta = result?.meta || {};
 
             const price = last.close;
-            const prevClose = chartPreviousClose(quote, meta) ?? price;
+            const prevClose = indexPreviousClose(quote, meta, quotes, official[symbol]);
+            if (!(prevClose > 0)) return null;
             const change    = parseFloat((price - prevClose).toFixed(2));
             const dayChange = prevClose > 0
                 ? parseFloat(((change / prevClose) * 100).toFixed(2))
@@ -313,5 +331,6 @@ module.exports = {
     },
     aggregateDaily,
     chartPreviousClose,
+    indexPreviousClose,
 };
 

@@ -3,6 +3,31 @@ const assert = require('node:assert/strict');
 const { parseHistory, historical } = require('../src/services/OfficialIndexHistory');
 const { aggregateDaily, chartPreviousClose } = require('../src/services/HistoricalClient');
 const name = 'NIFTY FINANCIAL SERVICES';
+const { indexPreviousClose } = require('../src/services/HistoricalClient');
+
+test('index fallback uses the actual prior session instead of multi-day chart metadata', () => {
+    const bars = [
+        { date: '2026-11-16T09:59:00Z', close: 82104.8 },
+        { date: '2026-11-17T09:59:00Z', close: 82532.19 },
+        { date: '2026-11-18T08:00:00Z', close: 81827.7 },
+    ];
+    const staleMeta = { previousClose: 82104.8, chartPreviousClose: 82104.8 };
+    assert.equal(indexPreviousClose(null, staleMeta, bars), 82532.19);
+    assert.equal(indexPreviousClose({ regularMarketTime: new Date('2026-11-16T10:00:00Z'),
+        regularMarketPrice: 82104.8, regularMarketChange: 100 }, staleMeta, bars), 82532.19);
+    assert.equal(indexPreviousClose(null, staleMeta, bars,
+        { asOf: '2026-11-17', price: 82535 }), 82535);
+    assert.equal(indexPreviousClose(null, staleMeta, bars,
+        { asOf: '2026-11-16', price: 82104.8 }), 82532.19);
+});
+
+test('Monday index baseline accepts Friday official close and same-session quote changes', () => {
+    const bars = [{ date: '2026-11-13T09:59:00Z', close: 100 },
+        { date: '2026-11-16T06:00:00Z', close: 105 }];
+    assert.equal(indexPreviousClose(null, {}, bars, { asOf: '2026-11-13', price: 101 }), 101);
+    assert.equal(indexPreviousClose({ regularMarketTime: new Date('2026-11-16T06:00:00Z'),
+        regularMarketPrice: 105, regularMarketChange: 3 }, {}, bars), 102);
+});
 const row = (date, close, index = name) => ({ INDEX_NAME: index, HistoricalDate: date, OPEN: '100', HIGH: '120', LOW: '90', CLOSE: String(close) });
 
 test('1D reference line uses session previous close instead of the chart-window baseline', () => {

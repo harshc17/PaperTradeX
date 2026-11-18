@@ -79,11 +79,15 @@ test('fast refresh preserves source timestamps and rejects older index replies',
 
 test('intraday index returns use the prior session close rather than the chart window start', async () => {
     const saved = combineImpl;
+    const snapshot = require('../src/services/OfficialIndexSnapshot');
+    const savedLatest = snapshot.latest;
     try {
-        combineImpl = async symbol => ({ symbol, regularMarketPrice: 105, regularMarketPreviousClose: 100 });
+        snapshot.latest = async () => ({});
+        combineImpl = async symbol => ({ symbol, regularMarketPrice: 105, regularMarketPreviousClose: 100,
+            regularMarketTime: new Date() });
         const quote = await history.indexQuote('^NSEI');
         assert.equal(quote.prevClose, 100);
         assert.equal(quote.change, 5);
         assert.equal(quote.dayChange, 5);
-    } finally { combineImpl = saved; }
+    } finally { combineImpl = saved; snapshot.latest = savedLatest; }
 });

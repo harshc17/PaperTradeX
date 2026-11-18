@@ -3,7 +3,9 @@ const http = require('node:http');
 const https = require('node:https');
 let primaryDown = false;
 const tunnels = new Set();
-for (const [port, target] of [[3015, 'https://paperttradex-production.up.railway.app'], [3016, 'https://papertradex-roib.onrender.com']]) {
+const primaryUrl = process.env.TEST_PRIMARY_URL || 'https://papertradex-roib.onrender.com';
+const backupUrl = process.env.TEST_BACKUP_URL || 'https://paperttradex-production.up.railway.app';
+for (const [port, target] of [[3015, primaryUrl], [3016, backupUrl]]) {
     const server = http.createServer(async (req, res) => {
         res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3014');
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Idempotency-Key');
@@ -41,5 +43,5 @@ for (const [port, target] of [[3015, 'https://paperttradex-production.up.railway
         });
         upstream.on('error', () => socket.destroy()); upstream.end();
     });
-    server.listen(port, '127.0.0.1', () => console.log(`Verification proxy ready: ${port}`));
+    server.listen(port, '127.0.0.1', () => console.log(`Verification proxy ready: ${port} -> ${target}`));
 }
