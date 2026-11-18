@@ -1,5 +1,5 @@
 services:
-  # Recovery backend. Railway remains primary; see docs/render-backup.md.
+  # Primary backend. Railway is the automatic backup; see docs/render-backup.md.
   - type: web
     name: PaperTradeX
     runtime: node
@@ -28,7 +28,7 @@ services:
       - key: MARKET_POLLING_ENABLED
         value: "true"
       - key: STANDBY_PRIMARY_URL
-        value: "https://paperttradex-production.up.railway.app"
+        value: ""
       - key: CORS_ORIGIN
         value: "https://papertradex.in,https://www.papertradex.in,https://papertradex.vercel.app"
       - key: NODE_VERSION

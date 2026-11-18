@@ -1,23 +1,25 @@
-# Automatic Render recovery
+# Render primary with automatic Railway backup
 
-Railway remains the preferred backend. The browser checks both database-backed
-`/health` endpoints every 15 seconds while the app is open. When Railway is
-unreachable and Render is healthy, API calls and the live-price socket switch to
-Render. When Railway recovers, both switch back automatically. Existing tabs
+Render is the preferred backend. The browser checks both database-backed
+`/health` endpoints every 15 seconds while the app is open. When Render is
+unreachable and Railway is healthy, API calls and the live-price socket switch to
+Railway. When Render recovers, both switch back automatically. Existing tabs
 must load the new frontend once to receive this behavior.
 
 ## Configuration
 
-- Vercel production: `NEXT_PUBLIC_API_URL` is the Railway URL and
-  `NEXT_PUBLIC_BACKUP_API_URL=https://papertradex-roib.onrender.com`.
+- Vercel production: `NEXT_PUBLIC_API_URL=https://papertradex-roib.onrender.com`
+  and `NEXT_PUBLIC_BACKUP_API_URL=https://paperttradex-production.up.railway.app`.
 - Both backends use identical `MONGODB_URI` (including database name),
   `JWT_SECRET`, sender settings and account data. Never generate an independent
   backup signing secret or database.
 - Render service `PaperTradeX`, workspace `My Workspace`, service ID
   `srv-dbb96t8m7kps73ekrb1g`, tracks GitHub `main` with auto-deploy enabled.
-- Render uses `MARKET_POLLING_ENABLED=true` and
-  `STANDBY_PRIMARY_URL=https://paperttradex-production.up.railway.app`.
-  Its feed loops run when serving connected users or its primary health probe
+- Render uses `MARKET_POLLING_ENABLED=true` and an empty `STANDBY_PRIMARY_URL`.
+  Its feed loops run as the primary server.
+- Railway uses `MARKET_POLLING_ENABLED=true` and
+  `STANDBY_PRIMARY_URL=https://papertradex-roib.onrender.com`.
+  Its feed loops run when serving connected users or Render's health probe
   fails; otherwise it avoids duplicate background quote fetching.
 - Render environment settings are managed directly in Render. `render.yaml`
   is the recreation template; do not create a duplicate service.
@@ -29,7 +31,9 @@ must load the new frontend once to receive this behavior.
 JWTs and persisted accounts survive server changes. HTTP and socket clients
 share one selected backend; stock subscriptions and event listeners survive
 reconnection. Health checks never clear account state. Auth errors, rate limits
-and provider-specific failures are not treated as whole-server outages.
+are not treated as whole-server outages. Missing quotes, incomplete index lists
+and temporary account-service failures can recover reads from the other host;
+the affected host is held out of preference for 60 seconds to prevent flapping.
 
 Read requests can retry on the selected healthy backend. Paper trade requests
 use a unique request ID retained for unresolved manual retries/reloads. A
