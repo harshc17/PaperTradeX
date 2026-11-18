@@ -36,7 +36,12 @@ async function historical(symbol, now = new Date()) {
     const payload = await response.json();
     const data = parseCandles(payload, session, now);
     if (data.length < 2) throw new Error('Current-session intraday candles unavailable');
-    const official = snapshot[key];
+    let official = snapshot[key];
+    // Today's report may not be published yet just after 15:30. The previous
+    // session's published close remains the reference for today's return.
+    if (!official) {
+        official = (await OfficialIndexSnapshot.latest(new Date(`${session}T00:00:00+05:30`)))[key];
+    }
     const prior = official?.asOf === session ? official.prevClose : official?.asOf < session ? official.price : null;
     const prevClose = Number.isFinite(payload.closingPrice) && payload.closingPrice > 0 ? payload.closingPrice : prior;
     return { data, prevClose, source: 'Groww public delayed feed', resolution: 'intraday', delayed: true, session,

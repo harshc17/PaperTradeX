@@ -4,6 +4,21 @@ const { parseCandles, historical } = require('../src/services/IndexIntraday');
 const at = time => Date.parse(`2026-11-13T${time}+05:30`) / 1000;
 const candle = time => [at(time), 100, 110, 95, 105, null];
 
+test('after close keeps the previous report baseline while today report is not yet published', async () => {
+    const snapshot = require('../src/services/OfficialIndexSnapshot');
+    const saved = { fetch: global.fetch, latest: snapshot.latest };
+    const dates = [];
+    global.fetch = async () => ({ ok: true, json: async () => ({ candles: [candle('09:15:00'), candle('15:29:00')] }) });
+    snapshot.latest = async now => { dates.push(now); return dates.length === 1 ? {}
+        : { '^FINNIFTY': { price: 100, asOf: '2026-11-12' } }; };
+    try {
+        const result = await historical('^FINNIFTY', new Date('2026-11-13T16:00:00+05:30'));
+        assert.equal(result.prevClose, 100);
+        assert.equal(result.data.at(-1).close, 105);
+        assert.equal(dates[1].toISOString(), '2026-11-12T18:30:00.000Z');
+    } finally { global.fetch = saved.fetch; snapshot.latest = saved.latest; }
+});
+
 test('intraday parser keeps real regular-session candles, rejects stale and future data', () => {
     const data = parseCandles({ candles: [candle('09:16:00'), candle('09:15:00'), candle('09:15:00'),
         candle('08:00:00'), candle('17:00:00'), [at('09:20:00'), 100, 90, 95, 105],

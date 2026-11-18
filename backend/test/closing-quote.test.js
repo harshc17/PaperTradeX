@@ -2,6 +2,20 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const closingQuote = require('../src/services/ClosingQuote');
 
+test('final daily close replaces a delayed intraday endpoint without fabricating missing candles', async () => {
+    const quote = await closingQuote('HDFCBANK', '2026-11-18', async (symbol, period) => {
+        assert.equal(period, '1mo');
+        return { data: [{ date: '2026-11-17T03:45:00Z', close: 814.950012 },
+            { date: '2026-11-18T03:45:00Z', close: 808.150024 }] };
+    });
+    assert.equal(quote.price, 808.15);
+    assert.equal(quote.prevClose, 814.95);
+    assert.equal(quote.change, -6.8);
+    assert.equal(+quote.timestamp, Date.parse('2026-11-18T10:00:00Z'));
+    assert.equal(quote.barTimestamp, '2026-11-18T03:45:00Z');
+    assert.equal(quote.source, 'daily-session-close');
+});
+
 test('closing quotes keep price, daily change and previous close consistent for all assets', () => {
     for (const values of [
         { regularMarketPrice: 82031.81, regularMarketChange: -500.38, regularMarketPreviousClose: 82104.8, expected: 82532.19 },

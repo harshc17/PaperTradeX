@@ -207,8 +207,25 @@ module.exports = {
         if (period === '1d') {
             const meta = result?.meta || {};
             const quote = await quoteRead;
-            const official = (await officialRead)[symbol.toUpperCase()];
+            let official = (await officialRead)[symbol.toUpperCase()];
+            const sessionDay = filteredPoints.at(-1)?.date?.slice(0, 10);
+            let dailyBars = [];
+            if (sessionDay && (!quote || !NSEClient.constructor.isMarketHours())) {
+                try { dailyBars = (await this.historical(symbol, '1mo')).data || []; }
+                catch { /* use the validated intraday reference below */ }
+                const priorDay = returnSessionDate(new Date(`${sessionDay}T00:00:00+05:30`), NSEClient.constructor.HOLIDAYS);
+                const prior = dailyBars.findLast(bar => bar.date.slice(0, 10) === priorDay);
+                if (!official && prior?.close > 0) official = { asOf: priorDay, price: Math.round(prior.close * 100) / 100 };
+            }
             prevClose = indexPreviousClose(quote, meta, points, official);
+            const finalBar = dailyBars.at(-1);
+            const end = sessionDay && Date.parse(`${sessionDay}T15:30:00+05:30`);
+            if (!NSEClient.constructor.isMarketHours() && end && +now >= end &&
+                finalBar?.date.slice(0, 10) === sessionDay && finalBar.close > 0 &&
+                Date.parse(filteredPoints.at(-1)?.date || '') < end) {
+                filteredPoints = [...filteredPoints, { date: new Date(end).toISOString(), close: finalBar.close }];
+                source += ' + daily session close';
+            }
         }
 
         const resolution = source.includes('aggregated') || cfg.interval === '1d' ? 'daily'
