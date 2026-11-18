@@ -9,12 +9,14 @@ function withinSessionRange(points, dailyBar) {
     return points.every(p => p.close >= dailyBar.low - .02 && p.close <= dailyBar.high + .02);
 }
 
-async function historical(symbol, loadDaily, now = new Date()) {
-    const code = SYMBOLS[symbol.toUpperCase()];
-    if (!code) throw Error('Unsupported BSE index');
+async function historical(symbol, loadDaily, now = new Date(), exchange = 'BSE') {
+    const key = symbol.toUpperCase();
+    const code = exchange === 'BSE' ? SYMBOLS[key]
+        : !key.startsWith('^') && !key.endsWith('.BO') ? key.replace(/\.NS$/, '') : null;
+    if (!code) throw Error('Unsupported exchange instrument');
     const session = returnSessionDate(now, NSEClient.constructor.HOLIDAYS);
     const [response, daily] = await Promise.all([
-        fetch(`https://groww.in/v1/api/charting_service/v2/chart/delayed/exchange/BSE/segment/CASH/${code}/daily?intervalInMinutes=1`,
+        fetch(`https://groww.in/v1/api/charting_service/v2/chart/delayed/exchange/${exchange}/segment/CASH/${encodeURIComponent(code)}/daily?intervalInMinutes=1`,
             { signal: AbortSignal.timeout(10000) }), loadDaily(),
     ]);
     if (!response.ok) throw Error('BSE intraday series unavailable');
@@ -30,6 +32,8 @@ async function historical(symbol, loadDaily, now = new Date()) {
         data = [...data, { date: new Date(end).toISOString(), close: current.close }];
     }
     return { data, prevClose: Math.round(prior.close * 100) / 100,
-        source: 'Groww public BSE intraday', resolution: 'intraday', delayed: true, session };
+        source: `Groww public ${exchange} intraday`, resolution: 'intraday', delayed: true, session,
+        asOf: data.at(-1).date };
 }
-module.exports = { historical, withinSessionRange };
+module.exports = { historical, withinSessionRange,
+    nseHistorical: (symbol, loadDaily) => historical(require('./InstrumentAliases').providerSymbol(symbol), loadDaily, new Date(), 'NSE') };

@@ -5,6 +5,7 @@ import { apiFetch as fetch } from '@/lib/backend';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useStockQuote } from '@/lib/useStockQuote';
+import { chartWithQuote } from '@/lib/chartQuote';
 import { API_URL } from '@/lib/config';
 import { useTheme } from '@/context/ThemeContext';
 import {
@@ -132,7 +133,7 @@ function formatINR(v: number, decimals = 2): string {
 }
 
 /* ─── Component ──────────────────────────────────────────────────────────────── */
-type ChartFeed = { source?: string; resolution?: string; note?: string; delayed?: boolean; session?: string };
+type ChartFeed = { source?: string; resolution?: string; note?: string; delayed?: boolean; session?: string; asOf?: string };
 const chartCache = new Map<string, { data: HistoryPoint[]; prevClose: number | null; fetchedAt: number; feed: ChartFeed }>();
 export default function StockChart({ symbol }: { symbol: string }) {
     const { theme } = useTheme();
@@ -159,7 +160,6 @@ export default function StockChart({ symbol }: { symbol: string }) {
     const [feed, setFeed] = useState<ChartFeed>({});
     const requestRef = useRef<AbortController | null>(null);
     const quote = useStockQuote(symbol);
-    const livePrice = quote.price;
     const isLive = !!quote.marketOpen && !quote.stale;
     const [hoverIdx, setHoverIdx] = useState<number | null>(null);
     const [hoverX, setHoverX] = useState(0);
@@ -244,7 +244,7 @@ export default function StockChart({ symbol }: { symbol: string }) {
                 if (!pts.length) throw new Error('No valid chart candles');
                 const prior = typeof data.prevClose === 'number' && data.prevClose > 0 ? data.prevClose : null;
                 setHistory(pts);
-                const nextFeed = { source: data.source, resolution: data.resolution, note: data.note, delayed: data.delayed, session: data.session };
+                const nextFeed = { source: data.source, resolution: data.resolution, note: data.note, delayed: data.delayed, session: data.session, asOf: data.asOf };
                 setFeed(nextFeed);
                 if (pts.length) {
                     chartCache.set(key, { data: pts, prevClose: prior, fetchedAt: Date.now(), feed: nextFeed });
@@ -277,9 +277,10 @@ export default function StockChart({ symbol }: { symbol: string }) {
 
     /* ─── Derived values ─────────────────────────────────────────────────────────── */
     const displayHistory = history;
+    const plotPoints = chartWithQuote(displayHistory, activePeriod.value, feed.asOf, quote);
     const firstClose = displayHistory.length > 0 ? displayHistory[0].close : null;
-    const lastClose = displayHistory.length > 0 ? displayHistory[displayHistory.length - 1].close : null;
-    const currentDisp = (activePeriod.value === '1d' && livePrice) ? livePrice : lastClose;
+    const lastClose = plotPoints.length > 0 ? plotPoints[plotPoints.length - 1].close : null;
+    const currentDisp = lastClose;
 
     // For 1D: use prevClose (yesterday's session close) as the return baseline — NOT the
     // first intraday bar — so the figure matches what broker apps show.
@@ -298,24 +299,8 @@ export default function StockChart({ symbol }: { symbol: string }) {
     const color = isPositive ? (light ? '#00b386' : '#00d09c') : '#ff5b35';
     const axisColor = light ? '#6d7485' : '#9a9ea8';
 
-    const labels = displayHistory.map(h => formatLabel(h.date, feed.resolution === 'daily' ? 'date' : activePeriod.fmt));
-    const closes = displayHistory.map(h => h.close);
-
-    // If on 1D and we have livePrice, extend chart with current live point
-    const chartLabels = [...labels];
-    const chartCloses = [...closes];
-    const plotPoints = [...displayHistory];
-    if (activePeriod.value === '1d' && isLive && !feed.delayed && feed.resolution !== 'daily' && livePrice && quote.timestamp && displayHistory.length > 0 && quote.timestamp >= Date.parse(displayHistory[displayHistory.length - 1].date)) {
-        const liveFmt = formatLabel(new Date(quote.timestamp).toISOString(), 'time');
-        if (chartLabels[chartLabels.length - 1] !== liveFmt) {
-            chartLabels.push(liveFmt);
-            chartCloses.push(livePrice);
-            plotPoints.push({ date: new Date(quote.timestamp).toISOString(), close: livePrice });
-        } else {
-            chartCloses[chartCloses.length - 1] = livePrice;
-            plotPoints[plotPoints.length - 1] = { ...plotPoints[plotPoints.length - 1], date: new Date(quote.timestamp).toISOString(), close: livePrice };
-        }
-    }
+    const chartLabels = plotPoints.map(h => formatLabel(h.date, feed.resolution === 'daily' ? 'date' : activePeriod.fmt));
+    const chartCloses = plotPoints.map(h => h.close);
 
     // Reserve the complete 09:15–15:30 IST session without filling future time with prices.
     const sessionDate = plotPoints[0]?.date ? new Date(plotPoints[0].date).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) : null;

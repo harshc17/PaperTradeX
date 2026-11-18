@@ -27,6 +27,9 @@ const IndexIntraday = require('./IndexIntraday');
 const OfficialIndexSnapshot = require('./OfficialIndexSnapshot');
 const BankexHistory = require('./BankexHistory');
 const BseIntraday = require('./BseIntraday');
+const { validateCandles, withinDailyRanges, withLatestSession } = require('./ChartIntegrity');
+const { quoteTime } = require('./QuoteIdentity');
+const NseArchive = require('./NseArchive');
 
 function aggregateDaily(quotes) {
     const days = new Map();
@@ -78,7 +81,8 @@ const PERIOD_CONFIG = {
     '1y':  { lookbackDays: 367,  interval: '1d'  },
     '3y':  { lookbackDays: 1099, interval: '1wk' },
     '5y':  { lookbackDays: 1832, interval: '1wk' },
-    'max': { lookbackDays: 9000, interval: '1mo' },
+    // Yahoo monthly ETF bars can mix adjusted closes with invalid OHLC ranges.
+    'max': { lookbackDays: 9000, interval: '1wk' },
 };
 
 // Yahoo uses .NS suffix for NSE stocks, .BO for BSE stocks.
@@ -135,7 +139,8 @@ module.exports = {
         const closeTime = Date.parse(`${session}T15:30:00+05:30`);
         const settling = Date.now() >= closeTime && Date.now() < closeTime + 3600000;
         return readCache.load(key, open || period === '1d' || settling ? 30000 : 3600000,
-            () => this._historical(symbol, period), value => value?.data?.length > 0);
+            async () => { const result = await this._historical(symbol, period); validateCandles(result.data || []); return result; },
+            value => value?.data?.length > 0);
     },
 
     async _historical(symbol, period) {
@@ -145,10 +150,16 @@ module.exports = {
             try { return await BseIntraday.historical(symbol, () => this.historical(symbol, '1mo')); }
             catch { /* only use the fallback below if its bars pass the daily-range check */ }
         }
-        if (symbol.toUpperCase() === '^BANKEX' && ['3mo', '6mo', '1y', '3y', '5y', 'max'].includes(period)) return BankexHistory.historical(period);
+        if (symbol.toUpperCase() === '^BANKEX' && ['3mo', '6mo', '1y', '3y', '5y', 'max'].includes(period)) {
+            const series = await BankexHistory.historical(period);
+            try { return withLatestSession(series, await this.historical(symbol, '1d')); }
+            catch { return series; }
+        }
         if (OfficialIndexHistory.NAMES[symbol.toUpperCase()]) {
             if (period === '1d') return IndexIntraday.historical(symbol);
-            return OfficialIndexHistory.historical(symbol, period, cfg.lookbackDays);
+            const series = await OfficialIndexHistory.historical(symbol, period, cfg.lookbackDays);
+            try { return withLatestSession(series, await this.historical(symbol, '1d')); }
+            catch { return series; } // keep real history if the newest feed is unavailable
         }
         const candidates = getYahooCandidates(symbol);
         const quoteRead = period === '1d' ? this.quoteDetail(symbol).catch(() => null) : Promise.resolve(null);
@@ -190,13 +201,27 @@ module.exports = {
             .filter(q => q && q.close != null && q.close > 0)
             .map(q => ({
                 date:   q.date instanceof Date ? q.date.toISOString() : q.date,
-                open:   q.open   ?? q.close,
-                high:   q.high   ?? q.close,
-                low:    q.low    ?? q.close,
+                // Zero OHLC fields mean missing provider metadata, not a trade
+                // at zero. Preserve the real close without inventing a range.
+                open:   Number.isFinite(q.open) && q.open > 0 ? q.open : undefined,
+                high:   Number.isFinite(q.high) && q.high > 0 ? q.high : undefined,
+                low:    Number.isFinite(q.low) && q.low > 0 ? q.low : undefined,
                 close:  q.close,
                 volume: q.volume ?? 0,
             }))
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        // Renamed ETF tickers can have only a few weeks of Yahoo history even
+        // though their verified exchange archive goes back years.
+        if (period === 'max' && !symbol.startsWith('^') && !symbol.toUpperCase().endsWith('.BO') &&
+            points.length && Date.parse(points[0].date) > +now - 367 * 86400000) {
+            try {
+                const archive = await NseArchive.historical(symbol);
+                if (Date.parse(archive.data[0].date) < Date.parse(points[0].date)) {
+                    return withLatestSession(archive, await this.historical(symbol, '1d'));
+                }
+            } catch { /* preserve the real available history if the archive is unavailable */ }
+        }
 
         // For 1D: filter to only the last trading day (most recent session)
         let filteredPoints = points;
@@ -216,7 +241,7 @@ module.exports = {
             let official = (await officialRead)[symbol.toUpperCase()];
             const sessionDay = filteredPoints.at(-1)?.date?.slice(0, 10);
             let dailyBars = [];
-            if (sessionDay && (bseIntraday || !quote || !NSEClient.constructor.isMarketHours())) {
+            if (sessionDay) {
                 try { dailyBars = (await this.historical(symbol, '1mo')).data || []; }
                 catch { /* use the validated intraday reference below */ }
                 const priorDay = returnSessionDate(new Date(`${sessionDay}T00:00:00+05:30`), NSEClient.constructor.HOLIDAYS);
@@ -225,6 +250,12 @@ module.exports = {
             }
             prevClose = indexPreviousClose(quote, meta, points, official);
             const finalBar = dailyBars.at(-1);
+            if (!withinDailyRanges(filteredPoints, dailyBars)) {
+                if (!symbol.startsWith('^') && !symbol.toUpperCase().endsWith('.BO')) {
+                    return BseIntraday.nseHistorical(symbol, () => this.historical(symbol, '1mo'));
+                }
+                throw Error('Intraday candles conflict with verified daily ranges');
+            }
             if (bseIntraday && finalBar?.date.slice(0, 10) === sessionDay &&
                 !BseIntraday.withinSessionRange(filteredPoints, finalBar)) {
                 throw Error('BSE fallback candles conflict with daily session range');
@@ -238,9 +269,20 @@ module.exports = {
             }
         }
 
+        if (period === '1w') {
+            const daily = await this.historical(symbol, '1mo');
+            if (!withinDailyRanges(filteredPoints, daily.data)) {
+                return { ...daily, data: daily.data.filter(p => Date.parse(p.date) >= +period1),
+                    source: daily.source + ' (daily fallback)', resolution: 'daily', note: 'Daily history; inconsistent intraday feed unavailable' };
+            }
+        }
+
+        validateCandles(filteredPoints);
         const resolution = source.includes('aggregated') || cfg.interval === '1d' ? 'daily'
             : cfg.interval === '1wk' ? 'weekly' : cfg.interval === '1mo' ? 'monthly' : 'intraday';
-        return { data: filteredPoints, prevClose, source, resolution };
+        const observed = quoteTime(result?.meta?.regularMarketTime);
+        return { data: filteredPoints, prevClose, source, resolution,
+            asOf: Number.isFinite(observed) ? new Date(observed).toISOString() : filteredPoints.at(-1)?.date };
     },
 
     /**
