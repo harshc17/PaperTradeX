@@ -38,6 +38,8 @@ const userSchema = new mongoose.Schema({
     role:          { type: String, enum: ['USER', 'ADMIN'], default: 'USER' },
     balance:       { type: Number, default: 100000 },
 }, { timestamps: true });
+userSchema.index({ googleId: 1 }, { name: 'google_identity_unique', unique: true,
+    partialFilterExpression: { googleId: { $type: 'string' } } });
 
 const pendingSignupSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },

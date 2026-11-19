@@ -18,7 +18,7 @@ interface AuthContextType {
     balance: number;
     loading: boolean;
     login: (email: string, password: string) => Promise<void>;
-    loginWithGoogle: (credential: string) => Promise<void>;
+    loginWithGoogle: (credential: string, challenge: string) => Promise<void>;
     register: (name: string, email: string, password: string) => Promise<void>;
     verifySignup: (email: string, code: string) => Promise<void>;
     logout: () => void;
@@ -77,11 +77,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
-    const loginWithGoogle = async (credential: string) => {
+    const loginWithGoogle = async (credential: string, challenge: string) => {
         const res = await fetch(`${API}/api/auth/google`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ credential }),
+            body: JSON.stringify({ credential, challenge }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Google login failed');

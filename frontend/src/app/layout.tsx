@@ -1,7 +1,6 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { Hanken_Grotesk, JetBrains_Mono } from 'next/font/google'
-import Script from 'next/script'
 import AppProviders from './providers'
 import SiteFooter from '@/components/SiteFooter'
 
@@ -36,10 +35,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <script dangerouslySetInnerHTML={{ __html: "(()=>{try{const theme=localStorage.getItem('ptx_theme')==='dark'?'dark':'light';document.documentElement.dataset.theme=theme;document.documentElement.classList.toggle('dark',theme==='dark')}catch(e){}})()" }} />
             </head>
             <body className={`${hankenGrotesk.variable} ${jetbrainsMono.variable} font-sans`}>
-                {/* Google Identity Services — loaded only when GOOGLE_CLIENT_ID is set */}
-                {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
-                    <Script src="https://accounts.google.com/gsi/client" strategy="beforeInteractive" />
-                )}
                 <AppProviders>
                     {children}
                     <SiteFooter />

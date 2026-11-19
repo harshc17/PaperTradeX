@@ -25,6 +25,18 @@ test('protected routes reject missing/forged tokens and non-admin refresh reques
     assert.equal((await trade.json()).price, 1300);
 });
 
+test('Google configuration stays disabled until its public client ID is supplied', async t => {
+    const app = await boot(t);
+    const config = await fetch(app.url + '/api/auth/google/config');
+    assert.equal(config.status, 200);
+    assert.equal(config.headers.get('cache-control'), 'no-store');
+    assert.deepEqual(await config.json(), { enabled: false });
+    const rejected = await fetch(app.url + '/api/auth/google', { method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: 'https://untrusted.example' },
+        body: JSON.stringify({ credential: 'not-a-google-token', challenge: 'not-a-challenge' }) });
+    assert.equal(rejected.status, 403);
+});
+
 // Exercise real Express/Socket.IO listeners without external databases or market APIs.
 async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, marketPolling = 'true', authDBUnavailable = false, marketOpen = true, providerQuote = null, indexQuotes = {} } = {}) {
     const filename = path.resolve(__dirname, '../src/server.js');
@@ -68,7 +80,7 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, market
                 findTradeReplay: async () => null,
                 executeTrade: async (user, type, symbol, quantity, price) => ({ success: true, price }),
             };
-            if (['./services/PasswordReset', './services/SignupVerification', './services/ReturnSession', './services/MarketIndex', './services/QuoteIdentity'].includes(name)) return realRequire(name);
+            if (['./services/PasswordReset', './services/SignupVerification', './services/ReturnSession', './services/MarketIndex', './services/QuoteIdentity', './services/GoogleSignIn'].includes(name)) return realRequire(name);
             if (name.startsWith('./services/')) return {};
             return realRequire(name);
         },
@@ -83,7 +95,7 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, market
 
 test('closed-market display preserves daily return and all index pages share the ticker quote', async t => {
     const session = require('../src/services/ReturnSession')();
-    const timestamp = `${session}T10:00:00Z`;
+    const timestamp = `${session}T03:45:00Z`;
     const keys = ['^NSEI', '^BSESN', '^NSEBANK', '^MIDCPNIFTY', '^FINNIFTY', '^BANKEX'];
     const indexQuotes = Object.fromEntries(keys.map(symbol => [symbol,
         { symbol, price: 82031.81, prevClose: 82532.19, change: -500.38, dayChange: -.61, timestamp }]));

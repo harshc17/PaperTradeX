@@ -171,47 +171,20 @@ app.post('/api/login', authLimiter, async (req, res) => {
 });
 
 // --- Google Sign-In ---
+const googleSignIn = require('./services/GoogleSignIn')({ User, clientId: GOOGLE_CLIENT_ID, secret: JWT_SECRET,
+    verifyToken: async credential => (await googleClient.verifyIdToken({ idToken: credential, audience: GOOGLE_CLIENT_ID })).getPayload() });
+app.get('/api/auth/google/config', (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json(googleSignIn.config());
+});
 app.post('/api/auth/google', authLimiter, async (req, res) => {
-    const { credential } = req.body;
     try {
-        if (!googleClient) {
-            return res.status(503).json({ error: 'Google login is not configured on the server' });
-        }
-        if (!credential) return res.status(400).json({ error: 'Missing Google credential' });
-
-        const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: GOOGLE_CLIENT_ID });
-        const payload = ticket.getPayload();
-        if (!payload?.email || !payload.email_verified) {
-            return res.status(401).json({ error: 'Google account email not verified' });
-        }
-
-        const email = payload.email.toLowerCase().trim();
-        const googleId = payload.sub;
-
-        let user = await User.findOne({ googleId });
-        if (!user) {
-            // Link to an existing local account with the same email, if any.
-            user = await User.findOne({ email });
-            if (user) {
-                user.googleId = googleId;
-                if (user.authProvider !== 'local') user.authProvider = 'google';
-                await user.save();
-            } else {
-                user = await User.create({
-                    name: payload.name || email.split('@')[0],
-                    email,
-                    googleId,
-                    authProvider: 'google',
-                    password_hash: null,
-                });
-            }
-        }
-
+        if (req.get('origin') && !isAllowedOrigin(req.get('origin'))) return res.status(403).json({ error: 'Sign in from the PaperTradeX website.' });
+        const user = await googleSignIn.signIn(req.body.credential, req.body.challenge);
         const token = jwt.sign({ id: user._id.toString(), role: user.role, tokenVersion: user.tokenVersion || 0 }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
         res.json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, role: user.role, balance: user.balance } });
     } catch (e) {
-        console.error('[Google Auth] Error:', e.message);
-        res.status(401).json({ error: 'Google authentication failed' });
+        res.status(e.status || 503).json({ error: e.status ? e.message : 'Google sign-in is temporarily unavailable. Please try again.' });
     }
 });
 

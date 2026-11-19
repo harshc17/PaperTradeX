@@ -6,6 +6,4 @@ export const API_URL =
 
 export const BACKUP_API_URL = process.env.NEXT_PUBLIC_BACKUP_API_URL?.replace(/\/$/, '') || '';
 
-// Google OAuth Client ID — set NEXT_PUBLIC_GOOGLE_CLIENT_ID in frontend/.env.local.
-// When unset, the Google login button is hidden.
-export const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
+// Google sign-in reads its public client configuration from the backend at runtime.

@@ -5,16 +5,8 @@ import ThemeToggle from '@/components/ThemeToggle';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { GOOGLE_CLIENT_ID } from '@/lib/config';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
 import { Eye, EyeOff, ArrowRight, CheckCircle2 } from 'lucide-react';
-
-declare global {
-    interface Window {
-        google?: {
-            accounts: { id: { initialize: (cfg: object) => void; renderButton: (el: HTMLElement, cfg: object) => void } };
-        };
-    }
-}
 
 export default function AuthPage() {
     const router = useRouter();
@@ -44,11 +36,11 @@ export default function AuthPage() {
         setSuccess('Verification code sent. Check your inbox and spam folder.');
     };
 
-    const handleGoogleCredential = useCallback(async (response: { credential: string }) => {
+    const handleGoogleCredential = useCallback(async (credential: string, challenge: string) => {
         setLoading(true);
         setError('');
         try {
-            await loginWithGoogle(response.credential);
+            await loginWithGoogle(credential, challenge);
             router.push('/dashboard');
         } catch (e: any) {
             setError(e.message || 'Google login failed');
@@ -56,13 +48,6 @@ export default function AuthPage() {
             setLoading(false);
         }
     }, [loginWithGoogle, router]);
-
-    useEffect(() => {
-        if (!GOOGLE_CLIENT_ID || !window.google) return;
-        window.google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleGoogleCredential });
-        const btn = document.getElementById('google-signin-btn');
-        if (btn) window.google.accounts.id.renderButton(btn, { theme: 'outline', size: 'large', width: btn.offsetWidth || 400 });
-    }, [handleGoogleCredential]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -213,16 +198,7 @@ export default function AuthPage() {
                         <button type="button" disabled={loading} className="min-h-[44px] text-ink-muted" onClick={() => { setVerificationPending(false); setCode(''); setError(''); setSuccess(''); }}>Edit signup details</button>
                     </div>}
 
-                    {GOOGLE_CLIENT_ID && (
-                        <>
-                            <div className="flex items-center gap-3 my-5">
-                                <div className="flex-1 h-px bg-surface-2" />
-                                <span className="text-xs text-ink-faint">or</span>
-                                <div className="flex-1 h-px bg-surface-2" />
-                            </div>
-                            <div id="google-signin-btn" className="w-full" />
-                        </>
-                    )}
+                    {!verificationPending && <GoogleSignInButton disabled={loading} onCredential={handleGoogleCredential} />}
 
                     <p className="text-center text-ink-faint text-xs mt-6">
                         By continuing, you agree to our{' '}
