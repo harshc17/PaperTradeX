@@ -3,7 +3,7 @@
 // Only executed TransactionHistory records belong here; pending orders are excluded.
 const round = (value, digits = 2) => Number(value.toFixed(digits));
 
-function calculateTradePerformance(transactions) {
+function calculateTradePerformance(transactions, { includeDetails = false } = {}) {
     const positions = new Map();
     const sales = [];
     let purchases = 0;
@@ -41,6 +41,8 @@ function calculateTradePerformance(transactions) {
         symbolMap.set(sale.symbol, group);
     }
     return {
+        ...(includeDetails ? { sales, positions: [...positions].filter(([, p]) => p.quantity > 0)
+            .map(([symbol, p]) => ({ symbol, quantity: p.quantity, invested: p.costPaise / 100 })) } : {}),
         metrics: {
             completedSales: sales.length, purchases, wins: wins.length, losses: losses.length,
             breakEven: sales.length - wins.length - losses.length,

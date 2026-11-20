@@ -9,7 +9,7 @@ const jwt = require('jsonwebtoken');
 
 test('protected routes reject missing/forged tokens and non-admin refresh requests', async t => {
     const app = await boot(t);
-    for (const [route, method] of [['/api/portfolio', 'GET'], ['/api/orders', 'GET'], ['/api/transactions', 'GET'], ['/api/trade', 'POST'], ['/api/ai/market-news/refresh', 'POST']]) {
+    for (const [route, method] of [['/api/reports/pnl', 'GET'], ['/api/portfolio', 'GET'], ['/api/orders', 'GET'], ['/api/transactions', 'GET'], ['/api/trade', 'POST'], ['/api/ai/market-news/refresh', 'POST']]) {
         const response = await fetch(app.url + route, { method });
         assert.equal(response.status, 401, route);
     }
@@ -38,7 +38,7 @@ test('Google configuration stays disabled until its public client ID is supplied
 });
 
 // Exercise real Express/Socket.IO listeners without external databases or market APIs.
-async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, marketPolling = 'true', authDBUnavailable = false, marketOpen = true, providerQuote = null, indexQuotes = {} } = {}) {
+async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, marketPolling = 'true', authDBUnavailable = false, marketOpen = true, providerQuote = null, indexQuotes = {}, reportTrades = [] } = {}) {
     const filename = path.resolve(__dirname, '../src/server.js');
     const realRequire = createRequire(filename);
     const state = { readyState: ready };
@@ -59,6 +59,10 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, market
                 server = http.createServer(app); return server;
             } };
             if (name === './models') return {
+                TransactionHistory: { find(query) {
+                    state.reportUser = query.user;
+                    return { select() { return this; }, sort() { return this; }, limit() { return this; }, async lean() { return reportTrades; } };
+                } },
                 async connectDB() { if (fail) throw new Error('Database unavailable'); },
                 async seedAdmin() {},
                 User: { findById: async () => {
@@ -82,7 +86,7 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, market
                 findTradeReplay: async () => null,
                 executeTrade: async (user, type, symbol, quantity, price) => ({ success: true, price }),
             };
-            if (['./services/PasswordReset', './services/SignupVerification', './services/ReturnSession', './services/MarketIndex', './services/QuoteIdentity', './services/GoogleSignIn', './services/AIAvailability'].includes(name)) return realRequire(name);
+            if (['./services/PnlReport', './services/PasswordReset', './services/SignupVerification', './services/ReturnSession', './services/MarketIndex', './services/QuoteIdentity', './services/GoogleSignIn', './services/AIAvailability'].includes(name)) return realRequire(name);
             if (name.startsWith('./services/')) return {};
             return realRequire(name);
         },
@@ -114,6 +118,23 @@ test('closed-market display preserves daily return and all index pages share the
         assert.equal(quote.prevClose, ticker[symbol].prevClose);
         assert.equal(quote.change, ticker[symbol].change);
     }
+});
+
+test('P&L CSV is private, scoped to the signed-in account and includes real executed amounts', async t => {
+    const app = await boot(t, { reportTrades: [
+        { type: 'BUY', symbol: 'ITC', quantity: 1, price: 298.6, totalAmount: 298.6, createdAt: '2026-11-20T09:20:00Z' },
+        { type: 'SELL', symbol: 'ITC', quantity: 1, price: 298.7, totalAmount: 298.7, createdAt: '2026-11-20T09:22:00Z' },
+    ] });
+    const token = jwt.sign({ id: 'report-user', role: 'USER' }, 'deployment-test-secret');
+    const response = await fetch(app.url + '/api/reports/pnl', { headers: { Authorization: `Bearer ${token}` } });
+    assert.equal(response.status, 200);
+    assert.equal(app.state.reportUser, 'report-user');
+    assert.match(response.headers.get('content-type'), /text\/csv/);
+    assert.match(response.headers.get('cache-control'), /private, no-store/);
+    assert.match(response.headers.get('content-disposition'), /attachment; filename="PaperTradeX-PnL/);
+    const csv = await response.text();
+    assert.match(csv, /"Realised P&L","0.1"/);
+    assert.match(csv, /"ITC","1","298.7","298.6","298.7","0.1"/);
 });
 
 test('health follows database readiness; API and Socket.IO enforce frontend origin', async t => {

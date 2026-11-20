@@ -21,6 +21,7 @@ const { quoteKey, quoteTime, isFreshQuote } = require('./services/QuoteIdentity'
 const AIService = require('./services/AIService');
 const AIAvailability = require('./services/AIAvailability');
 const Mailer = require('./services/Mailer');
+const { buildPnlReport } = require('./services/PnlReport');
 
 // ── Security config (from env) ───────────────────────────────────────────────
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -862,6 +863,21 @@ const performanceRouter = require('./routes/tradingCoach')({ TransactionHistory,
     aiEnabled: () => AIAvailability.enabled });
 app.use('/api/trade-performance', performanceRouter);
 app.use('/api/ai/coach', performanceRouter);
+
+app.get('/api/reports/pnl', authenticateToken, async (req, res) => {
+    res.set('Cache-Control', 'private, no-store');
+    try {
+        const trades = await TransactionHistory.find({ user: req.user.id })
+            .select('type symbol quantity price totalAmount createdAt').sort({ createdAt: 1, _id: 1 }).limit(20001).lean();
+        if (trades.length > 20000) return res.status(422).json({ error: 'This account exceeds the report limit of 20,000 trades. No partial report was downloaded.' });
+        const report = await buildPnlReport(trades, { getQuote: displayQuote, marketOpen: NSEClient.constructor.isMarketHours() });
+        res.set('Content-Type', 'text/csv; charset=utf-8');
+        res.set('Content-Disposition', `attachment; filename="PaperTradeX-PnL-all-time-${new Date().toISOString().slice(0, 10)}.csv"`);
+        res.send(report.csv);
+    } catch (error) {
+        res.status(422).json({ error: 'Unable to produce a complete P&L report. Please refresh your trades and try again.' });
+    }
+});
 
 app.post('/api/ai/portfolio', authenticateToken, AIAvailability.requireAvailable, async (req, res) => {
     try {

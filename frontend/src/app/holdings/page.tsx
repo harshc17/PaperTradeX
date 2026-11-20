@@ -1,5 +1,6 @@
 'use client';
 import XirrValue from '@/components/XirrValue';
+import PnlReportDownload from '@/components/PnlReportDownload';
 import CompanyLogo from '@/components/CompanyLogo';
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -91,6 +92,7 @@ export default function HoldingsPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">
+                        <PnlReportDownload />
                         <button
                             onClick={handleManualRefresh}
                             disabled={isRefreshing}

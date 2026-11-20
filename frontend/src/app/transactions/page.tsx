@@ -1,5 +1,6 @@
 'use client';
 import CompanyLogo from '@/components/CompanyLogo';
+import PnlReportDownload from '@/components/PnlReportDownload';
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -100,6 +101,7 @@ export default function TransactionsPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">
+                        <PnlReportDownload />
                         <button
                             onClick={handleManualRefresh}
                             disabled={isRefreshing}
