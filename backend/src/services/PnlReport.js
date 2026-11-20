@@ -43,6 +43,7 @@ async function buildPnlReport(transactions, { getQuote, marketOpen, now }) {
         ...holdings.map(p => [p.symbol, p.quantity, p.invested, p.price, p.currentValue, p.pnl, p.quoteAt, p.status]),
     ];
     return { csv: '\uFEFF' + rows.map(row => row.map(csvCell).join(',')).join('\r\n'),
-        summary: { realised, unrealised, invested, currentValue, complete }, holdings };
+        summary: { realised, unrealised, invested, currentValue, complete }, holdings, sales: performance.sales,
+        generatedAt: new Date(now ?? Date.now()).toISOString() };
 }
 module.exports = { buildPnlReport, csvCell };

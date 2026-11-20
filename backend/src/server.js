@@ -22,6 +22,7 @@ const AIService = require('./services/AIService');
 const AIAvailability = require('./services/AIAvailability');
 const Mailer = require('./services/Mailer');
 const { buildPnlReport } = require('./services/PnlReport');
+const { buildPnlWorkbook } = require('./services/PnlWorkbook');
 
 // ── Security config (from env) ───────────────────────────────────────────────
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -871,9 +872,10 @@ app.get('/api/reports/pnl', authenticateToken, async (req, res) => {
             .select('type symbol quantity price totalAmount createdAt').sort({ createdAt: 1, _id: 1 }).limit(20001).lean();
         if (trades.length > 20000) return res.status(422).json({ error: 'This account exceeds the report limit of 20,000 trades. No partial report was downloaded.' });
         const report = await buildPnlReport(trades, { getQuote: displayQuote, marketOpen: NSEClient.constructor.isMarketHours() });
-        res.set('Content-Type', 'text/csv; charset=utf-8');
-        res.set('Content-Disposition', `attachment; filename="PaperTradeX-PnL-all-time-${new Date().toISOString().slice(0, 10)}.csv"`);
-        res.send(report.csv);
+        const workbook = await buildPnlWorkbook(report);
+        res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.set('Content-Disposition', `attachment; filename="PaperTradeX-PnL-all-time-${new Date().toISOString().slice(0, 10)}.xlsx"`);
+        res.send(Buffer.from(workbook));
     } catch (error) {
         res.status(422).json({ error: 'Unable to produce a complete P&L report. Please refresh your trades and try again.' });
     }

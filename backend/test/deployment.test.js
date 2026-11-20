@@ -86,7 +86,7 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, market
                 findTradeReplay: async () => null,
                 executeTrade: async (user, type, symbol, quantity, price) => ({ success: true, price }),
             };
-            if (['./services/PnlReport', './services/PasswordReset', './services/SignupVerification', './services/ReturnSession', './services/MarketIndex', './services/QuoteIdentity', './services/GoogleSignIn', './services/AIAvailability'].includes(name)) return realRequire(name);
+            if (['./services/PnlWorkbook', './services/PnlReport', './services/PasswordReset', './services/SignupVerification', './services/ReturnSession', './services/MarketIndex', './services/QuoteIdentity', './services/GoogleSignIn', './services/AIAvailability'].includes(name)) return realRequire(name);
             if (name.startsWith('./services/')) return {};
             return realRequire(name);
         },
@@ -120,7 +120,7 @@ test('closed-market display preserves daily return and all index pages share the
     }
 });
 
-test('P&L CSV is private, scoped to the signed-in account and includes real executed amounts', async t => {
+test('P&L Excel is private, scoped to the signed-in account and includes real executed amounts', async t => {
     const app = await boot(t, { reportTrades: [
         { type: 'BUY', symbol: 'ITC', quantity: 1, price: 298.6, totalAmount: 298.6, createdAt: '2026-11-20T09:20:00Z' },
         { type: 'SELL', symbol: 'ITC', quantity: 1, price: 298.7, totalAmount: 298.7, createdAt: '2026-11-20T09:22:00Z' },
@@ -129,12 +129,14 @@ test('P&L CSV is private, scoped to the signed-in account and includes real exec
     const response = await fetch(app.url + '/api/reports/pnl', { headers: { Authorization: `Bearer ${token}` } });
     assert.equal(response.status, 200);
     assert.equal(app.state.reportUser, 'report-user');
-    assert.match(response.headers.get('content-type'), /text\/csv/);
+    assert.match(response.headers.get('content-type'), /spreadsheetml.sheet/);
     assert.match(response.headers.get('cache-control'), /private, no-store/);
     assert.match(response.headers.get('content-disposition'), /attachment; filename="PaperTradeX-PnL/);
-    const csv = await response.text();
-    assert.match(csv, /"Realised P&L","0.1"/);
-    assert.match(csv, /"ITC","1","298.7","298.6","298.7","0.1"/);
+    const workbook = new (require('exceljs').Workbook)();
+    await workbook.xlsx.load(Buffer.from(await response.arrayBuffer()));
+    assert.equal(workbook.getWorksheet('Summary').getCell('B8').value, 0.1);
+    assert.equal(workbook.getWorksheet('Completed sales').getCell('B6').value, 'ITC');
+    assert.equal(workbook.getWorksheet('Completed sales').getCell('G6').value, 0.1);
 });
 
 test('health follows database readiness; API and Socket.IO enforce frontend origin', async t => {
