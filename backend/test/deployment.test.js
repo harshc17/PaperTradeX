@@ -80,7 +80,7 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, market
                 findTradeReplay: async () => null,
                 executeTrade: async (user, type, symbol, quantity, price) => ({ success: true, price }),
             };
-            if (['./services/PasswordReset', './services/SignupVerification', './services/ReturnSession', './services/MarketIndex', './services/QuoteIdentity', './services/GoogleSignIn'].includes(name)) return realRequire(name);
+            if (['./services/PasswordReset', './services/SignupVerification', './services/ReturnSession', './services/MarketIndex', './services/QuoteIdentity', './services/GoogleSignIn', './services/AIAvailability'].includes(name)) return realRequire(name);
             if (name.startsWith('./services/')) return {};
             return realRequire(name);
         },
@@ -163,4 +163,16 @@ test('temporary account database errors do not invalidate a valid login', async 
     const response = await fetch(app.url + '/api/portfolio', { headers: { Authorization: `Bearer ${token}` } });
     assert.equal(response.status, 503);
     assert.doesNotMatch((await response.json()).error, /expired/i);
+});
+
+test('coming-soon routes stop before calling AI providers, including legacy review URLs', async t => {
+    const app = await boot(t);
+    const token = jwt.sign({ id: 'test', role: 'USER' }, 'deployment-test-secret');
+    for (const [path, method] of [['/api/ai/market-news', 'GET'], ['/api/stock/RELIANCE.NS/news', 'GET'],
+        ['/api/ai/chat', 'POST'], ['/api/ai/portfolio', 'POST'], ['/api/ai/coach/review', 'POST'], ['/api/trade-performance/review', 'POST']]) {
+        const response = await fetch(app.url + path, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            ...(method === 'POST' ? { body: '{}' } : {}) });
+        assert.equal(response.status, 503, path);
+        assert.equal((await response.json()).code, 'AI_COMING_SOON', path);
+    }
 });

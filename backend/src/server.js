@@ -19,6 +19,7 @@ const HistoricalClient = require('./services/HistoricalClient');
 const closingQuote = require('./services/ClosingQuote');
 const { quoteKey, quoteTime, isFreshQuote } = require('./services/QuoteIdentity');
 const AIService = require('./services/AIService');
+const AIAvailability = require('./services/AIAvailability');
 const Mailer = require('./services/Mailer');
 
 // ── Security config (from env) ───────────────────────────────────────────────
@@ -818,7 +819,7 @@ app.get('/api/stock/:symbol', async (req, res) => {
 // Each symbol's AI news is generated once per calendar day (IST) and cached.
 const _stockNewsCache = new Map(); // key: "SYMBOL:DATE", value: newsObject
 
-app.get('/api/stock/:symbol/news', async (req, res) => {
+app.get('/api/stock/:symbol/news', AIAvailability.requireAvailable, async (req, res) => {
     const { symbol } = req.params;
     try {
         const bare = quoteKey(symbol);
@@ -851,9 +852,12 @@ app.get('/api/stock/:symbol/news', async (req, res) => {
 });
 
 
-app.use('/api/ai/coach', require('./routes/tradingCoach')({ TransactionHistory, AIService, authenticateToken }));
+const performanceRouter = require('./routes/tradingCoach')({ TransactionHistory, AIService, authenticateToken,
+    aiEnabled: () => AIAvailability.enabled });
+app.use('/api/trade-performance', performanceRouter);
+app.use('/api/ai/coach', performanceRouter);
 
-app.post('/api/ai/portfolio', authenticateToken, async (req, res) => {
+app.post('/api/ai/portfolio', authenticateToken, AIAvailability.requireAvailable, async (req, res) => {
     try {
         const userId = req.user.id;
         const user = await User.findById(userId);
@@ -871,7 +875,7 @@ app.post('/api/ai/portfolio', authenticateToken, async (req, res) => {
     }
 });
 
-app.post('/api/ai/chat', authenticateToken, async (req, res) => {
+app.post('/api/ai/chat', authenticateToken, AIAvailability.requireAvailable, async (req, res) => {
     try {
         const { question, history } = req.body;
         if (!question || typeof question !== 'string') {
@@ -896,7 +900,7 @@ function _todayIST() {
     return new Date().toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' });
 }
 
-app.get('/api/ai/market-news', async (req, res) => {
+app.get('/api/ai/market-news', AIAvailability.requireAvailable, async (req, res) => {
     try {
         const today = _todayIST();
         // Serve cached news if it was generated today
@@ -920,6 +924,7 @@ app.get('/api/ai/market-news', async (req, res) => {
 // Force-refresh endpoint (admin/debug use)
 app.post('/api/ai/market-news/refresh', authenticateToken, async (req, res) => {
     if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Forbidden' });
+    if (!AIAvailability.enabled) return AIAvailability.requireAvailable(req, res);
     try {
         console.log('[AI Market News] Force refreshing news...');
         _newsCache = null;

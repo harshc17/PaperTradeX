@@ -36,7 +36,7 @@ export default function TradingCoachPage() {
         if (!token) return;
         const controller = new AbortController();
         setFetching(true); setError(''); setReport(null);
-        fetch(`${API_URL}/api/ai/coach`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal })
+        fetch(`${API_URL}/api/trade-performance`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal })
             .then(async response => {
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || 'Could not load your trade performance.');

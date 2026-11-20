@@ -3,10 +3,10 @@ const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
 const { calculateTradePerformance } = require('../services/TradingCoach');
 
-module.exports = function tradingCoachRouter({ TransactionHistory, AIService, authenticateToken }) {
+module.exports = function tradingCoachRouter({ TransactionHistory, AIService, authenticateToken, aiEnabled = () => true }) {
     const router = express.Router();
     const reviews = new Map(), pending = new Map();
-    const available = () => Boolean(process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY);
+    const available = () => aiEnabled() && Boolean(process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY);
     router.use(authenticateToken);
     router.use((req, res, next) => { res.set('Cache-Control', 'private, no-store'); next(); });
     const limit = rateLimit({ windowMs: 15 * 60 * 1000, max: 6, keyGenerator: req => String(req.user.id), standardHeaders: true, legacyHeaders: false, message: { error: 'Please wait before requesting another AI review. Your performance report is still available.' } });
@@ -28,10 +28,11 @@ module.exports = function tradingCoachRouter({ TransactionHistory, AIService, au
     router.get('/', async (req, res) => {
         try {
             const performance = await load(req.user.id);
-            res.json({ ...performance, aiAvailable: available(), review: cached(req.user.id, performance.revision) });
+            res.json({ ...performance, aiAvailable: available(), review: aiEnabled() ? cached(req.user.id, performance.revision) : null });
         } catch (error) { res.status(error.status || 500).json({ error: error.status ? error.message : 'Could not load completed trades. Please try again.' }); }
     });
     router.post('/review', limit, async (req, res) => {
+        if (!aiEnabled()) return res.status(503).json({ error: 'AI features are coming soon.', code: 'AI_COMING_SOON' });
         try {
             const performance = await load(req.user.id);
             if (!performance.metrics.completedSales) return res.status(409).json({ error: 'Complete a paper sale before requesting a review.' });
