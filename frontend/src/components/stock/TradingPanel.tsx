@@ -43,6 +43,7 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
     const activePrice = orderType === 'MARKET' ? (displayPrice || 0) : (parseFloat(limitPrice) || displayPrice || 0);
     const parsedQty = Number(quantity);
     const estimatedTotal = parsedQty * activePrice;
+    const estimateReady = Number.isFinite(estimatedTotal) && activePrice > 0 && parsedQty > 0;
     const balanceRemaining = Math.max(0, balance - (side === 'BUY' ? estimatedTotal : 0));
 
     const setQtyPreset = (q: number) => setQuantity(String(q));
@@ -145,8 +146,8 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                             {currentPrice === null ? '—' : '₹' + fmt(displayPrice)}
                         </span>
                         <span className={`inline-flex items-center text-xs font-semibold tabular-nums font-num ${isUp ? 'text-up' : 'text-down'}`}>
-                            {isUp ? <ArrowUpRight className="w-3.5 h-3.5 inline mr-0.5" /> : <ArrowDownRight className="w-3.5 h-3.5 inline mr-0.5" />}
-                            {isUp ? '+' : ''}{priceChange.toFixed(2)}%
+                            {currentPrice !== null && (isUp ? <ArrowUpRight className="w-3.5 h-3.5 inline mr-0.5" /> : <ArrowDownRight className="w-3.5 h-3.5 inline mr-0.5" />)}
+                            {currentPrice === null ? '—' : `${isUp ? '+' : ''}${priceChange.toFixed(2)}%`}
                         </span>
                     </div>
 
@@ -159,9 +160,9 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                                 ? 'bg-amber-500/10 text-[var(--warning)] border-amber-500/25'
                                 : 'bg-surface-2 text-ink-muted border-line'
                         }`}
-                        title={marketStatus?.statusMessage || 'Market is closed'}
+                        title={marketStatus?.statusMessage || (marketStatus ? 'Market is closed' : 'Checking market hours')}
                     >
-                        {marketStatus?.isOpen ? (
+                        {!marketStatus ? <><Clock className="w-3 h-3" />Checking market…</> : marketStatus.isOpen ? (
                             <>
                                 <span className="w-1.5 h-1.5 rounded-full bg-up animate-pulse" />
                                 Market open
@@ -180,7 +181,7 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                     </div>
                 </div>
 
-                {!marketStatus?.isOpen && (
+                {marketStatus && !marketStatus.isOpen && (
                     <div className="mt-2.5 px-3 py-1.5 rounded-lg bg-surface-2 border border-line flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-ink-faint">
                         <span className="flex min-w-0 items-center gap-1.5">
                             <span className="w-1.5 h-1.5 rounded-full bg-slate-400 flex-shrink-0" />
@@ -366,7 +367,7 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                     <div className="flex items-center justify-between text-xs font-medium text-ink-faint">
                         <span>Order value:</span>
                         <span className="font-medium text-ink-heading tabular-nums font-num">
-                            ₹{fmt(estimatedTotal)}
+                            {estimateReady ? `₹${fmt(estimatedTotal)}` : '—'}
                         </span>
                     </div>
                     <div className="flex items-center justify-between text-xs font-medium text-ink-faint">
@@ -379,7 +380,7 @@ export default function TradingPanel({ symbol }: { symbol: string }) {
                         <div className="flex items-center justify-between text-xs font-medium text-ink-faint pt-1.5 border-t border-line">
                             <span>Remaining balance:</span>
                             <span className={`font-semibold tabular-nums font-num ${balanceRemaining < 0 ? 'text-down' : 'text-primary'}`}>
-                                ₹{fmt(balanceRemaining)}
+                                {estimateReady ? `₹${fmt(balanceRemaining)}` : '—'}
                             </span>
                         </div>
                     )}
