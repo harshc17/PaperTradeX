@@ -253,9 +253,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         }
         if (!res.ok) throw new Error(data.error || 'Trade failed');
         // Refresh portfolio after trade
-        await refreshPortfolio();
-        await refreshOrders();
-        await refreshTransactions();
+        await Promise.all([refreshPortfolio(), refreshOrders(), refreshTransactions()]);
         return data;
     };
 

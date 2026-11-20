@@ -69,6 +69,8 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, market
             if (name === './services/MarketData') return class {
                 cache = { RELIANCE: { price: 1300 }, ...indexQuotes };
                 async _fetchIndices() {}
+                subscribe() {}
+                async refreshSymbol(symbol) { return this.cache[symbol]; }
                 async tradeQuote() { return { price: 1300, timestamp: Date.now() }; }
                 startPolling() { polling = true; }
             };
@@ -174,5 +176,14 @@ test('coming-soon routes stop before calling AI providers, including legacy revi
             ...(method === 'POST' ? { body: '{}' } : {}) });
         assert.equal(response.status, 503, path);
         assert.equal((await response.json()).code, 'AI_COMING_SOON', path);
+    }
+});
+
+test('cached company details still return the shared price instead of the metadata price', async t => {
+    const app = await boot(t, { providerQuote: { symbol: 'RELIANCE.NS', shortName: 'Reliance', regularMarketPrice: 999 } });
+    for (let request = 0; request < 2; request++) {
+        const response = await fetch(app.url + '/api/stock/RELIANCE.NS');
+        assert.equal(response.status, 200);
+        assert.equal((await response.json()).regularMarketPrice, 1300);
     }
 });

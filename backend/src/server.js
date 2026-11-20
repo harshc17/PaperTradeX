@@ -462,7 +462,9 @@ app.get('/api/search', async (req, res) => {
 });
 
 const STOCK_CACHE = {};
-const STOCK_CACHE_TTL = 10 * 1000; // 10 seconds (live enough, but avoids API spam)
+// Company details are separate from prices: sendStockDetail always overlays
+// the current shared quote, so metadata does not need a new provider read per visit.
+const STOCK_CACHE_TTL = 60 * 1000;
 const NSE_FAIL_CACHE = {};
 const NSE_FAIL_TTL = 5 * 60 * 1000;
 const CLOSED_PRICE_CACHE = {};
@@ -692,7 +694,11 @@ app.get('/api/stock/:symbol', async (req, res) => {
         // ── 1. Try NSE (preferred — rich data when market is open, .NS only) ──
         if (NSEClient.constructor.isMarketHours() && !NSEClient._inBackoff && !yahooPreferred && !isBo && !recentlyFailedNse(bare)) {
             try {
-                const nsData = await NSEClient.equityQuote(bare);
+                let detailTimer;
+                const nsData = await Promise.race([
+                    NSEClient.equityQuote(bare),
+                    new Promise(resolve => { detailTimer = setTimeout(() => resolve(null), 1500); }),
+                ]).finally(() => clearTimeout(detailTimer));
                 if (nsData?.priceInfo?.lastPrice) {
                 const pi      = nsData?.priceInfo    || {};
                 const info    = nsData?.info         || {};
