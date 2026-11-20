@@ -953,6 +953,11 @@ async function displayQuote(symbol) {
     if (!NSEClient.constructor.isMarketHours()) return getClosedMarketPrice(key);
     if (key.startsWith('^')) return marketDataService.cache[key] || null;
     marketDataService.subscribe(key);
+    const cached = marketDataService.cache[key];
+    if (cached?.price > 0) {
+        void marketDataService.refreshSymbol(key, NSEClient._inBackoff).catch(() => {});
+        return cached;
+    }
     return marketDataService.refreshSymbol(key, NSEClient._inBackoff);
 }
 

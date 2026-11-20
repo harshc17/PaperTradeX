@@ -260,7 +260,13 @@ class MarketDataService {
             if (cached && Date.now() - new Date(cached.timestamp).getTime() < 3000) return cached;
             if (!skipNse && !bare.endsWith('.BO')) {
                 try {
-                    const ns = await NSEClient.equityQuote(bare);
+                    // A blocked NSE session must not hold up the quote fallback
+                    // for the full HTTP timeout on every newly opened stock.
+                    let timer;
+                    const ns = await Promise.race([
+                        NSEClient.equityQuote(bare),
+                        new Promise(resolve => { timer = setTimeout(() => resolve(null), 1500); }),
+                    ]).finally(() => clearTimeout(timer));
                     if (ns?.priceInfo?.lastPrice > 0) {
                         const pi = ns.priceInfo;
                         const rawTime = ns.metadata?.lastUpdateTime;

@@ -30,6 +30,14 @@ const BseIntraday = require('./BseIntraday');
 const { validateCandles, withinDailyRanges, withLatestSession } = require('./ChartIntegrity');
 const { quoteTime } = require('./QuoteIdentity');
 const NseArchive = require('./NseArchive');
+const quoteRecovery = require('./QuoteRecovery')({
+    fetchChart: async symbol => {
+        const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1m`,
+            { signal: AbortSignal.timeout(4500) });
+        if (!response.ok) throw new Error(`Chart quote HTTP ${response.status}`);
+        return (await response.json())?.chart?.result?.[0];
+    },
+});
 
 function aggregateDaily(quotes) {
     const days = new Map();
@@ -323,6 +331,7 @@ module.exports = {
     },
 
     async quoteBatch(symbols) {
+        if (quoteRecovery.blocked()) throw new Error('Quote provider cooling down');
         const requests = [...new Set(symbols)].filter(symbol => !['^MIDCPNIFTY', '^FINNIFTY'].includes(symbol)).sort();
         const providers = [...new Set(requests.map(symbol => getYahooCandidates(symbol)[0]))].sort();
         if (!providers.length) return {};
@@ -333,7 +342,7 @@ module.exports = {
                 try {
                     const result = await yf.quote(providers.slice(offset, offset + 100), {}, { validateResult: false });
                     quotes.push(...(Array.isArray(result) ? result : []));
-                } catch (error) { lastError = error; }
+                } catch (error) { quoteRecovery.failed(error); lastError = error; }
             }
             if (!quotes.length && lastError) throw lastError;
             const exact = new Map(quotes.filter(q => q?.symbol && q.regularMarketPrice > 0).map(q => [q.symbol.toUpperCase(), q]));
@@ -348,11 +357,17 @@ module.exports = {
         const candidates = getYahooCandidates(symbol);
         for (const yhSymbol of candidates) {
             try {
+                if (quoteRecovery.blocked()) {
+                    const recovered = await quoteRecovery.chart(yhSymbol);
+                    if (recovered) return recovered;
+                    continue;
+                }
                 const data = await yf.quoteCombine(yhSymbol, {}, { validateResult: false });
                 if (data && data.symbol?.toUpperCase() === yhSymbol.toUpperCase() && data.regularMarketPrice > 0) {
                     return data;
                 }
             } catch (e) {
+                quoteRecovery.failed(e);
                 if (e.name === 'FailedYahooValidationError' && e.result) {
                     // quoteCombine validates the entire batch even when validation
                     // is disabled; recover only this exact, usable instrument.
@@ -363,6 +378,10 @@ module.exports = {
                 }
                 console.warn(`[Yahoo] quote failed for "${yhSymbol}": ${e.message}`);
             }
+            try {
+                const recovered = await quoteRecovery.chart(yhSymbol);
+                if (recovered) return recovered;
+            } catch { /* a missing quote stays unavailable */ }
         }
         return null;
     },
