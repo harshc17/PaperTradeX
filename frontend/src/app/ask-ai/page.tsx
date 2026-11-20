@@ -10,6 +10,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import Link from 'next/link';
+import { AI_FEATURES_AVAILABLE } from '@/lib/aiAvailability';
+import AIComingSoonPage from '@/components/AIComingSoonPage';
 
 interface Message {
     role: 'user' | 'ai';
@@ -17,6 +19,10 @@ interface Message {
 }
 
 export default function AskAIPage() {
+    return AI_FEATURES_AVAILABLE ? <ActiveAskAIPage /> : <AIComingSoonPage title="Ask AI" />;
+}
+
+function ActiveAskAIPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
     const [messages, setMessages] = useState<Message[]>([{

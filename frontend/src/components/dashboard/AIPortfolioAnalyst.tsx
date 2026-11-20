@@ -1,5 +1,7 @@
 'use client';
 import { apiFetch as fetch } from '@/lib/backend';
+import { AI_FEATURES_AVAILABLE } from '@/lib/aiAvailability';
+import AIComingSoon from '@/components/AIComingSoon';
 
 import { API_URL } from '@/lib/config';
 import { useState } from 'react';
@@ -7,6 +9,10 @@ import { CheckCircle2, AlertCircle, Lightbulb, RefreshCw } from 'lucide-react';
 import { usePortfolio } from '@/context/PortfolioContext';
 
 export default function AIPortfolioAnalyst() {
+    return AI_FEATURES_AVAILABLE ? <ActiveAIPortfolioAnalyst /> : <AIComingSoon title="AI portfolio review" />;
+}
+
+function ActiveAIPortfolioAnalyst() {
     const { holdings } = usePortfolio();
     const [analysis, setAnalysis] = useState<any>(null);
     const [loading, setLoading] = useState(false);

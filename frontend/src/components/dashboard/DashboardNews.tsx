@@ -2,6 +2,8 @@
 import { apiFetch as fetch } from '@/lib/backend';
 
 import { API_URL } from '@/lib/config';
+import { AI_FEATURES_AVAILABLE } from '@/lib/aiAvailability';
+import AIComingSoon from '@/components/AIComingSoon';
 import { useEffect, useState } from 'react';
 import { Newspaper, Clock, RefreshCw } from 'lucide-react';
 
@@ -9,6 +11,10 @@ interface Article { headline: string; summary: string; time: string; }
 interface NewsData { title: string; articles: Article[]; generatedAt?: string; cached?: boolean; }
 
 export default function DashboardNews() {
+    return AI_FEATURES_AVAILABLE ? <ActiveDashboardNews /> : <AIComingSoon title="Practice scenarios" />;
+}
+
+function ActiveDashboardNews() {
     const [news, setNews] = useState<NewsData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);

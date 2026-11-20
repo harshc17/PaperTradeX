@@ -1,5 +1,7 @@
 'use client';
 import { apiFetch as fetch } from '@/lib/backend';
+import { AI_FEATURES_AVAILABLE } from '@/lib/aiAvailability';
+import AIComingSoon from '@/components/AIComingSoon';
 
 
 import { useState, useEffect } from 'react';
@@ -12,6 +14,10 @@ interface AINewsPanelProps {
 }
 
 export default function AINewsPanel({ symbol, companyName }: AINewsPanelProps) {
+    return AI_FEATURES_AVAILABLE ? <ActiveAINewsPanel symbol={symbol} companyName={companyName} /> : <AIComingSoon title="AI stock notes" />;
+}
+
+function ActiveAINewsPanel({ symbol, companyName }: AINewsPanelProps) {
     const [news, setNews] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);

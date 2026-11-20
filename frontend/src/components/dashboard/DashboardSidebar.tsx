@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ChevronRight, BarChart3, Search, Bot, Trophy } from 'lucide-react';
 import PortfolioSummary from './PortfolioSummary';
 import AIPortfolioAnalyst from './AIPortfolioAnalyst';
+import { AI_FEATURES_AVAILABLE } from '@/lib/aiAvailability';
 
 export default function DashboardSidebar() {
     const tools = [
@@ -19,6 +20,7 @@ export default function DashboardSidebar() {
                 {tools.map(({ name, icon: Icon, href }) => <Link key={href} href={href} className="group flex min-h-11 items-center gap-3 rounded-lg px-2 py-2 text-sm text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink">
                     <Icon className="h-4 w-4" />
                     <span className="flex-1">{name}</span>
+                    {!AI_FEATURES_AVAILABLE && ['/trading-coach', '/ask-ai'].includes(href) && <span className="text-xs text-primary">Coming soon!</span>}
                     <ChevronRight className="h-4 w-4 text-ink-faint" />
                 </Link>)}
             </div>
