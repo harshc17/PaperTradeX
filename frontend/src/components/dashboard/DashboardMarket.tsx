@@ -9,6 +9,7 @@ import { getSocket } from '@/lib/socket';
 import { API_URL } from '@/lib/config';
 import { keepNewestQuote } from '@/lib/keepNewestQuote';
 import { usePortfolio } from '@/context/PortfolioContext';
+import { stockQuote } from '@/lib/stockQuote';
 import { TrendingUp, TrendingDown, ArrowUpRight, Loader2 } from 'lucide-react';
 import MarketMovers from './MarketMovers';
 import DashboardNews from './DashboardNews';
@@ -51,7 +52,8 @@ function resolveQuote(quotes: Record<string, QuoteData>, symbol: string): QuoteD
 
 export default function DashboardMarket() {
     const router = useRouter();
-    const { marketStatus, livePrices, liveChanges, livePreviousClose, watchSymbol } = usePortfolio();
+    const portfolio = usePortfolio();
+    const { marketStatus, watchSymbol } = portfolio;
     const [showAllStocks, setShowAllStocks] = useState(false);
     const topStocksRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
@@ -69,9 +71,9 @@ export default function DashboardMarket() {
     const quotes = { ...receivedQuotes };
     for (const stock of TOP_STOCKS) {
         const key = stock.symbol.replace(/\.NS$/i, '');
-        if (!(livePrices[key] > 0)) { delete quotes[key]; delete quotes[stock.symbol]; continue; }
-        const change = liveChanges[key] || 0, close = livePreviousClose[key];
-        const q = { symbol: key, price: livePrices[key], change, dayChange: close > 0 ? change / close * 100 : 0, shortname: stock.name };
+        const shared = stockQuote(portfolio, stock.symbol);
+        if (shared.price === null) { delete quotes[key]; delete quotes[stock.symbol]; continue; }
+        const q = { symbol: key, price: shared.price, change: shared.change, dayChange: shared.percent, shortname: stock.name };
         quotes[key] = q; quotes[stock.symbol] = q;
     }
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -119,22 +121,13 @@ export default function DashboardMarket() {
 
         const hydrateQuotes = async () => {
             try {
-                const [indicesRes, ...stockRes] = await Promise.all([
-                    fetch(`${API_URL}/api/indices`).then(r => r.ok ? r.json() : null).catch(() => null),
-                    ...TOP_STOCKS.map(st =>
-                        fetch(`${API_URL}/api/stock/${encodeURIComponent(st.symbol)}/realtime`)
-                            .then(r => r.ok ? r.json() : null).catch(() => null)
-                    ),
-                ]);
+                // Stocks already hydrate through PortfolioContext. A second
+                // polling loop adds requests without supplying their displayed price.
+                const indicesRes = await fetch(`${API_URL}/api/indices`)
+                    .then(r => r.ok ? r.json() : null).catch(() => null);
                 setQuotes(prev => {
                     const next = { ...prev };
                     if (indicesRes) Object.entries(indicesRes).forEach(([sym, d]: [string, any]) => { const q = normalizeQuote(sym, d); if (q) next[sym] = keepNewestQuote(next[sym], q); });
-                    stockRes.forEach((d: any) => {
-                        const sym = String(d?.symbol || '').toUpperCase();
-                        if (!sym || typeof d?.price !== 'number') return;
-                        const key = sym.endsWith('.NS') ? sym : `${sym}.NS`;
-                        next[key] = keepNewestQuote(next[key], { symbol: key, price: d.price, change: d.change ?? 0, dayChange: d.dayChange ?? 0, shortname: key, timestamp: d.timestamp });
-                    });
                     return next;
                 });
                 setLastUpdated(new Date());

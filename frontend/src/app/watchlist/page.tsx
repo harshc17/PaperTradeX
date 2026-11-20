@@ -9,6 +9,7 @@ import Header from '@/components/dashboard/Header';
 import { Star, TrendingUp, TrendingDown, Plus, Trash2 } from 'lucide-react';
 import { usePortfolio } from '@/context/PortfolioContext';
 import { API_URL } from '@/lib/config';
+import { stockQuote } from '@/lib/stockQuote';
 
 const DEFAULT_WATCHLIST = [
     { symbol: 'RELIANCE.NS', name: 'Reliance Industries' },
@@ -28,12 +29,12 @@ function WatchlistContent() {
     const searchParams = useSearchParams();
     const addedSymbol = (searchParams.get('added') || '').toUpperCase();
     const [watchlist, setWatchlist] = useState<{ symbol: string; name: string }[]>([]);
-    const { livePrices, liveChanges, livePreviousClose, watchSymbol } = usePortfolio();
+    const portfolio = usePortfolio();
+    const { watchSymbol } = portfolio;
     const quotes: Record<string, { price: number; change: number; dayChange: number }> = {};
     for (const item of watchlist) {
-        const key = item.symbol.toUpperCase().replace(/\.NS$/i, '');
-        const price = livePrices[key], change = liveChanges[key] || 0, close = livePreviousClose[key];
-        if (price > 0) quotes[item.symbol] = { price, change, dayChange: close > 0 ? change / close * 100 : 0 };
+        const quote = stockQuote(portfolio, item.symbol);
+        if (quote.price !== null) quotes[item.symbol] = { price: quote.price, change: quote.change, dayChange: quote.percent };
     }
     useEffect(() => { const stop = watchlist.map(s => watchSymbol(s.symbol)); return () => stop.forEach(fn => fn()); }, [watchlist, watchSymbol]);
     const [addInput, setAddInput] = useState('');
@@ -140,7 +141,7 @@ function WatchlistContent() {
                                             <CompanyLogo symbol={item.symbol} className="h-9 w-9" />
                                             <div className="min-w-0">
                                                 <p className="truncate text-sm font-semibold text-ink group-hover:text-primary transition-colors" title={item.name}>{item.name}</p>
-                                                <p className="truncate text-xs text-ink-faint">{item.symbol} · NSE</p>
+                                                <p className="truncate text-xs text-ink-faint">{item.symbol} · {item.symbol.toUpperCase().endsWith('.BO') ? 'BSE' : 'NSE'}</p>
                                             </div>
                                         </div>
                                         <div className="flex min-w-0 items-center justify-between gap-3 sm:justify-end sm:gap-4">

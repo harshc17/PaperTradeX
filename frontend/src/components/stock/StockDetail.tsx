@@ -112,16 +112,8 @@ export default function StockDetail({ symbol }: { symbol: string }) {
 
     const currentPrice = quote.price;
 
-    // Recompute change/changePercent dynamically so they stay in sync with the live
-    // price as it streams in via WebSocket. Use regularMarketPreviousClose as the
-    // fixed anchor (fetched once at mount, never changes within a trading session).
-    const prevClose = quote.previousClose ?? 0;
-    const change = prevClose > 0
-        ? parseFloat(((currentPrice ?? 0) - prevClose).toFixed(2))
-        : (details.regularMarketChange ?? 0);
-    const changePercent = prevClose > 0
-        ? parseFloat(((change / prevClose) * 100).toFixed(2))
-        : (details.regularMarketChangePercent ?? 0);
+    const change = quote.change;
+    const changePercent = quote.percent;
     const isUp = change >= 0;
 
     const isNegative = change < 0;
