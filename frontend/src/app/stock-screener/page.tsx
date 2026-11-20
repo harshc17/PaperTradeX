@@ -3,9 +3,10 @@ import { apiFetch as fetch } from '@/lib/backend';
 
 import { API_URL } from '@/lib/config';
 import CompanyLogo from '@/components/CompanyLogo';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getSocket } from '@/lib/socket';
+import { usePortfolio } from '@/context/PortfolioContext';
+import { stockQuote } from '@/lib/stockQuote';
 import Header from '@/components/dashboard/Header';
 import { TrendingUp, TrendingDown, Search, Filter } from 'lucide-react';
 
@@ -115,40 +116,11 @@ type QuoteData = { symbol: string; price: number; change: number; dayChange: num
 
 export default function StockScreenerPage() {
     const router = useRouter();
-    const [quotes, setQuotes] = useState<Record<string, QuoteData>>({});
+    const portfolio = usePortfolio();
+    const { watchSymbol } = portfolio;
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('All');
     const [searchResults, setSearchResults] = useState<typeof STOCKS>([]);
-    const subbedRef = useRef<Set<string>>(new Set());
-
-    useEffect(() => {
-        const s = getSocket();
-
-        const onUpdate = (payload: Record<string, any>) => {
-            setQuotes(prev => {
-                const next = { ...prev };
-                Object.entries(payload).forEach(([sym, d]: [string, any]) => {
-                    const normalizedSym = sym.endsWith('.NS') ? sym : `${sym}.NS`;
-                    if (typeof d?.price === 'number') {
-                        next[normalizedSym] = {
-                            symbol: normalizedSym,
-                            price: d.price,
-                            change: d.change ?? 0,
-                            dayChange: d.dayChange ?? 0,
-                        };
-                    }
-                });
-                return next;
-            });
-        };
-
-        s.on('market_update', onUpdate);
-
-        return () => {
-            s.off('market_update', onUpdate);
-        };
-    }, []);
-
     // API Search Effect
     useEffect(() => {
         if (searchTerm.trim().length < 2) {
@@ -186,34 +158,17 @@ export default function StockScreenerPage() {
             return matchesSearch && matchesCategory;
         });
 
-    // Dynamic subscription for new symbols
+    const watchedSymbols = filteredStocks.map(item => item.symbol).join('|');
     useEffect(() => {
-        const s = getSocket();
-
-        filteredStocks.forEach(st => {
-            if (!subbedRef.current.has(st.symbol)) {
-                subbedRef.current.add(st.symbol);
-                s.emit('subscribe', st.symbol);
-
-                fetch(`${API_URL}/api/stock/${encodeURIComponent(st.symbol)}/realtime`)
-                    .then(r => r.ok ? r.json() : null)
-                    .then(d => {
-                        if (d && typeof d.price === 'number') {
-                            setQuotes(prev => ({
-                                ...prev,
-                                [st.symbol]: {
-                                    symbol: st.symbol,
-                                    price: d.price,
-                                    change: d.change ?? 0,
-                                    dayChange: d.dayChange ?? 0,
-                                }
-                            }));
-                        }
-                    })
-                    .catch(() => null);
-            }
-        });
-    }, [filteredStocks]);
+        const stop = watchedSymbols.split('|').filter(Boolean).map(symbol => watchSymbol(symbol));
+        return () => stop.forEach(unwatch => unwatch());
+    }, [watchedSymbols, watchSymbol]);
+    const quotes: Record<string, QuoteData> = {};
+    for (const item of filteredStocks) {
+        const quote = stockQuote(portfolio, item.symbol);
+        if (quote.price !== null) quotes[item.symbol] = { symbol: item.symbol, price: quote.price,
+            change: quote.change, dayChange: quote.percent };
+    }
 
     const fmt = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 

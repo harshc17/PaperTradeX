@@ -78,6 +78,8 @@ export default function ChallengePage() {
 
     const [challenge, setChallenge] = useState<ChallengeSnapshot | null>(null);
     const [trades, setTrades] = useState<ChallengeTrade[]>([]);
+    const [tradesLoading, setTradesLoading] = useState(true);
+    const [tradesError, setTradesError] = useState(false);
     const [loading, setLoading] = useState(true);
     const [accepting, setAccepting] = useState(false);
     const [placing, setPlacing] = useState(false);
@@ -116,12 +118,20 @@ export default function ChallengePage() {
 
     const fetchTrades = async () => {
         if (!token) return;
-        const r = await fetch(`${API}/api/challenge/trades`, {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!r.ok) return;
-        const data = await r.json();
-        setTrades(data.trades || []);
+        setTradesLoading(true);
+        setTradesError(false);
+        try {
+            const r = await fetch(`${API}/api/challenge/trades`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!r.ok) throw new Error('Unable to load trade history');
+            const data = await r.json();
+            setTrades(data.trades || []);
+        } catch {
+            setTradesError(true);
+        } finally {
+            setTradesLoading(false);
+        }
     };
 
     useEffect(() => {
@@ -133,7 +143,9 @@ export default function ChallengePage() {
             if (!token || !user) return;
             setLoading(true);
             try {
-                await Promise.all([fetchState(), fetchTrades()]);
+                // Optional history must not hold the challenge page behind its request.
+                void fetchTrades();
+                await fetchState();
             } catch (e: any) {
                 showToast('error', e.message || 'Unable to load challenge');
             } finally {
@@ -705,10 +717,14 @@ export default function ChallengePage() {
                                 <div className="bg-surface rounded-2xl border border-line p-6 shadow-none">
                                     <div className="flex items-center justify-between mb-4">
                                         <h2 className="font-medium text-ink-heading text-base">Challenge Trade Ledger</h2>
-                                        <span className="text-xs text-ink-faint font-num">{trades.length} trades</span>
+                                        {!tradesLoading && !tradesError && <span className="text-xs text-ink-faint font-num">{trades.length} trades</span>}
                                     </div>
 
-                                    {trades.length === 0 ? (
+                                    {tradesLoading ? (
+                                        <p role="status" className="text-xs text-ink-muted py-4 text-center">Loading trade history…</p>
+                                    ) : tradesError ? (
+                                        <div className="py-4 text-center text-xs text-ink-muted">Unable to load trade history. <button type="button" onClick={() => void fetchTrades()} className="text-primary underline min-h-11 px-2">Retry</button></div>
+                                    ) : trades.length === 0 ? (
                                         <p className="text-xs text-ink-muted py-4 text-center">No trades executed in this challenge yet.</p>
                                     ) : (
                                         <div className="space-y-2 max-h-96 overflow-y-auto pr-1">

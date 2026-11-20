@@ -1286,19 +1286,24 @@ app.get('/api/transactions', authenticateToken, async (req, res) => {
 
 
 io.on('connection', (socket) => {
+    const subscribedSymbols = new Set();
     // Subscribe: mark symbol as priority + send cached value immediately
     socket.on('subscribe', (symbol) => {
-        const data = marketDataService.subscribe(symbol);
+        if (typeof symbol !== 'string' || !symbol.trim()) return;
+        subscribedSymbols.add(quoteKey(symbol));
+        const data = marketDataService.subscribe(symbol, socket.id);
         if (data) socket.emit('market_update', { [symbol]: data });
     });
 
     // Deprioritize: user navigated away from stock detail page
     socket.on('deprioritize', (symbol) => {
-        marketDataService.deprioritize(symbol);
+        if (typeof symbol !== 'string') return;
+        subscribedSymbols.delete(quoteKey(symbol));
+        marketDataService.deprioritize(symbol, socket.id);
     });
 
     socket.on('disconnect', () => {
-        // Nothing extra needed; MarketData keeps tracking subscribers set
+        subscribedSymbols.forEach(symbol => marketDataService.deprioritize(symbol, socket.id));
     });
 });
 

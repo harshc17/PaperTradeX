@@ -80,7 +80,7 @@ export default function DashboardMarket() {
 
     useEffect(() => {
         const s = getSocket();
-        const allSymbols = [...INDEX_SYMBOLS, ...TOP_STOCKS.map(s => s.symbol)];
+        const allSymbols = INDEX_SYMBOLS;
         allSymbols.forEach(sym => s.emit('subscribe', sym));
 
         const onUpdate = (payload: Record<string, any>) => {

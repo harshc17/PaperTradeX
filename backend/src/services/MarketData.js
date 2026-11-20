@@ -62,6 +62,8 @@ class MarketDataService {
         this.io = io;
         this.subscribers = new Set();
         this.prioritySymbols = new Set(); // actively viewed — fetched every cycle
+        this.symbolViewers = new Map();
+        this.restLeases = new Map();
         this.cache = {};
         this.quoteRequests = new Map();
         this.lastFallbackAttempt = new Map();
@@ -77,22 +79,40 @@ class MarketDataService {
             'TMPV', 'ITC', 'ETERNAL', 'AXISBANK', 'WIPRO', 'BAJFINANCE',
         ];
         defaults.forEach(s => this.subscribers.add(s));
+        this.defaultSymbols = new Set(defaults);
     }
 
     /** Subscribe to live updates for a symbol (bare NSE symbol, no .NS suffix) */
-    subscribe(symbol) {
-        if (!symbol) return null;
+    subscribe(symbol, viewerId = null) {
+        if (typeof symbol !== 'string' || !symbol.trim()) return null;
         const bare = quoteKey(symbol);
+        if (viewerId) {
+            if (!this.symbolViewers.has(bare)) this.symbolViewers.set(bare, new Set());
+            this.symbolViewers.get(bare).add(viewerId);
+        } else this.restLeases.set(bare, Date.now() + 30000);
         this.subscribers.add(bare);
         this.prioritySymbols.add(bare);
         return this.cache[bare] || null;
     }
 
     /** Unmark a symbol from priority when user navigates away */
-    deprioritize(symbol) {
-        if (!symbol) return;
+    deprioritize(symbol, viewerId = null) {
+        if (typeof symbol !== 'string' || !symbol.trim()) return;
         const bare = quoteKey(symbol);
-        this.prioritySymbols.delete(bare);
+        if (viewerId) {
+            this.symbolViewers.get(bare)?.delete(viewerId);
+            if (!this.symbolViewers.get(bare)?.size) this.symbolViewers.delete(bare);
+        } else this.restLeases.delete(bare);
+        this.pruneSubscriptions();
+    }
+
+    pruneSubscriptions(now = Date.now()) {
+        for (const [symbol, expires] of this.restLeases) if (expires <= now) this.restLeases.delete(symbol);
+        for (const symbol of this.prioritySymbols) {
+            if (this.symbolViewers.get(symbol)?.size || this.restLeases.has(symbol)) continue;
+            this.prioritySymbols.delete(symbol);
+            if (!this.defaultSymbols.has(symbol)) this.subscribers.delete(symbol);
+        }
     }
 
     _updateCache(bare, price, change, dayChange, shortname, timestamp = null, source = 'nse') {
@@ -293,6 +313,7 @@ class MarketDataService {
     }
 
     async _fetchExtras(skipNse = false) {
+        this.pruneSubscriptions();
         const updates = {};
         const toFetch = [...new Set([
             ...EXTRA_STOCKS,
@@ -320,6 +341,7 @@ class MarketDataService {
     }
 
     async _fetchFastQuotes() {
+        this.pruneSubscriptions();
         const symbols = [...new Set([...this.prioritySymbols, ...TRACKED_INDICES.filter(index => index.yahooSymbol).map(index => index.key)])];
         const quotes = await HistoricalClient.quoteBatch(symbols);
         if (!Object.keys(quotes).length) throw new Error('No batch quotes');

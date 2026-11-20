@@ -174,9 +174,6 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
                 setHoldings(h);
                 setHoldingsLoaded(true);
                 setPortfolioError(null);
-                // Subscribe to live prices for holdings
-                const s = getSocket();
-                h.forEach(item => s.emit('subscribe', item.symbol));
             }
         } catch {
             if (requestId === portfolioRequest.current) setPortfolioError('Unable to refresh holdings. Please retry.');
@@ -272,24 +269,6 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         if (!res.ok) throw new Error(data.error || 'Failed to cancel order');
         await refreshOrders();
     };
-
-    // Keep held symbols subscribed; re-subscribe automatically after reconnect.
-    useEffect(() => {
-        if (holdings.length === 0) return;
-        const s = getSocket();
-        const symbols = holdings.map(h => h.symbol);
-
-        const subscribeAll = () => {
-            symbols.forEach(sym => s.emit('subscribe', sym));
-        };
-
-        subscribeAll();
-        s.on('connect', subscribeAll);
-
-        return () => {
-            s.off('connect', subscribeAll);
-        };
-    }, [holdings]);
 
     const applyQuotes = useCallback((payload: Record<string, any>) => {
         const prices: Record<string, number> = {}, changes: Record<string, number> = {};
@@ -405,7 +384,10 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         };
         refresh();
         const interval = setInterval(refresh, marketOpen ? 1000 : 60000);
-        return () => { cancelled = true; controller.abort(); clearInterval(interval); socket.off('connect', subscribe); };
+        return () => {
+            cancelled = true; controller.abort(); clearInterval(interval); socket.off('connect', subscribe);
+            symbols.forEach(key => socket.emit('deprioritize', key));
+        };
     }, [holdings, transactions, watched, marketOpen, marketStatus?.returnSessionDate, applyQuotes]);
 
     const valuationDate = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);

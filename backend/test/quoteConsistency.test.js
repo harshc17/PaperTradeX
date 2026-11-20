@@ -107,3 +107,20 @@ test('held and viewed stocks refresh after five seconds while background stocks 
     assert.equal(fresh.price, 110);
     assert.notEqual(fresh, old);
 });
+
+test('leaving a screener releases unused symbols without interrupting another viewer', () => {
+    const service = new MarketData({ emit() {} });
+    service.subscribe('MON100.NS', 'viewer-a');
+    service.subscribe('MON100', 'viewer-a');
+    service.subscribe('MON100', 'viewer-b');
+    service.deprioritize('MON100', 'viewer-a');
+    assert(service.prioritySymbols.has('MON100'));
+    service.deprioritize('MON100', 'viewer-b');
+    assert(!service.prioritySymbols.has('MON100'));
+    assert(!service.subscribers.has('MON100'));
+    service.subscribe('GOLDBEES');
+    service.pruneSubscriptions(Date.now() + 30001);
+    assert(!service.prioritySymbols.has('GOLDBEES'));
+    assert(!service.subscribers.has('GOLDBEES'));
+    assert(service.subscribers.has('HDFCBANK'));
+});
