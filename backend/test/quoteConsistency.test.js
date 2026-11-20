@@ -95,3 +95,15 @@ test('trades reuse an accepted fresh shared quote and refresh only when stale', 
     assert.equal((await service.tradeQuote('RELIANCE')).price, 101);
     assert.equal(refreshes, 1);
 });
+
+test('held and viewed stocks refresh after five seconds while background stocks retain their lower request rate', async () => {
+    const service = new MarketData({ emit() {} });
+    const old = { price: 100, timestamp: new Date(Date.now() - 10000) };
+    service.cache.HAL = old;
+    service.lastFallbackAttempt.set('HAL', Date.now() - 6000);
+    assert.equal(await service.refreshSymbol('HAL', true), old);
+    service.subscribe('HAL');
+    const fresh = await service.refreshSymbol('HAL', true);
+    assert.equal(fresh.price, 110);
+    assert.notEqual(fresh, old);
+});

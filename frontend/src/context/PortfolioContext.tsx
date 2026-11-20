@@ -6,6 +6,7 @@ import { getSocket } from '@/lib/socket';
 import { API_URL as API } from '@/lib/config';
 import { useAuth } from './AuthContext';
 import { calculateDailyReturn } from '@/lib/dailyReturn';
+import { quoteAdvanced } from '@/lib/quoteProgress';
 import { calculatePortfolioXirr, type XirrResult } from '@/lib/xirr';
 
 function normalizeSymbol(symbol: string) {
@@ -317,8 +318,13 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         const socket = getSocket();
         const update = (payload: Record<string, any>) => {
             if (marketOpen === false) return;
+            for (const [symbol, quote] of Object.entries(payload)) {
+                const key = normalizeSymbol(symbol);
+                if (quoteAdvanced(quote, latestQuoteAt.current[key] || 0)) {
+                    lastSocketQuoteAt.current[key] = Date.now();
+                }
+            }
             applyQuotes(payload);
-            for (const key of Object.keys(payload)) lastSocketQuoteAt.current[normalizeSymbol(key)] = Date.now();
         };
         const tick = (q: any) => { if (q?.symbol) update({ [q.symbol]: q }); };
         socket.on('market_update', update);

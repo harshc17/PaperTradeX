@@ -25,7 +25,7 @@ module.exports = function createQuoteRecovery({ fetchChart, now = Date.now }) {
                     regularMarketChange: price - previous, regularMarketChangePercent: (price / previous - 1) * 100,
                     regularMarketTime: new Date(at), shortName: meta.shortName || meta.longName || symbol,
                     currency: meta.currency, exchange: meta.exchangeName };
-                cache.set(symbol, { value, until: now() + 10000 });
+                cache.set(symbol, { value, until: now() + 5000 });
                 if (cache.size > 256) cache.delete(cache.keys().next().value);
                 return value;
             })().catch(error => {

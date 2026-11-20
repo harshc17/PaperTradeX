@@ -275,7 +275,8 @@ class MarketDataService {
                     }
                 } catch { /* use the shared fallback below */ }
             }
-            if (Date.now() - (this.lastFallbackAttempt.get(bare) || 0) < 15000) return cached;
+            const fallbackWait = this.prioritySymbols.has(bare) ? 5000 : 15000;
+            if (Date.now() - (this.lastFallbackAttempt.get(bare) || 0) < fallbackWait) return cached;
             this.lastFallbackAttempt.set(bare, Date.now());
             try {
                 const q = await HistoricalClient.quoteDetail(bare);
