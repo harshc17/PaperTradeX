@@ -32,11 +32,15 @@ const { quoteTime } = require('./QuoteIdentity');
 const NseArchive = require('./NseArchive');
 const quoteRecovery = require('./QuoteRecovery')({
     fetchChart: async symbol => {
-        // Match the chart host used by yahoo-finance2 and the working index feed.
-        const response = await fetch(`https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1m`,
-            { signal: AbortSignal.timeout(4500) });
-        if (!response.ok) throw new Error(`Chart quote HTTP ${response.status}`);
-        return (await response.json())?.chart?.result?.[0];
+        // Use the same queued, cookie-aware chart transport as working indices.
+        // Start at this session so chartPreviousClose refers to its prior close.
+        const session = returnSessionDate(new Date(), NSEClient.constructor.HOLIDAYS);
+        const result = await yf.chart(symbol, { period1: new Date(`${session}T00:00:00+05:30`),
+            period2: new Date(), interval: '1m' }, { validateResult: false });
+        if (result?.meta?.regularMarketTime instanceof Date) {
+            result.meta.regularMarketTime = +result.meta.regularMarketTime / 1000;
+        }
+        return result;
     },
 });
 
