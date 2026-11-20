@@ -28,3 +28,13 @@ test('wrong exchanges, impossible prices and future times are never accepted', a
         assert.equal(await service.chart('RELIANCE.NS'), null);
     }
 });
+test('a throttled chart is not retried by every reader until its cooldown expires', async () => {
+    let calls = 0, time = now;
+    const service = create({ now: () => time, fetchChart: async () => { calls++; throw Error('HTTP 429'); } });
+    await assert.rejects(service.chart('TCS.NS'), /429/);
+    assert.equal(await service.chart('TCS.NS'), null);
+    assert.equal(calls, 1);
+    time += 30001;
+    await assert.rejects(service.chart('TCS.NS'), /429/);
+    assert.equal(calls, 2);
+});

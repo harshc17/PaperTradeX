@@ -28,7 +28,12 @@ module.exports = function createQuoteRecovery({ fetchChart, now = Date.now }) {
                 cache.set(symbol, { value, until: now() + 10000 });
                 if (cache.size > 256) cache.delete(cache.keys().next().value);
                 return value;
-            })().finally(() => pending.delete(symbol));
+            })().catch(error => {
+                // Share temporary failures too, so every viewer does not
+                // immediately retry the same throttled provider request.
+                cache.set(symbol, { value: null, until: now() + 30000 });
+                throw error;
+            }).finally(() => pending.delete(symbol));
             pending.set(symbol, request);
             return request;
         },

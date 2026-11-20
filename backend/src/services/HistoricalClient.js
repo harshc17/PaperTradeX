@@ -32,7 +32,8 @@ const { quoteTime } = require('./QuoteIdentity');
 const NseArchive = require('./NseArchive');
 const quoteRecovery = require('./QuoteRecovery')({
     fetchChart: async symbol => {
-        const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1m`,
+        // Match the chart host used by yahoo-finance2 and the working index feed.
+        const response = await fetch(`https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=1m`,
             { signal: AbortSignal.timeout(4500) });
         if (!response.ok) throw new Error(`Chart quote HTTP ${response.status}`);
         return (await response.json())?.chart?.result?.[0];
