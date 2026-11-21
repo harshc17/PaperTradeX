@@ -22,6 +22,9 @@ test('chunking is bounded, overlapping and stable; retrieval ranks relevant sour
     const education = retrieve('diversification concentration risk', knowledge)[0];
     assert.equal(education.scope, 'education');
     assert.equal(new URL(education.referenceUrl).hostname, 'investor.sebi.gov.in');
+    assert.equal(retrieve('what are ETFs', knowledge)[0].documentId, 'education-etfs');
+    assert.equal(retrieve('how to diversify', knowledge)[0].documentId, 'education-diversification');
+    assert.deepEqual(tokens('realized stock prices'), tokens('realised stock price'));
 });
 
 async function boot(t, { configured = false, failGeneration = false, trades = [] } = {}) {

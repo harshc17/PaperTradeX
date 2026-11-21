@@ -1,7 +1,9 @@
 const crypto = require('crypto');
 const stop = new Set('a an the is are was were of to for in on and or it this that how what why can do does i me my please'.split(' '));
+const aliases = { etfs: 'etf', indices: 'index', indexes: 'index', companies: 'company', realized: 'realised', annualized: 'annualised', diversify: 'diversification', diversified: 'diversification', diversifying: 'diversification' };
 function tokens(text) {
-    return (String(text).replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().replace(/p\s*&\s*l|\bpnl\b/g, 'profit loss').match(/[a-z0-9]+/g) || []).filter(t => !stop.has(t));
+    return (String(text).replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().replace(/p\s*&\s*l|\bpnl\b/g, 'profit loss').match(/[a-z0-9]+/g) || [])
+        .filter(t => !stop.has(t)).map(t => aliases[t] || (t.length > 4 && t.endsWith('s') && !t.endsWith('ss') ? t.slice(0, -1) : t));
 }
 function chunkDocument(document) {
     const content = String(document.content || '').replace(/\r/g, '').trim();
