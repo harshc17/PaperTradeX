@@ -13,7 +13,7 @@ const { OAuth2Client } = require('google-auth-library');
 const MarketDataService = require('./services/MarketData');
 const TradeEngine = require('./services/TradeEngine');
 const { assertTradable, isMarketIndex } = require('./services/MarketIndex');
-const { connectDB, User, PendingSignup, Order, TransactionHistory, WeeklyChallenge, WeeklyChallengeTrade, seedAdmin } = require('./models');
+const { connectDB, User, PendingSignup, Order, TransactionHistory, WeeklyChallenge, WeeklyChallengeTrade, seedAdmin, RagDocument } = require('./models');
 const NSEClient = require('./services/NSEClient');
 const HistoricalClient = require('./services/HistoricalClient');
 const closingQuote = require('./services/ClosingQuote');
@@ -872,6 +872,7 @@ app.get('/api/stock/:symbol/news', AIAvailability.requireAvailable, async (req, 
 const performanceRouter = require('./routes/tradingCoach')({ TransactionHistory, AIService, authenticateToken,
     aiEnabled: () => AIAvailability.enabled });
 app.use('/api/trade-performance', performanceRouter);
+app.use('/api/rag', require('./routes/rag')({ authenticateToken, RagDocument, TransactionHistory }));
 app.use('/api/ai/coach', performanceRouter);
 
 app.get('/api/reports/pnl', authenticateToken, async (req, res) => {

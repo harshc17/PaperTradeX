@@ -9,7 +9,7 @@ const jwt = require('jsonwebtoken');
 
 test('protected routes reject missing/forged tokens and non-admin refresh requests', async t => {
     const app = await boot(t);
-    for (const [route, method] of [['/api/reports/pnl', 'GET'], ['/api/portfolio', 'GET'], ['/api/orders', 'GET'], ['/api/transactions', 'GET'], ['/api/trade', 'POST'], ['/api/ai/market-news/refresh', 'POST']]) {
+    for (const [route, method] of [['/api/rag/ask', 'POST'], ['/api/rag/documents', 'GET'], ['/api/reports/pnl', 'GET'], ['/api/portfolio', 'GET'], ['/api/orders', 'GET'], ['/api/transactions', 'GET'], ['/api/trade', 'POST'], ['/api/ai/market-news/refresh', 'POST']]) {
         const response = await fetch(app.url + route, { method });
         assert.equal(response.status, 401, route);
     }

@@ -14,6 +14,13 @@
  *   - redisUp (legacy compatibility shim)
  */
 const mongoose = require('mongoose');
+const ragDocumentSchema = new mongoose.Schema({
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    title: { type: String, required: true, maxlength: 120 },
+    content: { type: String, required: true, maxlength: 30000 },
+    characters: { type: Number, required: true },
+}, { timestamps: true });
+const RagDocument = mongoose.models.RagDocument || mongoose.model('RagDocument', ragDocumentSchema);
 const bcrypt = require('bcrypt');
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/papertradex';
@@ -203,6 +210,7 @@ async function seedAdmin() {
 }
 
 module.exports = {
+    RagDocument,
     PendingSignup,
     connectDB,
     User,

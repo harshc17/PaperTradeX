@@ -1,185 +1,108 @@
 'use client';
-import { apiFetch as fetch } from '@/lib/backend';
 
+import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { BookOpen, Send, Loader2 } from 'lucide-react';
+import Header from '@/components/dashboard/Header';
+import KnowledgeLibrary from '@/components/KnowledgeLibrary';
+import { useAuth } from '@/context/AuthContext';
+import { apiFetch } from '@/lib/backend';
 import { API_URL } from '@/lib/config';
 
-import { useState, useRef, useEffect } from 'react';
-import Header from '@/components/dashboard/Header';
-import { Send, Bot, User as UserIcon, AlertCircle } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
-import ReactMarkdown from 'react-markdown';
-import Link from 'next/link';
-import { AI_FEATURES_AVAILABLE } from '@/lib/aiAvailability';
-import AIComingSoonPage from '@/components/AIComingSoonPage';
-
-interface Message {
-    role: 'user' | 'ai';
-    content: string;
+type Source = { citation: string; id: string; title: string; url?: string; scope: string; text: string };
+type Result = { mode: 'generated' | 'retrieval' | 'no_sources'; answer: string; sources: Source[];
+    performance: { completedSales: number; netRealisedPnl: number; winRate: number | null } | null };
+type Entry = { question: string; result: Result };
+async function request(path: string, init: RequestInit = {}) {
+    const token = localStorage.getItem('ptx_token') || localStorage.getItem('token');
+    if (!token) throw new Error('Please sign in again.');
+    const response = await apiFetch(`${API_URL}/api/rag${path}`, { ...init, cache: 'no-store',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'The knowledge assistant is unavailable.');
+    return data;
 }
 
 export default function AskAIPage() {
-    return AI_FEATURES_AVAILABLE ? <ActiveAskAIPage /> : <AIComingSoonPage title="Ask AI" />;
-}
-
-function ActiveAskAIPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
-    const [messages, setMessages] = useState<Message[]>([{
-        role: 'ai',
-        content: "Hello! I am your PaperTradeX financial AI assistant. I can help you with questions regarding the stock market, investing, economics, or specific stocks. How can I assist you today?"
-    }]);
-    const [input, setInput] = useState('');
-    const [isTyping, setIsTyping] = useState(false);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        if (!loading && !user) router.push('/login');
-    }, [user, loading, router]);
-
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, isTyping]);
-
+    useEffect(() => { if (!loading && !user) router.replace('/login'); }, [user, loading, router]);
     if (loading || !user) return null;
+    return <KnowledgeAssistant key={user.id} />;
+}
 
-    const sendMessage = async () => {
-        if (!input.trim()) return;
-
-        const newMsg: Message = { role: 'user', content: input.trim() };
-        setMessages(prev => [...prev, newMsg]);
-        setInput('');
-        setIsTyping(true);
-
+function KnowledgeAssistant() {
+    const [ready, setReady] = useState(false);
+    const [generation, setGeneration] = useState(false);
+    const [question, setQuestion] = useState('');
+    const [performance, setPerformance] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState('');
+    const [entries, setEntries] = useState<Entry[]>([]);
+    const active = useRef<AbortController | null>(null);
+    useEffect(() => {
+        const controller = new AbortController();
+        request('/config', { signal: controller.signal }).then(data => {
+            setGeneration(data.generationAvailable); setReady(true);
+        }).catch(e => { if (!controller.signal.aborted) setError(e.message); });
+        return () => { controller.abort(); active.current?.abort(); };
+    }, []);
+    async function ask(event: React.FormEvent) {
+        event.preventDefault();
+        if (busy || !ready || !question.trim()) return;
+        const text = question.trim();
+        const controller = new AbortController();
+        active.current = controller; setBusy(true); setError('');
         try {
-            const token = localStorage.getItem('ptx_token') || localStorage.getItem('token') || '';
-            const history = messages.slice(-10); // send last 10 messages for context
-
-            const res = await fetch(`${API_URL}/api/ai/chat`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ question: newMsg.content, history }),
-            });
-
-            if (res.status === 404) {
-                setMessages(prev => [...prev, { role: 'ai', content: "Backend endpoint not found. Please restart your backend server to load the Ask AI endpoint." }]);
-                return;
-            }
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.error || 'Failed to get answer');
-            }
-
-            setMessages(prev => [...prev, { role: 'ai', content: data.answer }]);
-        } catch (error: any) {
-            setMessages(prev => [...prev, { role: 'ai', content: `Error: ${error.message}` }]);
-        } finally {
-            setIsTyping(false);
-        }
-    };
-
-    return (
-        <div className="min-h-screen flex flex-col bg-transparent font-sans page-fade-in">
-            <Header />
-
-            <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col">
-                <div className="mb-6 flex items-center justify-between">
-                    <div>
-                        <h1 className="text-[28px] font-semibold text-ink-heading flex items-center gap-2.5 font-heading">
-                            <span className="w-10 h-10 rounded-xl flex items-center justify-center"
-                                style={{ background: 'var(--primary)', color: 'var(--primary-ink)' }}>
-
-                            </span>
-                            Ask AI
-                        </h1>
-                        <p className="text-ink-faint text-sm mt-1.5">Get expert financial insights and stock market analysis.</p>
-                        <Link href="/trading-coach" className="mt-2 inline-flex min-h-11 items-center text-sm text-primary hover:underline">Review your completed trades with Trading coach →</Link>
+            const result: Result = await request('/ask', { method: 'POST', signal: controller.signal,
+                body: JSON.stringify({ question: text, includePerformance: performance }) });
+            setEntries(previous => [...previous.slice(-9), { question: text, result }]); setQuestion('');
+        } catch (e) { if (!controller.signal.aborted) setError(e instanceof Error ? e.message : 'Unable to search.'); }
+        finally { if (!controller.signal.aborted) setBusy(false); }
+    }
+    return <div className="min-h-screen bg-page text-ink">
+        <Header />
+        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-9">
+            <Link href="/dashboard" className="inline-flex min-h-11 items-center text-sm text-primary">← Explore</Link>
+            <div className="mb-6 flex items-start gap-3">
+                <BookOpen className="mt-1 h-6 w-6 shrink-0 text-primary" />
+                <div className="min-w-0"><h1 className="text-2xl font-semibold tracking-tight">Ask AI</h1>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">Answers from PaperTradeX help and your own documents, with passages you can check.</p></div>
+            </div>
+            <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+                <section className="min-w-0 space-y-5" aria-label="Knowledge questions">
+                    <div className="rounded-xl border border-line bg-surface p-4 sm:p-5">
+                        <p className="text-sm font-medium">{!ready ? 'Connecting to your knowledge library…' : generation ? 'AI answers with sources' : 'Source search is ready · AI answers coming soon'}</p>
+                        <p className="mt-2 text-xs leading-5 text-ink-muted">{generation ? 'Sending a question shares it and matching passages with Groq. Statistics are included only if you select the option below.' : 'Search works without an AI provider. You’ll see matching passages, without a generated answer.'} Do not include passwords, OTPs or API keys. Questions are independent; earlier messages are not sent as context.</p>
                     </div>
-                </div>
-
-                <div className="bg-surface h-[65dvh] min-h-[320px] max-h-[800px] rounded-2xl border border-line shadow-none overflow-hidden flex flex-col">
-                    {/* Chat Area */}
-                    <div className="flex-1 min-h-0 p-3 sm:p-6 overflow-y-auto space-y-6 bg-surface-2">
-                        {messages.map((msg, idx) => (
-                            <div key={idx} className={`flex gap-2 sm:gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                {msg.role === 'ai' && (
-                                    <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1"
-                                        style={{ background: 'var(--primary)', color: 'var(--primary-ink)' }}>
-                                        <Bot className="w-4 h-4 text-[var(--primary-ink)]" />
-                                    </div>
-                                )}
-
-                                <div className={`min-w-0 max-w-[85%] break-words rounded-2xl px-3 sm:px-5 py-3.5 text-base ${
-                                    msg.role === 'user'
-                                    ? 'bg-primary text-[var(--primary-ink)] font-medium rounded-tr-sm'
-                                    : 'bg-surface border border-line text-ink rounded-tl-sm'
-                                }`}>
-                                    {msg.role === 'ai' ? (
-                                        <div className="prose prose-sm prose-invert [&_pre]:overflow-x-auto [&_pre]:max-w-full prose-p:leading-relaxed prose-headings:font-semibold prose-a:text-primary max-w-none">
-                                            <ReactMarkdown>{msg.content}</ReactMarkdown>
-                                        </div>
-                                    ) : (
-                                        <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                                    )}
-                                </div>
-
-                                {msg.role === 'user' && (
-                                    <div className="w-8 h-8 rounded-full bg-surface-3 border border-line flex items-center justify-center flex-shrink-0 mt-1">
-                                        <UserIcon className="w-4 h-4 text-ink-muted" />
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                        {isTyping && (
-                            <div className="flex gap-4 justify-start">
-                                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1"
-                                    style={{ background: 'var(--primary)', color: 'var(--primary-ink)' }}>
-                                    <Bot className="w-4 h-4 text-[var(--primary-ink)]" />
-                                </div>
-                                <div className="bg-surface border border-line rounded-2xl rounded-tl-sm px-5 py-4 flex items-center gap-2">
-                                    <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                                    <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                                    <div className="w-2 h-2 bg-primary/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                                </div>
-                            </div>
-                        )}
-                        <div ref={messagesEndRef} />
-                    </div>
-
-                    {/* Input Area */}
-                    <div className="p-4 bg-surface border-t border-line">
-                        <div className="flex items-center gap-2 bg-surface-2 border border-line rounded-xl p-2 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-colors">
-                            <input
-                                type="text"
-                                value={input}
-                                onChange={e => setInput(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && sendMessage()}
-                                placeholder="Ask about stocks, market trends, or trading strategies..."
-                                aria-label="Message to AI"
-                                className="min-w-0 flex-1 bg-transparent px-3 py-2 outline-none text-base text-ink placeholder-[var(--text-faint)]"
-                                disabled={isTyping}
-                            />
-                            <button
-                                onClick={sendMessage}
-                                disabled={!input.trim() || isTyping}
-                                aria-label="Send message"
-                                className="shrink-0 w-11 h-11 bg-primary hover:bg-surface-3 disabled:bg-surface-3 disabled:text-ink-faint text-[var(--primary-ink)] rounded-lg flex items-center justify-center transition-colors"
-                            >
-                                <Send className="w-4 h-4" />
-                            </button>
-                        </div>
-                        <div className="mt-3 flex items-center justify-center gap-1.5 text-xs text-ink-faint">
-                            <AlertCircle className="w-3.5 h-3.5" />
-                            AI can make mistakes. Always verify important financial information.
-                        </div>
-                    </div>
-                </div>
-            </main>
-        </div>
-    );
+                    {entries.map((entry, index) => <article key={index} className="min-w-0 rounded-xl border border-line bg-surface p-4 sm:p-5">
+                        <h2 className="break-words text-base font-semibold">{entry.question}</h2>
+                        <p className="mt-4 text-xs font-medium uppercase tracking-wide text-ink-muted">{entry.result.mode === 'generated' ? 'AI answer' : entry.result.mode === 'no_sources' ? 'No supporting sources' : 'Source passages'}</p>
+                        <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6">{entry.result.answer}</p>
+                        {entry.result.performance && <dl className="mt-4 grid grid-cols-1 gap-3 rounded-lg bg-surface-2 p-3 text-sm sm:grid-cols-3">
+                            <div><dt className="text-xs text-ink-muted">Completed sales</dt><dd className="mt-1">{entry.result.performance.completedSales}</dd></div>
+                            <div><dt className="text-xs text-ink-muted">Realised P&L</dt><dd className="mt-1 break-words">₹{entry.result.performance.netRealisedPnl.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</dd></div>
+                            <div><dt className="text-xs text-ink-muted">Win rate</dt><dd className="mt-1">{entry.result.performance.winRate === null ? 'Unavailable' : `${entry.result.performance.winRate}%`}</dd></div>
+                        </dl>}
+                        <div className="mt-4 space-y-3">{entry.result.sources.map(source => <details key={source.citation} className="min-w-0 rounded-lg border border-line p-3" open={entry.result.mode === 'retrieval'}>
+                            <summary className="cursor-pointer break-words text-sm font-medium leading-6">[{source.citation}] {source.title} <span className="text-xs font-normal text-ink-muted">· {source.scope === 'public' ? 'App help' : source.scope === 'account' ? 'Your statistics' : 'Private document'}</span></summary>
+                            <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-6 text-ink-muted">{source.text}</p>
+                            {source.url?.startsWith('/') && !source.url.startsWith('//') && <Link href={source.url} className="mt-2 inline-flex min-h-9 items-center text-xs text-primary">Open related page →</Link>}
+                        </details>)}</div>
+                    </article>)}
+                    <form onSubmit={ask} className="rounded-xl border border-line bg-surface p-4 sm:p-5">
+                        <label htmlFor="rag-question" className="text-sm font-medium">Your question</label>
+                        <textarea id="rag-question" value={question} disabled={busy} onChange={e => setQuestion(e.target.value)} maxLength={2000} rows={3} placeholder="How is realised P&L calculated?" required className="mt-2 w-full resize-y rounded-lg border border-line bg-page p-3 text-sm outline-none focus:border-primary" />
+                        <label className="mt-2 flex min-h-11 cursor-pointer items-center gap-3 text-xs leading-5 text-ink-muted"><input type="checkbox" checked={performance} onChange={e => setPerformance(e.target.checked)} className="h-4 w-4 shrink-0 accent-primary" />Include my completed-trade statistics</label>
+                        <p className="mb-3 text-xs leading-5 text-ink-muted">Educational support. This assistant cannot place orders or provide live prices. Check generated answers against the sources.</p>
+                        <button disabled={busy || !ready || !question.trim()} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-black disabled:opacity-50 sm:w-auto">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}{busy ? 'Searching sources…' : generation ? 'Ask with sources' : 'Search sources'}</button>
+                    </form>
+                    {error && <p role="alert" className="break-words text-sm text-down">{error}</p>}
+                    <p role="status" className="sr-only">{busy ? 'Searching' : entries.length ? 'Answer and sources ready' : ''}</p>
+                </section>
+                <KnowledgeLibrary enabled={ready} />
+            </div>
+        </main>
+    </div>;
 }
