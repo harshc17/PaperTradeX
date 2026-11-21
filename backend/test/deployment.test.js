@@ -81,6 +81,7 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, market
             if (name === './services/NSEClient') return { getMarketStatus: () => ({ isOpen: marketOpen }), constructor: { isMarketHours: () => marketOpen, HOLIDAYS: {} } };
             if (name === './services/HistoricalClient') return { quoteDetail: async () => providerQuote };
             if (name === './services/ClosingQuote') return realRequire(name);
+            if (name === './services/OfficialCashClose') return { quote: async () => null };
             if (name === './services/TradeEngine') return {
                 assertMarketOpen() {},
                 findTradeReplay: async () => null,

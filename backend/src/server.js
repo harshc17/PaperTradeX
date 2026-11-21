@@ -23,6 +23,7 @@ const AIAvailability = require('./services/AIAvailability');
 const Mailer = require('./services/Mailer');
 const { buildPnlReport } = require('./services/PnlReport');
 const { buildPnlWorkbook } = require('./services/PnlWorkbook');
+const OfficialCashClose = require('./services/OfficialCashClose');
 
 // ── Security config (from env) ───────────────────────────────────────────────
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -535,6 +536,11 @@ async function getClosedMarketPrice(symbol, fallbackPrice = null) {
     let source = 'cache';
 
     try {
+        const quote = await OfficialCashClose.quote(bare, dateKey);
+        if (quote) ({ price, change, dayChange, prevClose, timestamp, source } = quote);
+    } catch { /* retain exact-exchange fallback if the official report is unavailable */ }
+
+    if (!(price > 0)) try {
         // Completed daily bars bind both price and previous close to actual
         // consecutive sessions; quote metadata may still be a session behind.
         const quote = await closingQuote(bare, dateKey, (symbol, period) => HistoricalClient.historical(symbol, period));
@@ -594,6 +600,7 @@ async function getClosedMarketPrice(symbol, fallbackPrice = null) {
         dayChange,
         timestamp: entry.timestamp,
         isClosedMarketPrice: true,
+        source,
     };
     marketDataService.cache[bare] = cacheEntry;
     if (!bare.endsWith('.BO')) marketDataService.cache[bare + '.NS'] = cacheEntry;
