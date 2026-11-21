@@ -40,6 +40,14 @@ const quoteRecovery = require('./QuoteRecovery')({
         if (result?.meta?.regularMarketTime instanceof Date) {
             result.meta.regularMarketTime = +result.meta.regularMarketTime / 1000;
         }
+        const at = quoteTime(result?.meta?.regularMarketTime);
+        if (!Number.isFinite(at)) return null;
+        const day = new Date(at + 330 * 60000).toISOString().slice(0, 10);
+        const reference = await dailyReference(symbol, day);
+        // Chart metadata can retain a two-session-old previousClose even for
+        // a current quote. Never derive stock returns from that stale field.
+        if (!reference) return null;
+        result.meta.previousClose = reference.price;
         return result;
     },
 });
@@ -68,7 +76,7 @@ function chartPreviousClose(quote, meta = {}) {
 
 // A multi-session chart's metadata can refer to the beginning of its window.
 // Use the preceding session's final bar when the quote endpoint is unavailable.
-function indexPreviousClose(quote, meta, quotes, official) {
+function indexPreviousClose(quote, meta, quotes, official, dailyBars = []) {
     const session = date => new Date(+new Date(date) + 330 * 60000).toISOString().slice(0, 10);
     const last = quotes.at(-1);
     if (!last) return null;
@@ -76,12 +84,37 @@ function indexPreviousClose(quote, meta, quotes, official) {
     const priorDay = returnSessionDate(new Date(`${day}T00:00:00+05:30`), NSEClient.constructor.HOLIDAYS);
     if (official?.asOf === day && official.prevClose > 0) return official.prevClose;
     if (official?.asOf === priorDay && official.price > 0) return official.price;
+    const daily = dailyBars.findLast(bar => session(bar.date) === priorDay);
+    if (daily?.close > 0) return Math.round(daily.close * 100) / 100;
     if (quote && quote.regularMarketTime && session(quote.regularMarketTime) === day) {
         const previous = chartPreviousClose(quote);
         if (previous > 0) return previous;
     }
     const prior = quotes.findLast(point => session(point.date) < day);
     return prior?.close > 0 ? prior.close : chartPreviousClose(null, meta);
+}
+
+async function dailyReference(symbol, day) {
+    if (symbol.toUpperCase() === 'BSE-BANK.BO') symbol = '^BANKEX';
+    const priorDay = returnSessionDate(new Date(`${day}T00:00:00+05:30`), NSEClient.constructor.HOLIDAYS);
+    return readCache.load(`previous-session:${symbol}:${priorDay}`, 3600000, async () => {
+        const daily = await module.exports.historical(symbol, '1mo');
+        const prior = daily.data?.findLast(bar => new Date(Date.parse(bar.date) + 330 * 60000).toISOString().slice(0, 10) === priorDay);
+        return prior?.close > 0 ? { asOf: priorDay, price: Math.round(prior.close * 100) / 100 } : null;
+    }, value => value?.price > 0);
+}
+
+async function withSessionReference(symbol, quote) {
+    const at = quoteTime(quote?.regularMarketTime);
+    if (!(quote?.regularMarketPrice > 0) || !Number.isFinite(at)) return quote;
+    const day = new Date(at + 330 * 60000).toISOString().slice(0, 10);
+    let reference;
+    try { reference = await dailyReference(symbol, day); } catch { return quote; }
+    if (!reference) return quote;
+    const price = Math.round(quote.regularMarketPrice * 100) / 100;
+    const change = Math.round((price - reference.price) * 100) / 100;
+    return { ...quote, regularMarketPrice: price, regularMarketPreviousClose: reference.price,
+        regularMarketChange: change, regularMarketChangePercent: change / reference.price * 100 };
 }
 
 // Period → { lookbackDays, interval }
@@ -332,7 +365,7 @@ module.exports = {
      */
     async quoteDetail(symbol) {
         return readCache.load(`quote:${getYahooCandidates(symbol).join(',')}`, 2000,
-            () => this._quoteDetail(symbol));
+            async () => withSessionReference(symbol, await this._quoteDetail(symbol)));
     },
 
     async quoteBatch(symbols) {
@@ -351,10 +384,10 @@ module.exports = {
             }
             if (!quotes.length && lastError) throw lastError;
             const exact = new Map(quotes.filter(q => q?.symbol && q.regularMarketPrice > 0).map(q => [q.symbol.toUpperCase(), q]));
-            return Object.fromEntries(requests.flatMap(symbol => {
+            return Object.fromEntries((await Promise.all(requests.map(async symbol => {
                 const quote = exact.get(getYahooCandidates(symbol)[0].toUpperCase());
-                return quote ? [[symbol, quote]] : [];
-            }));
+                return quote ? [[symbol, await withSessionReference(symbol, quote)]] : [];
+            }))).flat());
         }, value => Object.keys(value).length > 0);
     },
 
@@ -398,14 +431,17 @@ module.exports = {
      */
     async indexQuote(symbol) {
         try {
+            const key = symbol.toUpperCase() === 'BSE-BANK.BO' ? '^BANKEX' : symbol;
+            const provider = getYahooCandidates(key)[0];
             const now = new Date();
             const period1 = new Date(now - 7 * 86400000); // includes Friday's close on Mondays
-            const [result, quote, official] = await Promise.all([yf.chart(symbol, {
+            const [result, quote, official, daily] = await Promise.all([yf.chart(provider, {
                 period1,
                 period2: now,
                 interval: '1m',
-            }, { validateResult: false }), this.quoteDetail(symbol).catch(() => null),
-                OfficialIndexSnapshot.latest().catch(() => ({}))]);
+            }, { validateResult: false }), this.quoteDetail(key).catch(() => null),
+                OfficialIndexSnapshot.latest().catch(() => ({})),
+                this.historical(key, '1mo').catch(() => ({ data: [] }))]);
 
             const quotes = (result?.quotes || []).filter(q => q?.close > 0);
             if (quotes.length === 0) return null;
@@ -413,15 +449,19 @@ module.exports = {
             const last = quotes[quotes.length - 1];
             const meta = result?.meta || {};
 
-            const price = last.close;
-            const prevClose = indexPreviousClose(quote, meta, quotes, official[symbol]);
+            const day = new Date(+new Date(last.date) + 330 * 60000).toISOString().slice(0, 10);
+            const dailyClose = daily.data?.findLast(bar => new Date(Date.parse(bar.date) + 330 * 60000).toISOString().slice(0, 10) === day);
+            const closed = +now >= Date.parse(`${day}T15:30:00+05:30`);
+            const price = Math.round((closed && dailyClose?.close > 0 ? dailyClose.close : last.close) * 100) / 100;
+            const prevClose = indexPreviousClose(quote, meta, quotes, official[key], daily.data);
             if (!(prevClose > 0)) return null;
             const change    = parseFloat((price - prevClose).toFixed(2));
             const dayChange = prevClose > 0
                 ? parseFloat(((change / prevClose) * 100).toFixed(2))
                 : 0;
 
-            return { price, prevClose, change, dayChange, timestamp: last.date, source: 'yahoo-delayed' };
+            return { price, prevClose, change, dayChange,
+                timestamp: closed && dailyClose?.close > 0 ? new Date(`${day}T15:30:00+05:30`) : last.date, source: 'yahoo-delayed' };
         } catch {
             return null;
         }

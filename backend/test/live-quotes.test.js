@@ -91,3 +91,29 @@ test('intraday index returns use the prior session close rather than the chart w
         assert.equal(quote.dayChange, 5);
     } finally { combineImpl = saved; snapshot.latest = savedLatest; }
 });
+
+test('consecutive daily closes override stale same-day metadata for indices and stocks', () => {
+    const points = [{ date: '2026-11-19T10:00:00Z', close: 83010 }, { date: '2026-11-20T10:00:00Z', close: 83919.71 }];
+    const quote = { regularMarketPrice: 83919.71, regularMarketPreviousClose: 82031.8,
+        regularMarketChange: 1887.91, regularMarketTime: new Date('2026-11-20T10:00:00Z') };
+    const daily = [{ date: '2026-11-19T03:45:00Z', close: 83021.75 }];
+    assert.equal(history.indexPreviousClose(quote, {}, points, null, daily), 83021.75);
+    assert.equal(history.indexPreviousClose(quote, {}, points, { asOf: '2026-11-20', prevClose: 83021.75 }, daily), 83021.75);
+    assert.equal(history.indexPreviousClose(quote, {}, points, null, [{ date: '2026-11-18T03:45:00Z', close: 82031.8 }]), 82031.8);
+});
+
+test('live batch and stock details correct stale changes using the exact prior-session daily close', async () => {
+    const saved = { quoteImpl, combineImpl, historical: history.historical };
+    const at = new Date('2026-11-20T10:00:00Z');
+    try {
+        history.historical = async symbol => ({ data: [{ date: '2026-11-19T03:45:00Z', close: symbol.endsWith('.BO') ? 301.25 : 301 }] });
+        quoteImpl = async symbols => symbols.map(symbol => ({ symbol, regularMarketPrice: 299.10, regularMarketPreviousClose: 296.60, regularMarketChange: 2.50, regularMarketTime: at }));
+        combineImpl = async symbol => ({ symbol, regularMarketPrice: 299.10, regularMarketChange: 2.50, regularMarketTime: at });
+        const batch = await history.quoteBatch(['TESTREF', 'TESTREF.BO']);
+        assert.equal(batch.TESTREF.regularMarketChange, -1.9);
+        assert.equal(batch['TESTREF.BO'].regularMarketChange, -2.15);
+        const detail = await history.quoteDetail('TESTDETAIL');
+        assert.equal(detail.regularMarketChange, -1.9);
+        assert.equal(detail.regularMarketPreviousClose, 301);
+    } finally { quoteImpl = saved.quoteImpl; combineImpl = saved.combineImpl; history.historical = saved.historical; }
+});

@@ -535,8 +535,9 @@ async function getClosedMarketPrice(symbol, fallbackPrice = null) {
     let source = 'cache';
 
     try {
-        const yData = await HistoricalClient.quoteDetail(bare);
-        const quote = closingQuote.fromProvider(yData, dateKey);
+        // Completed daily bars bind both price and previous close to actual
+        // consecutive sessions; quote metadata may still be a session behind.
+        const quote = await closingQuote(bare, dateKey, (symbol, period) => HistoricalClient.historical(symbol, period));
         if (quote) ({ price, change, dayChange, prevClose, timestamp, source } = quote);
     } catch {
         // Use the last known in-memory price if chart data is unavailable.
@@ -544,7 +545,8 @@ async function getClosedMarketPrice(symbol, fallbackPrice = null) {
 
     if (!(price > 0)) {
         try {
-            const quote = await closingQuote(bare, dateKey, (symbol, period) => HistoricalClient.historical(symbol, period));
+            const yData = await HistoricalClient.quoteDetail(bare);
+            const quote = closingQuote.fromProvider(yData, dateKey);
             if (quote) ({ price, change, dayChange, prevClose, timestamp, source } = quote);
         } catch { /* an unavailable close remains unavailable; never use a different session */ }
     }
