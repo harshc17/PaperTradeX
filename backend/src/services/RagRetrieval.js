@@ -14,7 +14,7 @@ function chunkDocument(document) {
         }
         const text = content.slice(offset, end).trim();
         if (text) chunks.push({ id: crypto.createHash('sha256').update(`${document.id}:${offset}:${text}`).digest('hex').slice(0, 20),
-            documentId: document.id, title: document.title, url: document.url || null,
+            documentId: document.id, title: document.title, url: document.url || null, referenceUrl: document.referenceUrl || null,
             scope: document.scope || 'public', text });
         if (end === content.length) break;
         offset = Math.max(offset + 1, end - 160);

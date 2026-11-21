@@ -48,7 +48,7 @@ export default function KnowledgeLibrary({ enabled }: { enabled: boolean }) {
     }
     return <aside className="min-w-0 self-start rounded-xl border border-line bg-surface p-4 sm:p-5">
         <h2 className="font-semibold">Your knowledge library</h2>
-        <p className="mt-2 text-xs leading-5 text-ink-muted">PaperTradeX help is included. Add your own notes or educational material. Your documents are private to your account.</p>
+        <p className="mt-2 text-xs leading-5 text-ink-muted">App help and introductory lessons on ETFs, diversification and market risks are included. Add your own notes or educational material. Your documents are private to your account.</p>
         <details className="mt-4">
             <summary className="flex min-h-11 cursor-pointer items-center text-sm text-primary">+ Add a document</summary>
             <form onSubmit={save} className="mt-2 space-y-3">

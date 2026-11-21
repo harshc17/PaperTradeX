@@ -10,7 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/backend';
 import { API_URL } from '@/lib/config';
 
-type Source = { citation: string; id: string; title: string; url?: string; scope: string; text: string };
+type Source = { citation: string; id: string; title: string; url?: string; referenceUrl?: string; scope: string; text: string };
 type Result = { mode: 'generated' | 'retrieval' | 'no_sources'; answer: string; sources: Source[];
     performance: { completedSales: number; netRealisedPnl: number; winRate: number | null } | null };
 type Entry = { question: string; result: Result };
@@ -68,7 +68,7 @@ function KnowledgeAssistant() {
             <div className="mb-6 flex items-start gap-3">
                 <BookOpen className="mt-1 h-6 w-6 shrink-0 text-primary" />
                 <div className="min-w-0"><h1 className="text-2xl font-semibold tracking-tight">Ask AI</h1>
-                    <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">Answers from PaperTradeX help and your own documents, with passages you can check.</p></div>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">Search PaperTradeX help, introductory lessons and your own documents, with passages you can check.</p></div>
             </div>
             <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
                 <section className="min-w-0 space-y-5" aria-label="Knowledge questions">
@@ -86,9 +86,10 @@ function KnowledgeAssistant() {
                             <div><dt className="text-xs text-ink-muted">Win rate</dt><dd className="mt-1">{entry.result.performance.winRate === null ? 'Unavailable' : `${entry.result.performance.winRate}%`}</dd></div>
                         </dl>}
                         <div className="mt-4 space-y-3">{entry.result.sources.map(source => <details key={source.citation} className="min-w-0 rounded-lg border border-line p-3" open={entry.result.mode === 'retrieval'}>
-                            <summary className="cursor-pointer break-words text-sm font-medium leading-6">[{source.citation}] {source.title} <span className="text-xs font-normal text-ink-muted">· {source.scope === 'public' ? 'App help' : source.scope === 'account' ? 'Your statistics' : 'Private document'}</span></summary>
+                            <summary className="cursor-pointer break-words text-sm font-medium leading-6">[{source.citation}] {source.title} <span className="text-xs font-normal text-ink-muted">· {source.scope === 'public' ? 'App help' : source.scope === 'education' ? 'Education' : source.scope === 'account' ? 'Your statistics' : 'Private document'}</span></summary>
                             <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-6 text-ink-muted">{source.text}</p>
                             {source.url?.startsWith('/') && !source.url.startsWith('//') && <Link href={source.url} className="mt-2 inline-flex min-h-9 items-center text-xs text-primary">Open related page →</Link>}
+                            {source.referenceUrl?.startsWith('https://investor.sebi.gov.in/') && <a href={source.referenceUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex min-h-9 items-center text-xs text-primary">Read SEBI Investor reference ↗</a>}
                         </details>)}</div>
                     </article>)}
                     <form onSubmit={ask} className="rounded-xl border border-line bg-surface p-4 sm:p-5">

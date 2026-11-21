@@ -1,6 +1,6 @@
 # PaperTradeX knowledge assistant
 
-Ask AI (`/ask-ai`) retrieves passages from original app-help documents and the signed-in user's private text/Markdown library. Optional completed-trade metrics are calculated by the existing weighted-average performance service, then added as an ephemeral source. The browser cannot supply account metrics or select another user's documents.
+Ask AI (`/ask-ai`) retrieves passages from original app-help documents, three introductory education summaries (ETFs, diversification and market risks) linked to SEBI Investor references reviewed 22 November 2026, and the signed-in user's private text/Markdown library. It does not fetch those external pages at question time. Optional completed-trade metrics are calculated by the existing weighted-average performance service, then added as an ephemeral source. The browser cannot supply account metrics or select another user's documents.
 
 ## Search and generation
 

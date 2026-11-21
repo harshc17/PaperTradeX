@@ -19,6 +19,9 @@ test('chunking is bounded, overlapping and stable; retrieval ranks relevant sour
     assert.deepEqual(tokens('P&L'), tokens('pnl'));
     assert.deepEqual(retrieve('the and my', knowledge), []);
     assert.deepEqual(retrieve('xyzunfindable', knowledge), []);
+    const education = retrieve('diversification concentration risk', knowledge)[0];
+    assert.equal(education.scope, 'education');
+    assert.equal(new URL(education.referenceUrl).hostname, 'investor.sebi.gov.in');
 });
 
 async function boot(t, { configured = false, failGeneration = false, trades = [] } = {}) {

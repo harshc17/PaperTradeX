@@ -59,7 +59,7 @@ module.exports = function ragRouter({ authenticateToken, RagDocument, Transactio
             if (performance) selected.unshift({ id: 'account-performance', title: 'Your completed paper trades', url: '/trading-coach', scope: 'account',
                 text: 'Server-calculated performance snapshot. Each sell execution is one completed sale. No completed sales means win rate is unavailable. ' + JSON.stringify(performance) });
             const sources = selected.slice(0, 6).map((source, i) => ({ citation: `S${i + 1}`, id: source.id, title: source.title,
-                url: source.url, scope: source.scope, text: source.text }));
+                url: source.url, referenceUrl: source.referenceUrl, scope: source.scope, text: source.text }));
             if (!sources.length) return res.json({ mode: 'no_sources', answer: 'I could not find supporting material for that question. Add a relevant document or ask about PaperTradeX features.', sources: [], performance });
             let answer = null;
             if (generation.configured()) {
