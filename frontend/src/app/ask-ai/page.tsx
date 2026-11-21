@@ -6,12 +6,15 @@ import { useRouter } from 'next/navigation';
 import { BookOpen, Send, Loader2 } from 'lucide-react';
 import Header from '@/components/dashboard/Header';
 import KnowledgeLibrary from '@/components/KnowledgeLibrary';
+import RagPortfolioSnapshot, { type PortfolioSnapshot } from '@/components/RagPortfolioSnapshot';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/backend';
 import { API_URL } from '@/lib/config';
 
 type Source = { citation: string; id: string; title: string; url?: string; referenceUrl?: string; scope: string; text: string };
 type Result = { mode: 'generated' | 'retrieval' | 'no_sources'; answer: string; sources: Source[];
+    basis?: string; retrieval?: string;
+    portfolio?: PortfolioSnapshot | null;
     performance: { completedSales: number; netRealisedPnl: number; winRate: number | null } | null };
 type Entry = { question: string; result: Result };
 async function request(path: string, init: RequestInit = {}) {
@@ -35,8 +38,11 @@ export default function AskAIPage() {
 function KnowledgeAssistant() {
     const [ready, setReady] = useState(false);
     const [generation, setGeneration] = useState(false);
+    const [provider, setProvider] = useState('Gemini');
+    const [vectors, setVectors] = useState(false);
     const [question, setQuestion] = useState('');
     const [performance, setPerformance] = useState(false);
+    const [includePortfolio, setIncludePortfolio] = useState(true);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const [entries, setEntries] = useState<Entry[]>([]);
@@ -44,7 +50,7 @@ function KnowledgeAssistant() {
     useEffect(() => {
         const controller = new AbortController();
         request('/config', { signal: controller.signal }).then(data => {
-            setGeneration(data.generationAvailable); setReady(true);
+            setGeneration(data.generationAvailable); setProvider(data.provider === 'openai' ? 'OpenAI' : 'Gemini'); setVectors(data.vectorAvailable); setReady(true);
         }).catch(e => { if (!controller.signal.aborted) setError(e.message); });
         return () => { controller.abort(); active.current?.abort(); };
     }, []);
@@ -56,7 +62,7 @@ function KnowledgeAssistant() {
         active.current = controller; setBusy(true); setError('');
         try {
             const result: Result = await request('/ask', { method: 'POST', signal: controller.signal,
-                body: JSON.stringify({ question: text, includePerformance: performance }) });
+                body: JSON.stringify({ question: text, includePerformance: performance, includePortfolio }) });
             setEntries(previous => [...previous.slice(-9), { question: text, result }]); setQuestion('');
         } catch (e) { if (!controller.signal.aborted) setError(e instanceof Error ? e.message : 'Unable to search.'); }
         finally { if (!controller.signal.aborted) setBusy(false); }
@@ -68,18 +74,22 @@ function KnowledgeAssistant() {
             <div className="mb-6 flex items-start gap-3">
                 <BookOpen className="mt-1 h-6 w-6 shrink-0 text-primary" />
                 <div className="min-w-0"><h1 className="text-2xl font-semibold tracking-tight">Ask AI</h1>
-                    <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">Search PaperTradeX help, introductory lessons and your own documents, with passages you can check.</p></div>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">Ask about your portfolio, finance or the stock market. Account answers use your actual records; education answers use our knowledge library and the configured AI model.</p></div>
             </div>
             <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
                 <section className="min-w-0 space-y-5" aria-label="Knowledge questions">
                     <div className="rounded-xl border border-line bg-surface p-4 sm:p-5">
-                        <p className="text-sm font-medium">{!ready ? 'Connecting to your knowledge library…' : generation ? 'AI answers with sources' : 'Source search is ready · AI answers coming soon'}</p>
-                        <p className="mt-2 text-xs leading-5 text-ink-muted">{generation ? 'Sending a question shares it and matching passages with Groq. Statistics are included only if you select the option below.' : 'Search works without an AI provider. You’ll see matching passages, without a generated answer.'} Do not include passwords, OTPs or API keys. Questions are independent; earlier messages are not sent as context.</p>
+                        <p className="text-sm font-medium">{!ready ? error ? 'Assistant unavailable' : 'Connecting to your knowledge library…' : generation ? 'AI answers with sources' : 'Portfolio snapshots and source search ready · AI explanations need setup'}</p>
+                        <p className="mt-2 text-xs leading-5 text-ink-muted">{generation ? `Answers use ${provider}. Questions and relevant passages go to that provider; account questions also include the selected portfolio data.` : 'Portfolio snapshots and keyword search work now. Conversational finance explanations need a Gemini or OpenAI API key.'} Portfolio data is only loaded for account questions when allowed below. No passwords, OTPs or API keys. Each question is independent; chat history is not sent.</p>
+                        {vectors && <p className="mt-2 text-xs leading-5 text-ink-muted">Semantic search sends the question to Gemini for a query embedding. Portfolio records are never stored in the shared vector index.</p>}
                     </div>
                     {entries.map((entry, index) => <article key={index} className="min-w-0 rounded-xl border border-line bg-surface p-4 sm:p-5">
                         <h2 className="break-words text-base font-semibold">{entry.question}</h2>
                         <p className="mt-4 text-xs font-medium uppercase tracking-wide text-ink-muted">{entry.result.mode === 'generated' ? 'AI answer' : entry.result.mode === 'no_sources' ? 'No supporting sources' : 'Source passages'}</p>
                         <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6">{entry.result.answer}</p>
+                        {entry.result.sources.length > 0 && <p className="mt-2 text-xs text-ink-muted">{entry.result.retrieval === 'hybrid' ? 'Semantic + keyword retrieval' : 'Keyword retrieval'} · {entry.result.sources.length} sources</p>}
+                        {entry.result.basis === 'general_education' && <p className="mt-2 text-xs leading-5 text-ink-muted">Includes general model knowledge, not verified live market research. Sources below support only the claims they address.</p>}
+                        {entry.result.portfolio && <RagPortfolioSnapshot snapshot={entry.result.portfolio} />}
                         {entry.result.performance && <dl className="mt-4 grid grid-cols-1 gap-3 rounded-lg bg-surface-2 p-3 text-sm sm:grid-cols-3">
                             <div><dt className="text-xs text-ink-muted">Completed sales</dt><dd className="mt-1">{entry.result.performance.completedSales}</dd></div>
                             <div><dt className="text-xs text-ink-muted">Realised P&L</dt><dd className="mt-1 break-words">₹{entry.result.performance.netRealisedPnl.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</dd></div>
@@ -94,15 +104,17 @@ function KnowledgeAssistant() {
                     </article>)}
                     <form onSubmit={ask} className="rounded-xl border border-line bg-surface p-4 sm:p-5">
                         <label htmlFor="rag-question" className="text-sm font-medium">Your question</label>
+                        <button type="button" disabled={busy} onClick={() => { setQuestion("What’s in my portfolio, and what are my balance and returns?"); setIncludePortfolio(true); }} className="my-2 block min-h-11 max-w-full rounded-lg border border-line px-3 text-left text-xs leading-5 text-primary">Ask about my portfolio →</button>
                         <textarea id="rag-question" value={question} disabled={busy} onChange={e => setQuestion(e.target.value)} maxLength={2000} rows={3} placeholder="How is realised P&L calculated?" required className="mt-2 w-full resize-y rounded-lg border border-line bg-page p-3 text-sm outline-none focus:border-primary" />
                         <label className="mt-2 flex min-h-11 cursor-pointer items-center gap-3 text-xs leading-5 text-ink-muted"><input type="checkbox" checked={performance} onChange={e => setPerformance(e.target.checked)} className="h-4 w-4 shrink-0 accent-primary" />Include my completed-trade statistics</label>
-                        <p className="mb-3 text-xs leading-5 text-ink-muted">Educational support. This assistant cannot place orders or provide live prices. Check generated answers against the sources.</p>
+                        <label className="mb-2 flex min-h-11 cursor-pointer items-center gap-3 text-xs leading-5 text-ink-muted"><input type="checkbox" checked={includePortfolio} onChange={e => setIncludePortfolio(e.target.checked)} className="h-4 w-4 shrink-0 accent-primary" />Allow my holdings, balance and returns for portfolio questions</label>
+                        <p className="mb-3 text-xs leading-5 text-ink-muted">Educational support. Portfolio figures come from the account and quote feed used by Dashboard and Holdings at the time you ask. Quotes can be delayed. This assistant cannot place orders. Check generated answers against the sources.</p>
                         <button disabled={busy || !ready || !question.trim()} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-black disabled:opacity-50 sm:w-auto">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}{busy ? 'Searching sources…' : generation ? 'Ask with sources' : 'Search sources'}</button>
                     </form>
                     {error && <p role="alert" className="break-words text-sm text-down">{error}</p>}
                     <p role="status" className="sr-only">{busy ? 'Searching' : entries.length ? 'Answer and sources ready' : ''}</p>
                 </section>
-                <KnowledgeLibrary enabled={ready} />
+                <KnowledgeLibrary enabled={ready} vectors={vectors} />
             </div>
         </main>
     </div>;

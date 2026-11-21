@@ -15,7 +15,7 @@ function chunkDocument(document) {
             if (boundary > offset + 700) end = boundary;
         }
         const text = content.slice(offset, end).trim();
-        if (text) chunks.push({ id: crypto.createHash('sha256').update(`${document.id}:${offset}:${text}`).digest('hex').slice(0, 20),
+        if (text) chunks.push({ id: crypto.createHash('sha256').update(`${document.id}:${document.title}:${offset}:${text}`).digest('hex').slice(0, 20),
             documentId: document.id, title: document.title, url: document.url || null, referenceUrl: document.referenceUrl || null,
             scope: document.scope || 'public', text });
         if (end === content.length) break;

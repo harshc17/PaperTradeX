@@ -21,6 +21,9 @@ const ragDocumentSchema = new mongoose.Schema({
     characters: { type: Number, required: true },
 }, { timestamps: true });
 const RagDocument = mongoose.models.RagDocument || mongoose.model('RagDocument', ragDocumentSchema);
+const ragVectorSchema = new mongoose.Schema({ model: { type: String, required: true }, chunkId: { type: String, required: true }, values: { type: [Number], required: true } });
+ragVectorSchema.index({ model: 1, chunkId: 1 }, { unique: true });
+const RagVector = mongoose.models.RagVector || mongoose.model('RagVector', ragVectorSchema);
 const bcrypt = require('bcrypt');
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/papertradex';
@@ -210,6 +213,7 @@ async function seedAdmin() {
 }
 
 module.exports = {
+    RagVector,
     RagDocument,
     PendingSignup,
     connectDB,

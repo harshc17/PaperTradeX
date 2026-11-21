@@ -13,7 +13,7 @@ const { OAuth2Client } = require('google-auth-library');
 const MarketDataService = require('./services/MarketData');
 const TradeEngine = require('./services/TradeEngine');
 const { assertTradable, isMarketIndex } = require('./services/MarketIndex');
-const { connectDB, User, PendingSignup, Order, TransactionHistory, WeeklyChallenge, WeeklyChallengeTrade, seedAdmin, RagDocument } = require('./models');
+const { connectDB, User, PendingSignup, Order, TransactionHistory, WeeklyChallenge, WeeklyChallengeTrade, seedAdmin, RagVector } = require('./models');
 const NSEClient = require('./services/NSEClient');
 const HistoricalClient = require('./services/HistoricalClient');
 const closingQuote = require('./services/ClosingQuote');
@@ -872,7 +872,10 @@ app.get('/api/stock/:symbol/news', AIAvailability.requireAvailable, async (req, 
 const performanceRouter = require('./routes/tradingCoach')({ TransactionHistory, AIService, authenticateToken,
     aiEnabled: () => AIAvailability.enabled });
 app.use('/api/trade-performance', performanceRouter);
-app.use('/api/rag', require('./routes/rag')({ authenticateToken, RagDocument, TransactionHistory }));
+app.use('/api/rag', require('./routes/rag')({ authenticateToken, RagVector, TransactionHistory,
+    getPortfolioAccount: loadPortfolioAccount, getQuote: displayQuote,
+    getMarketContext: () => ({ marketOpen: NSEClient.constructor.isMarketHours(),
+        sessionDate: require('./services/ReturnSession')(new Date(), NSEClient.constructor.HOLIDAYS) }) }));
 app.use('/api/ai/coach', performanceRouter);
 
 app.get('/api/reports/pnl', authenticateToken, async (req, res) => {
@@ -1046,17 +1049,19 @@ app.get('/api/stock/:symbol/history', async (req, res) => {
     }
 });
 
+async function loadPortfolioAccount(userId) {
+    const [portfolio, user] = await Promise.all([TradeEngine.getPortfolio(userId), User.findById(userId)]);
+    if (!user) throw Error('User not found');
+    portfolio.forEach(position => marketDataService.subscribe(position.symbol));
+    return { balance: user.balance, holdings: portfolio };
+}
+
 app.get('/api/portfolio', authenticateToken, async (req, res) => {
     try {
-        const userId = req.user.id;
-        const portfolio = await TradeEngine.getPortfolio(userId);
-        const user = await User.findById(userId);
-        if (!user) return res.status(404).json({ error: 'User not found' });
         // Keep every held symbol in the server-side live feed. This makes
         // portfolio valuation independent of a browser reconnect completing
         // before the next market-data cycle.
-        portfolio.forEach((position) => marketDataService.subscribe(position.symbol));
-        res.json({ balance: user.balance, holdings: portfolio });
+        res.json(await loadPortfolioAccount(req.user.id));
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
