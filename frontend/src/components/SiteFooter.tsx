@@ -1,10 +1,15 @@
+'use client';
+
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import ThemeToggle from './ThemeToggle';
 import BrandLogo from './BrandLogo';
 
 export const SUPPORT_EMAIL = 'harsh@papertradex.in';
 
 export default function SiteFooter() {
+    const pathname = usePathname();
+    if (pathname === '/ask-ai') return null;
     return <footer className="border-t border-line bg-surface-2 px-4 sm:px-6 lg:px-8 py-8 text-sm text-ink-muted">
         <div className="mx-auto max-w-[1280px]">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-5">
