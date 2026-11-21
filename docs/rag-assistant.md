@@ -15,7 +15,7 @@ RAG_VECTOR_ENABLED=true
 
 No Groq requests are made by the assistant. Optional OpenAI support uses `OPENAI_API_KEY`, `RAG_PROVIDER=openai`, and `RAG_OPENAI_MODEL=gpt-6.2-sol`. No automatic cross-provider retries send data to another provider. OpenAI uses Responses with `store:false`. Provider retention policies still apply. If vector search is enabled with OpenAI generation, question embeddings still use Gemini, as disclosed in the UI/privacy policy.
 
-After adding the Gemini key, sign in as an administrator and click **Build / refresh vector index** in Ask AI. Each click embeds up to 32 missing curated chunks. Repeat if a remaining count is shown. Indexing is idempotent; content hashes change on edits. Never index account records. Only administrator-managed source files are included. New corpus sources require a code update and index refresh.
+The shared index is maintained by the operator; the public Ask AI page has no knowledge-library management panel or upload controls. The authenticated ADMIN-only `/api/rag/index` maintenance endpoint embeds up to 32 missing curated chunks per call. Indexing is idempotent; content hashes change on edits. Never index account records. New corpus sources require a code update and index refresh.
 
 Operators can alternatively set `RAG_BUILD_INDEX_ON_START=true` for a deployment to build up to four batches after database connection and before listening. Clear this flag after observing completion in the Render logs. This maintenance action is explicit, does not change user roles, and is not enabled during normal startup. Failure logs contain only a status code; the application still starts with keyword fallback.
 
