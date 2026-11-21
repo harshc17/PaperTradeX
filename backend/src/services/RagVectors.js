@@ -14,7 +14,7 @@ async function embed(texts, query = false) {
         body: JSON.stringify({ requests: texts.map(text => ({ model: `models/${MODEL}`, outputDimensionality: 768,
             content: { parts: [{ text: query ? `task: search result | query: ${text}` : text }] } })) }),
     });
-    if (!response.ok) throw Error('Embedding provider unavailable');
+    if (!response.ok) { const error = Error('Embedding provider unavailable'); error.status = response.status; throw error; }
     const vectors = (await response.json()).embeddings?.map(e => e.values);
     if (!Array.isArray(vectors) || vectors.length !== texts.length || vectors.some(v => !Array.isArray(v) || v.length !== 768 || v.some(n => !Number.isFinite(n)) || !v.some(n => n !== 0))) throw Error('Invalid embeddings');
     return vectors;

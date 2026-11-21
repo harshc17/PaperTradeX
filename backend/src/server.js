@@ -1347,6 +1347,7 @@ async function start() {
         }
         await connectDB();
         await seedAdmin();
+        await require('./services/RagSetup').buildConfiguredIndex(RagVector);
         server.listen(PORT, '0.0.0.0', () => {
             console.log(`Server listening on port ${PORT}`);
             // A recovery instance stays idle until promoted to avoid duplicate feed traffic.

@@ -17,6 +17,8 @@ No Groq requests are made by the assistant. Optional OpenAI support uses `OPENAI
 
 After adding the Gemini key, sign in as an administrator and click **Build / refresh vector index** in Ask AI. Each click embeds up to 32 missing curated chunks. Repeat if a remaining count is shown. Indexing is idempotent; content hashes change on edits. Never index account records. Only administrator-managed source files are included. New corpus sources require a code update and index refresh.
 
+Operators can alternatively set `RAG_BUILD_INDEX_ON_START=true` for a deployment to build up to four batches after database connection and before listening. Clear this flag after observing completion in the Render logs. This maintenance action is explicit, does not change user roles, and is not enabled during normal startup. Failure logs contain only a status code; the application still starts with keyword fallback.
+
 Without configured keys, the page still returns actual portfolio snapshots and ranked keyword passages; it does not pretend to generate an AI answer.
 
 ## Retrieval and context
