@@ -30,6 +30,9 @@ function conversationContext(question, history) {
     const followUp = continuation(question) || (account && /\b(holdings?|stocks?|balance|returns?|profits?|losses?|cash|invested)\b/i.test(question));
     return {
         accountQuestion: portfolioQuestion(question) || (followUp && account),
+        needsClarification: !history.length && !portfolioQuestion(question) && question.length < 120 &&
+            /\b(it|that|those|them|above|previous|earlier|same|second|latter|former)\b/i.test(question) &&
+            /^(why\b|what about\b|how about\b|give\b|show\b|tell\b|can you\b|explain (it|that)\b|and\b|also\b)/i.test(question.trim()),
         retrievalQuestion: followUp && topic ? `${topic}\nFollow-up: ${question}` : question,
         history: context,
     };

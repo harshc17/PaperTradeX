@@ -36,6 +36,7 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
         if (!validateHistory(history)) return res.status(400).json({ error: 'Chat context must contain up to four user/assistant pairs, each up to 1,000 characters.' });
         const context = conversationContext(question, history);
         const { accountQuestion, retrievalQuestion } = context;
+        if (context.needsClarification) return res.json({ mode: 'no_sources', answer: 'What topic or example are you referring to? This is a new chat, so please tell me what you would like to continue discussing.', sources: [], performance: null, portfolio: null });
         if (accountQuestion && !includePortfolio) return res.json({ mode: 'no_sources', answer: 'Enable the portfolio option below to answer from your actual holdings, available balance and returns.', sources: [], performance: null, portfolio: null });
         const usePortfolio = includePortfolio && accountQuestion;
         try {

@@ -13,5 +13,8 @@ test('conversation routing retains finance topics and resets account scope on a 
     const reset = conversationContext('Why?', [...pair('What is my balance?'), ...pair('What is an ETF?')]);
     assert.equal(reset.accountQuestion, false); assert.match(reset.retrievalQuestion, /ETF/);
     assert.equal(conversationContext('Why?', []).accountQuestion, false);
+    assert.equal(conversationContext('Can you give me another example of that?', []).needsClarification, true);
+    assert.equal(conversationContext('Can you give me another example of that?', pair('Explain diversification')).needsClarification, false);
+    assert.equal(conversationContext('How does compound interest work?', []).needsClarification, false);
     assert.equal(conversationContext('Why?', [...pair('What is my portfolio value?'), ...pair('Is that diversified?')]).accountQuestion, true);
 });
