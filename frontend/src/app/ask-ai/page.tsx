@@ -48,8 +48,36 @@ function KnowledgeAssistant() {
     const [entries, setEntries] = useState<Entry[]>([]);
     const active = useRef<AbortController | null>(null);
     const sequence = useRef(0);
+    const shell = useRef<HTMLDivElement>(null);
+    const followLatest = useRef(true);
     const transcript = useRef<HTMLDivElement>(null);
     const input = useRef<HTMLTextAreaElement>(null);
+    useEffect(() => {
+        const viewport = window.visualViewport;
+        let frame = 0;
+        const fitViewport = () => {
+            cancelAnimationFrame(frame);
+            frame = requestAnimationFrame(() => {
+                const height = viewport?.height ?? window.innerHeight;
+                if (shell.current) {
+                    shell.current.style.height = `${height}px`;
+                    shell.current.style.top = `${viewport?.offsetTop ?? 0}px`;
+                    shell.current.style.setProperty('--chat-viewport-height', `${height}px`);
+                }
+                if (followLatest.current && transcript.current) transcript.current.scrollTop = transcript.current.scrollHeight;
+            });
+        };
+        fitViewport();
+        viewport?.addEventListener('resize', fitViewport);
+        viewport?.addEventListener('scroll', fitViewport);
+        window.addEventListener('resize', fitViewport);
+        return () => {
+            cancelAnimationFrame(frame);
+            viewport?.removeEventListener('resize', fitViewport);
+            viewport?.removeEventListener('scroll', fitViewport);
+            window.removeEventListener('resize', fitViewport);
+        };
+    }, []);
     useEffect(() => {
         const controller = new AbortController();
         request('/config', { signal: controller.signal }).then(data => {
@@ -59,7 +87,7 @@ function KnowledgeAssistant() {
     }, []);
     useEffect(() => {
         const area = transcript.current;
-        if (area) area.scrollTop = area.scrollHeight;
+        if (area && followLatest.current) area.scrollTop = area.scrollHeight;
     }, [entries]);
     useEffect(() => {
         if (!input.current) return;
@@ -70,6 +98,7 @@ function KnowledgeAssistant() {
         if (active.current || !ready || !text.trim()) return;
         const id = retryId ?? ++sequence.current;
         const controller = new AbortController();
+        followLatest.current = true;
         active.current = controller; setBusy(true); setError(''); setOptions(false);
         setEntries(previous => retryId
             ? previous.map(entry => entry.id === id ? { id, question: text } : entry)
@@ -90,7 +119,7 @@ function KnowledgeAssistant() {
         active.current?.abort(); active.current = null; setBusy(false);
         setEntries([]); setQuestion(''); setError(''); input.current?.focus();
     }
-    return <div className="flex h-dvh min-h-[360px] flex-col bg-page text-ink">
+    return <div ref={shell} className="fixed inset-x-0 top-0 flex h-dvh min-h-0 flex-col overflow-hidden bg-page text-ink">
         <header className="shrink-0 border-b border-line bg-page px-3 sm:px-6">
             <div className="mx-auto flex min-h-16 max-w-4xl items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-3">
@@ -102,7 +131,7 @@ function KnowledgeAssistant() {
             </div>
         </header>
         <main className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col">
-            <div ref={transcript} role="region" aria-label="Conversation" tabIndex={0} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-5 sm:px-6 sm:py-8">
+            <div ref={transcript} role="region" aria-label="Conversation" tabIndex={0} onScroll={event => { const area = event.currentTarget; followLatest.current = area.scrollHeight - area.scrollTop - area.clientHeight < 60; }} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-5 sm:px-6 sm:py-8">
                 {!entries.length && <div className="mx-auto flex min-h-full max-w-xl flex-col justify-center py-6">
                     <MessageCircle className="mb-4 h-9 w-9 text-primary" />
                     <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">What’s on your mind?</h2>
@@ -131,13 +160,13 @@ function KnowledgeAssistant() {
                         <label htmlFor="rag-question" className="text-xs font-medium text-ink-muted">Ask question</label>
                         <button type="button" aria-label="Answer options and privacy" aria-expanded={options} aria-controls="chat-options" onClick={() => setOptions(!options)} className="-my-2 inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink-muted hover:bg-surface-2"><Settings2 className="h-4 w-4" /></button>
                     </div>
-                    {options && <div id="chat-options" className="mb-2 max-h-[25dvh] overflow-y-auto border-b border-line pb-2">
+                    {options && <div id="chat-options" style={{ maxHeight: 'calc(var(--chat-viewport-height, 100dvh) * 0.25)' }} className="mb-2 overflow-y-auto overscroll-contain border-b border-line pb-2">
                         <label className="flex min-h-11 cursor-pointer items-center gap-2 text-xs leading-5 text-ink-muted"><input type="checkbox" checked={includePortfolio} onChange={e => setIncludePortfolio(e.target.checked)} className="h-4 w-4 shrink-0 accent-primary" />Use my holdings, balance and returns for portfolio questions</label>
                         <label className="flex min-h-11 cursor-pointer items-center gap-2 text-xs leading-5 text-ink-muted"><input type="checkbox" checked={performance} onChange={e => setPerformance(e.target.checked)} className="h-4 w-4 shrink-0 accent-primary" />Include my completed-trade statistics</label>
                         <p className="text-xs leading-5 text-ink-muted">{generation ? `Questions, relevant passages and selected account data go to ${provider}.` : 'AI generation is unavailable; portfolio snapshots and source search remain available.'} Semantic retrieval uses Gemini. Each message is answered independently; earlier messages are not sent. Chat stays on this page and clears when you leave or start a new chat. Never share passwords, OTPs or API keys. Quotes can be delayed. This assistant cannot place orders.</p>
                     </div>}
                     <div className="mt-2 flex items-end gap-2">
-                        <textarea ref={input} id="rag-question" value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(); } }} maxLength={2000} rows={1} placeholder="Message Ask AI…" className="max-h-[120px] min-h-11 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent py-2 text-base leading-6 outline-none sm:text-sm" />
+                        <textarea ref={input} id="rag-question" style={{ maxHeight: 'min(120px, calc(var(--chat-viewport-height, 100dvh) * 0.18))' }} value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(); } }} maxLength={2000} rows={1} placeholder="Message Ask AI…" className="min-h-11 min-w-0 flex-1 resize-none overflow-y-auto overscroll-contain bg-transparent py-2 text-base leading-6 outline-none" />
                         <button type="submit" aria-label={busy ? 'Waiting for reply' : !ready ? 'Connecting' : 'Send message'} disabled={busy || !ready || !question.trim()} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-black disabled:opacity-40">{busy || !ready ? <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" /> : <ArrowUp className="h-5 w-5" />}</button>
                     </div>
                 </form>
@@ -151,7 +180,7 @@ function KnowledgeAssistant() {
 function Answer({ result }: { result: Result }) {
     return <>
                         <p className="mt-4 text-xs font-medium uppercase tracking-wide text-ink-muted">{result.mode === 'generated' ? 'AI answer' : result.mode === 'no_sources' ? 'No supporting sources' : 'Source passages'}</p>
-                        <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6">{result.answer}</p>
+                        <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6">{withoutCitationMarkers(result.answer)}</p>
                         {result.sources.length > 0 && <p className="mt-2 text-xs text-ink-muted">{result.retrieval === 'hybrid' ? 'Semantic + keyword retrieval' : 'Keyword retrieval'} · {result.sources.length} sources</p>}
                         {result.basis === 'general_education' && <p className="mt-2 text-xs leading-5 text-ink-muted">Includes general model knowledge, not verified live market research. Sources below support only the claims they address.</p>}
                         {result.portfolio && <RagPortfolioSnapshot snapshot={result.portfolio} />}
@@ -161,10 +190,14 @@ function Answer({ result }: { result: Result }) {
                             <div><dt className="text-xs text-ink-muted">Win rate</dt><dd className="mt-1">{result.performance.winRate === null ? 'Unavailable' : `${result.performance.winRate}%`}</dd></div>
                         </dl>}
                         {result.sources.length > 0 && <details className="mt-3 min-w-0" open={result.mode === 'retrieval'}><summary className="min-h-11 cursor-pointer py-3 text-xs font-medium text-ink-muted">Sources ({result.sources.length})</summary><div className="space-y-2">{result.sources.map(source => <details key={source.citation} className="min-w-0 rounded-lg border border-line p-3" open={result.mode === 'retrieval'}>
-                            <summary className="cursor-pointer break-words text-sm font-medium leading-6">[{source.citation}] {source.title} <span className="text-xs font-normal text-ink-muted">· {source.scope === 'public' ? 'App help' : source.scope === 'education' ? 'Education' : source.scope === 'account' ? 'Your statistics' : 'Private document'}</span></summary>
+                            <summary className="cursor-pointer break-words text-sm font-medium leading-6">{source.title} <span className="text-xs font-normal text-ink-muted">· {source.scope === 'public' ? 'App help' : source.scope === 'education' ? 'Education' : source.scope === 'account' ? 'Your statistics' : 'Private document'}</span></summary>
                             <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-6 text-ink-muted">{source.text}</p>
                             {source.url?.startsWith('/') && !source.url.startsWith('//') && <Link href={source.url} className="mt-2 inline-flex min-h-9 items-center text-xs text-primary">Open related page →</Link>}
                             {source.referenceUrl?.startsWith('https://investor.sebi.gov.in/') && <a href={source.referenceUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex min-h-9 items-center text-xs text-primary">Read SEBI Investor reference ↗</a>}
                         </details>)}</div></details>}
     </>;
+}
+
+function withoutCitationMarkers(answer: string) {
+    return answer.replace(/[ \t]*\[S\d+(?:\s*[,;]\s*S?\d+)*\]/gi, '');
 }
