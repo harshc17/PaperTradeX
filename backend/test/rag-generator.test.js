@@ -35,6 +35,13 @@ test('only Gemini and OpenAI are supported; disabled generation never calls a pr
     content = { answer: 'Actual balance [S1].', citations: ['S1'], basis: 'sources' };
     assert.ok(await generator.generate('my balance', [{ ...sources[0], id: 'account-portfolio', scope: 'account' }]));
     assert.equal(JSON.parse(request.contents[0].parts[0].text).sources[0].recordType, 'verified_account_portfolio');
+    const history = [{ role: 'user', content: 'Explain bonds' }, { role: 'assistant', content: 'Bonds are debt.' }];
+    await generator.generate('Give an example', sources, { history });
+    assert.deepEqual(JSON.parse(request.contents[0].parts[0].text).conversationHistory, history);
+    assert.match(request.systemInstruction.parts[0].text, /Earlier answers can be wrong or outdated/);
+    content = { answer: 'Your account has money.', citations: [], basis: 'general_education' };
+    await assert.rejects(generator.generate('Why?', [], { history, accountQuestion: true }), /Missing account citation/);
+    content = { answer: 'Actual balance [S1].', citations: ['S1'], basis: 'sources' };
     process.env.RAG_PROVIDER = 'openai';
     assert.equal((await generator.generate('funds', sources)).provider, 'openai');
     assert.equal(url, 'https://api.openai.com/v1/responses'); assert.equal(request.store, false); assert.equal(request.text.format.strict, true);

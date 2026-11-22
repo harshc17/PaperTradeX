@@ -106,7 +106,14 @@ function KnowledgeAssistant() {
         setQuestion('');
         try {
             const result: Result = await request('/ask', { method: 'POST', signal: controller.signal,
-                body: JSON.stringify({ question: text, includePerformance: performance, includePortfolio }) });
+                body: JSON.stringify({ question: text, includePerformance: performance, includePortfolio,
+                    history: entries.slice(0, retryId ? entries.findIndex(entry => entry.id === retryId) : entries.length)
+                        .filter(entry => entry.result && !entry.error).slice(-4).flatMap(entry => [
+                            { role: 'user', content: entry.question.slice(0, 1000) },
+                            { role: 'assistant', content: entry.result?.portfolio || entry.result?.performance
+                                ? 'An account snapshot was shown; fetch current account facts again.'
+                                : withoutCitationMarkers(entry.result!.answer).slice(0, 1000) },
+                        ]) }) });
             if (!controller.signal.aborted) setEntries(previous => previous.map(entry => entry.id === id ? { ...entry, result } : entry));
         } catch (e) {
             if (!controller.signal.aborted) setEntries(previous => previous.map(entry => entry.id === id
@@ -163,7 +170,7 @@ function KnowledgeAssistant() {
                     {options && <div id="chat-options" style={{ maxHeight: 'calc(var(--chat-viewport-height, 100dvh) * 0.25)' }} className="mb-2 overflow-y-auto overscroll-contain border-b border-line pb-2">
                         <label className="flex min-h-11 cursor-pointer items-center gap-2 text-xs leading-5 text-ink-muted"><input type="checkbox" checked={includePortfolio} onChange={e => setIncludePortfolio(e.target.checked)} className="h-4 w-4 shrink-0 accent-primary" />Use my holdings, balance and returns for portfolio questions</label>
                         <label className="flex min-h-11 cursor-pointer items-center gap-2 text-xs leading-5 text-ink-muted"><input type="checkbox" checked={performance} onChange={e => setPerformance(e.target.checked)} className="h-4 w-4 shrink-0 accent-primary" />Include my completed-trade statistics</label>
-                        <p className="text-xs leading-5 text-ink-muted">{generation ? `Questions, relevant passages and selected account data go to ${provider}.` : 'AI generation is unavailable; portfolio snapshots and source search remain available.'} Semantic retrieval uses Gemini. Each message is answered independently; earlier messages are not sent. Chat stays on this page and clears when you leave or start a new chat. Never share passwords, OTPs or API keys. Quotes can be delayed. This assistant cannot place orders.</p>
+                        <p className="text-xs leading-5 text-ink-muted">{generation ? `Questions, relevant passages and selected account data go to ${provider}.` : 'AI generation is unavailable; portfolio snapshots and source search remain available.'} Semantic retrieval uses Gemini. Up to four earlier exchanges are used for follow-up questions. Portfolio follow-ups fetch a fresh snapshot; earlier account figures are not reused. Chat stays on this page and clears when you leave or start a new chat. Never share passwords, OTPs or API keys. Quotes can be delayed. This assistant cannot place orders.</p>
                     </div>}
                     <div className="mt-2 flex items-end gap-2">
                         <textarea ref={input} id="rag-question" style={{ maxHeight: 'min(120px, calc(var(--chat-viewport-height, 100dvh) * 0.18))' }} value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(); } }} maxLength={2000} rows={1} placeholder="Message Ask AI…" className="min-h-11 min-w-0 flex-1 resize-none overflow-y-auto overscroll-contain bg-transparent py-2 text-base leading-6 outline-none" />

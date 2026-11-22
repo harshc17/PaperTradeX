@@ -6,7 +6,7 @@ const { retrieve } = require('../services/RagRetrieval');
 const generator = require('../services/RagGenerator');
 const { calculateTradePerformance } = require('../services/TradingCoach');
 const { buildPortfolioSnapshot } = require('../services/RagPortfolio');
-const { portfolioQuestion } = require('../services/RagIntent');
+const { validateHistory, conversationContext } = require('../services/RagConversation');
 
 module.exports = function ragRouter({ authenticateToken, RagVector, TransactionHistory, getPortfolioAccount, getQuote, getMarketContext, generation = generator,
     enabled = () => process.env.RAG_ENABLED !== 'false' }) {
@@ -31,9 +31,11 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
         catch { res.status(503).json({ error: 'Indexing unavailable. Try again; keyword search remains available.' }); }
     });
     router.post('/ask', limit, async (req, res) => {
-        const { question, includePerformance = false, includePortfolio = false } = req.body || {};
+        const { question, includePerformance = false, includePortfolio = false, history = [] } = req.body || {};
         if (typeof question !== 'string' || !question.trim() || question.length > 2000 || typeof includePerformance !== 'boolean' || typeof includePortfolio !== 'boolean') return res.status(400).json({ error: 'Enter a question up to 2,000 characters and valid account options.' });
-        const accountQuestion = portfolioQuestion(question);
+        if (!validateHistory(history)) return res.status(400).json({ error: 'Chat context must contain up to four user/assistant pairs, each up to 1,000 characters.' });
+        const context = conversationContext(question, history);
+        const { accountQuestion, retrievalQuestion } = context;
         if (accountQuestion && !includePortfolio) return res.json({ mode: 'no_sources', answer: 'Enable the portfolio option below to answer from your actual holdings, available balance and returns.', sources: [], performance: null, portfolio: null });
         const usePortfolio = includePortfolio && accountQuestion;
         try {
@@ -56,7 +58,7 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
                 }
             }
             // Account facts are direct structured retrieval; don't pay for an unnecessary query embedding.
-            const retrieval = accountQuestion ? { passages: retrieve(question, knowledge, 2), method: 'account+keyword' } : await vectors.search(question, knowledge, RagVector);
+            const retrieval = accountQuestion ? { passages: retrieve(retrievalQuestion, knowledge, 2), method: 'account+keyword' } : await vectors.search(retrievalQuestion, knowledge, RagVector);
             const selected = retrieval.passages;
             if (performance) selected.unshift({ id: 'account-performance', title: 'Your completed paper trades', url: '/trading-coach', scope: 'account',
                 text: 'Server-calculated performance snapshot. Each sell execution is one completed sale. No completed sales means win rate is unavailable. ' + JSON.stringify(performance) });
@@ -65,7 +67,7 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
                 url: source.url, referenceUrl: source.referenceUrl, scope: source.scope, text: source.text }));
             let answer = null;
             if (generation.configured()) {
-                try { answer = await generation.generate(question.trim(), sources); } catch { /* Keep source retrieval usable during provider outages. */ }
+                try { answer = await generation.generate(question.trim(), sources, { history: context.history, accountQuestion }); } catch { /* Keep source retrieval usable during provider outages. */ }
             }
             res.json({ mode: answer ? 'generated' : sources.length ? 'retrieval' : 'no_sources', basis: answer?.basis || null, provider: answer?.provider || null,
                 answer: answer?.answer || (portfolio ? 'Here is your actual portfolio snapshot [S1]. These values are calculated by PaperTradeX; an AI explanation has not been generated.' : sources.length ? 'Here are the closest matching source passages. An AI answer has not been generated.' : 'No matching sources were found. Conversational finance answers need an enabled OpenAI or Gemini API key; the education library is managed by PaperTradeX.'),
