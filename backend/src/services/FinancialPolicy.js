@@ -30,7 +30,8 @@ function expandCitations(answer, sources) {
 function hasUnsupportedNumbers(answer, sources) {
     const numbers = text => (String(text).replace(/\[(?:S\d+)\]/g, '').match(/(?<![a-zA-Z])[-+]?\d[\d,]*(?:\.\d+)?/g) || []).map(n => Number(n.replaceAll(',', '')));
     const allowed = new Set(numbers(JSON.stringify(sources)));
-    return numbers(answer).some(n => !allowed.has(n));
+    // Ordered-list markers are formatting, not financial figures.
+    return numbers(answer.replace(/^\s*\d+[.)]\s+/gm, '')).some(n => !allowed.has(n));
 }
 function missingSentenceCitations(answer) {
     const lines = answer.split('\n').map(line => line.trim()).filter(Boolean);

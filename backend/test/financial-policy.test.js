@@ -14,6 +14,9 @@ test('strict financial policy prioritises effective dates and never substitutes 
     assert.equal(policy.adviceQuestion('How do I buy a stock in PaperTradeX?'), false);
     assert.equal(policy.hasUnsupportedNumbers('Return 12%', [{ text: '{"return":10}' }]), true);
     assert.equal(policy.hasUnsupportedNumbers('Value 1,000 [S1]', [{ text: '{"value":1000}' }]), false);
+    assert.equal(policy.hasUnsupportedNumbers('1. Market risk [S1]\n2. Tracking risk [S1]', [{ text: 'Market risk and tracking risk' }]), false);
+    assert.equal(policy.hasUnsupportedNumbers('1. Return 17% [S1]', [{ text: 'No return specified' }]), true);
+    assert.equal(policy.missingSentenceCitations('ETFs carry market risk. They trade on exchanges [S1].'), true);
     assert.equal(policy.withDisclaimer('Answer').split(policy.DISCLAIMER).length, 2);
 });
 test('financial arithmetic is deterministic, bounded and uses explicit inputs', () => {
