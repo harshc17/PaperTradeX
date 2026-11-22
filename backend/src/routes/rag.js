@@ -7,8 +7,10 @@ const generator = require('../services/RagGenerator');
 const { calculateTradePerformance } = require('../services/TradingCoach');
 const { buildPortfolioSnapshot } = require('../services/RagPortfolio');
 const { validateHistory, conversationContext } = require('../services/RagConversation');
+const policy = require('../services/FinancialPolicy');
+const { parseCalculation } = require('../services/FinancialMath');
 
-module.exports = function ragRouter({ authenticateToken, RagVector, TransactionHistory, getPortfolioAccount, getQuote, getMarketContext, generation = generator,
+module.exports = function ragRouter({ authenticateToken, RagVector, TransactionHistory, getPortfolioAccount, getQuote, getMarketContext, grounding, generation = generator,
     enabled = () => process.env.RAG_ENABLED !== 'false' }) {
     const router = express.Router();
     router.use(authenticateToken);
@@ -36,12 +38,14 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
         if (!validateHistory(history)) return res.status(400).json({ error: 'Chat context must contain up to four user/assistant pairs, each up to 1,000 characters.' });
         const context = conversationContext(question, history);
         const { accountQuestion, retrievalQuestion } = context;
+        if (policy.adviceQuestion(question)) return res.json({ mode: 'no_sources', answer: policy.withDisclaimer('I cannot recommend buying, selling, holding or switching a specific investment. I can provide verified factual data, objective comparisons and documented regulatory rules.'), sources: [], performance: null, portfolio: null });
         if (context.needsClarification) return res.json({ mode: 'no_sources', answer: 'What topic or example are you referring to? This is a new chat, so please tell me what you would like to continue discussing.', sources: [], performance: null, portfolio: null });
-        if (accountQuestion && !includePortfolio) return res.json({ mode: 'no_sources', answer: 'Enable the portfolio option below to answer from your actual holdings, available balance and returns.', sources: [], performance: null, portfolio: null });
+        if (accountQuestion && !includePortfolio) return res.json({ mode: 'no_sources', answer: policy.withDisclaimer('Enable account context in Answer options to answer from your actual holdings, available balance and returns.'), sources: [], performance: null, portfolio: null });
         const usePortfolio = includePortfolio && accountQuestion;
         try {
             let performance = null;
             let portfolio = null;
+            let portfolioCalculation = null;
             if (includePerformance || usePortfolio) {
                 const trades = await TransactionHistory.find({ user: req.user.id }).select('type symbol quantity price totalAmount createdAt').sort({ createdAt: 1, _id: 1 }).limit(20001).lean();
                 if (trades.length > 20000) return res.status(422).json({ error: 'Trade history exceeds the supported report size.' });
@@ -56,16 +60,52 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
                     if (account.holdings.length !== ledger.size || account.holdings.some(h => ledger.get(key(h.symbol)) !== h.quantity)) throw Error('Account changed or history incomplete');
                     portfolio = await buildPortfolioSnapshot(account, trades,
                         { getQuote, ...getMarketContext() });
+                    if (/\bxirr\b/i.test(question) && grounding && portfolio.currentValue !== null) {
+                        const daily = new Map();
+                        trades.forEach(t => { const date = new Date(Date.parse(t.createdAt) + 330 * 60000).toISOString().slice(0, 10); daily.set(date, (daily.get(date) || 0) + (t.type === 'BUY' ? -t.totalAmount : t.totalAmount)); });
+                        const date = new Date(Date.parse(portfolio.capturedAt) + 330 * 60000).toISOString().slice(0, 10);
+                        daily.set(date, (daily.get(date) || 0) + portfolio.currentValue);
+                        try { portfolioCalculation = grounding.executeFinancialMath({ operation: 'xirr', flows: [...daily].map(([date, amount]) => ({ date, amount })) }); }
+                        catch { portfolioCalculation = { operation: 'xirr', value: null, reason: 'No reliable XIRR solution is available for the supported cash-flow history.', calculatedAt: portfolio.capturedAt }; }
+                    }
                 }
             }
             // Account facts are direct structured retrieval; don't pay for an unnecessary query embedding.
             const retrieval = accountQuestion ? { passages: retrieve(retrievalQuestion, knowledge, 2), method: 'account+keyword' } : await vectors.search(retrievalQuestion, knowledge, RagVector);
-            const selected = retrieval.passages;
-            if (performance) selected.unshift({ id: 'account-performance', title: 'Your completed paper trades', url: '/trading-coach', scope: 'account',
+            const selected = policy.currentVersions(retrieval.passages);
+            const symbols = grounding?.resolveSymbols(retrievalQuestion) || [];
+            const asksNews = /\b(news|sentiment|filings?|announcements?|quarterly results|earnings)\b/i.test(question);
+            const asksRegulatory = /\b(tax (rate|slab|rules?)|capital gains tax|sebi circular|rbi circular|current.*expense ratio)\b/i.test(question);
+            if (asksRegulatory && !selected.some(s => s.documentType === 'regulatory' && s.effectiveDate)) return res.json({ mode: 'no_sources', answer: policy.withDisclaimer(policy.UNVERIFIED), sources: [], performance, portfolio });
+            if (grounding && symbols.length && /\b(price|quote|current|today|market|compare|change|index|indices)\b/i.test(question)) {
+                const market = await grounding.fetchLiveMarketData(symbols);
+                selected.unshift({ id: 'live-market', title: 'Verified market quote tool', scope: 'market', text: JSON.stringify(market), observedAt: market.quotes.map(q => q.observedAt).filter(Boolean).sort()[0] || market.capturedAt });
+            }
+            if (grounding && /\b(my|our)\b.*\bwatchlist\b/i.test(retrievalQuestion)) {
+                if (!includePortfolio) return res.json({ mode: 'no_sources', answer: policy.withDisclaimer('Enable account context to answer from your synced watchlist.'), sources: [], portfolio: null, performance: null });
+                const watchlist = await grounding.fetchUserWatchlist(req.user.id);
+                selected.unshift({ id: 'account-watchlist', title: 'Verified account watchlist', scope: 'account', text: JSON.stringify(watchlist), observedAt: new Date().toISOString() });
+            }
+            if (asksNews) {
+                const disclosures = grounding ? await Promise.all(symbols.slice(0, 2).map(symbol => grounding.fetchCompanyDisclosures(symbol))) : [];
+                const available = disclosures.filter(d => d.available);
+                if (!available.length) return res.json({ mode: 'no_sources', answer: policy.withDisclaimer(policy.UNVERIFIED), sources: [], performance, portfolio });
+                available.forEach(d => selected.unshift({ id: 'exchange-disclosures', title: 'NSE corporate announcement titles', scope: 'market', observedAt: d.fetchedAt, text: JSON.stringify(d) }));
+            }
+            const calculation = parseCalculation(question);
+            if (calculation && grounding) {
+                const result = grounding.executeFinancialMath(calculation);
+                selected.unshift({ id: 'tool-calculation', title: 'Server financial calculation', scope: 'calculation', observedAt: result.calculatedAt, text: JSON.stringify(result) });
+            }
+            if (portfolioCalculation) selected.unshift({ id: 'tool-calculation', title: 'Server XIRR calculation', scope: 'calculation', observedAt: portfolioCalculation.calculatedAt, text: JSON.stringify(portfolioCalculation) });
+            if (performance) selected.unshift({ id: 'account-performance', title: 'Your completed paper trades', url: '/trading-coach', scope: 'account', observedAt: new Date().toISOString(),
                 text: 'Server-calculated performance snapshot. Each sell execution is one completed sale. No completed sales means win rate is unavailable. ' + JSON.stringify(performance) });
-            if (portfolio) selected.unshift({ id: 'account-portfolio', title: 'Your actual paper portfolio snapshot', url: '/holdings', scope: 'account', text: JSON.stringify(portfolio) });
+            if (portfolio) selected.unshift({ id: 'account-portfolio', title: 'Your actual paper portfolio snapshot', url: '/holdings', scope: 'account', observedAt: portfolio.capturedAt, text: JSON.stringify(portfolio) });
             const sources = selected.slice(0, 7).map((source, i) => ({ citation: `S${i + 1}`, id: source.id, title: source.title,
-                url: source.url, referenceUrl: source.referenceUrl, scope: source.scope, text: source.text }));
+                url: source.url, referenceUrl: source.referenceUrl, scope: source.scope, text: source.text,
+                section: source.section, effectiveDate: source.effectiveDate || null, reviewedAt: source.reviewedAt || null,
+                observedAt: source.observedAt || null, documentType: source.documentType }));
+            if (!sources.length) return res.json({ mode: 'no_sources', answer: policy.withDisclaimer(policy.UNVERIFIED), sources: [], performance, portfolio });
             let answer = null;
             if (generation.configured()) {
                 try { answer = await generation.generate(question.trim(), sources, { history: context.history, accountQuestion }); }
@@ -76,7 +116,7 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
                 }
             }
             res.json({ mode: answer ? 'generated' : 'unavailable', retryable: !answer, basis: answer?.basis || null, provider: answer?.provider || null,
-                answer: answer?.answer || (portfolio ? 'I couldn’t finish the AI explanation. Your verified portfolio snapshot is available below. Retry the answer to continue this conversation.' : 'I couldn’t generate an answer right now. Please retry; your question and conversation context are saved in this chat.'),
+                answer: policy.withDisclaimer(answer ? policy.expandCitations(answer.answer, sources) : (portfolio ? 'I couldn’t finish the AI explanation. Your verified portfolio snapshot is available below. Retry the answer to continue this conversation.' : 'I couldn’t generate an answer right now. Please retry; your question and conversation context are saved in this chat.')),
                 sources, performance, portfolio, retrieval: retrieval.method, generatedAt: new Date().toISOString() });
         } catch { res.status(503).json({ error: usePortfolio ? 'Unable to load a reliable portfolio snapshot. Refresh and try again, or ask a general education question.' : 'Unable to search your sources. Please try again.' }); }
     });

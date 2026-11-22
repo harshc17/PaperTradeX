@@ -11,6 +11,9 @@ import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/backend';
 import { API_URL } from '@/lib/config';
 import { buildChatRequest, type ChatPayload } from '@/lib/ragChatRequest';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import AssistantConnections from '@/components/AssistantConnections';
 
 type Source = { citation: string; id: string; title: string; url?: string; referenceUrl?: string; scope: string; text: string };
 type Result = { mode: 'generated' | 'retrieval' | 'no_sources' | 'unavailable'; retryable?: boolean; answer: string; sources: Source[];
@@ -132,8 +135,8 @@ function KnowledgeAssistant() {
             <button type="button" aria-label="Current conversation" title="Current conversation" onClick={() => { transcript.current?.scrollTo({ top: transcript.current.scrollHeight }); transcript.current?.focus(); }} className="flex h-11 w-11 items-center justify-center rounded-xl text-ink-muted hover:bg-surface"><MessageCircle className="h-5 w-5" /></button>
             <div className="mt-auto flex flex-col items-center gap-3"><ThemeToggle /><span title={user?.name || 'Your account'} className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-black">{firstName.slice(0, 1).toUpperCase()}</span></div>
         </aside>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-page md:my-3 md:mr-3 md:rounded-3xl">
-        <header className="shrink-0 border-b border-line bg-page px-3 sm:px-6 md:hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[var(--bg)] md:my-3 md:mr-3 md:rounded-3xl">
+        <header className="shrink-0 border-b border-line bg-[var(--bg)] px-3 sm:px-6 md:hidden">
             <div className="mx-auto flex min-h-16 max-w-4xl items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-3">
                     <Link href="/dashboard" aria-label="Back to Explore" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg hover:bg-surface-2"><ArrowLeft className="h-5 w-5" /></Link>
@@ -167,7 +170,7 @@ function KnowledgeAssistant() {
                     </article>)}
                 </div>
             </div>
-            <div className={`shrink-0 bg-page px-3 pb-[max(12px,env(safe-area-inset-bottom))] sm:px-6 ${entries.length ? 'border-t border-line pt-3' : 'mt-5 sm:mt-8'}`}>
+            <div className={`shrink-0 bg-[var(--bg)] px-3 pb-[max(12px,env(safe-area-inset-bottom))] sm:px-6 ${entries.length ? 'border-t border-line pt-3' : 'mt-5 sm:mt-8'}`}>
                 {error && <p role="alert" className="mb-2 break-words text-sm text-down">{error}</p>}
                 <form onSubmit={event => { event.preventDefault(); void send(); }} className={`rounded-2xl border bg-surface p-3 transition-shadow sm:p-4 ${entries.length ? 'border-line focus-within:border-primary' : 'border-primary/60 shadow-[0_0_48px_-20px_var(--primary)] focus-within:border-primary'}`}>
                     <div className="flex items-center justify-between gap-2">
@@ -175,12 +178,13 @@ function KnowledgeAssistant() {
                         <button type="button" aria-label="Answer options and privacy" aria-expanded={options} aria-controls="chat-options" onClick={() => setOptions(!options)} className="-my-2 inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink-muted hover:bg-surface-2"><Settings2 className="h-4 w-4" /></button>
                     </div>
                     {options && <div id="chat-options" style={{ maxHeight: 'calc(var(--chat-viewport-height, 100dvh) * 0.25)' }} className="mb-2 overflow-y-auto overscroll-contain border-b border-line pb-2">
-                        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-xs leading-5 text-ink-muted"><input type="checkbox" checked={includePortfolio} onChange={e => setIncludePortfolio(e.target.checked)} className="h-4 w-4 shrink-0 accent-primary" />Use my holdings, balance and returns for portfolio questions</label>
+                        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-xs leading-5 text-ink-muted"><input type="checkbox" checked={includePortfolio} onChange={e => setIncludePortfolio(e.target.checked)} className="h-4 w-4 shrink-0 accent-primary" />Use my holdings, balance, returns and synced watchlist for account questions</label>
+                        <AssistantConnections />
                         <label className="flex min-h-11 cursor-pointer items-center gap-2 text-xs leading-5 text-ink-muted"><input type="checkbox" checked={performance} onChange={e => setPerformance(e.target.checked)} className="h-4 w-4 shrink-0 accent-primary" />Include my completed-trade statistics</label>
-                        <p className="text-xs leading-5 text-ink-muted">{generation ? `Questions, relevant passages and selected account data go to ${provider}.` : 'AI generation is unavailable; portfolio snapshots and source search remain available.'} Semantic retrieval uses Gemini. Up to four earlier exchanges are used for follow-up questions. Portfolio follow-ups fetch a fresh snapshot; earlier account figures are not reused. Chat stays on this page and clears when you leave or start a new chat. Never share passwords, OTPs or API keys. Quotes can be delayed. This assistant cannot place orders.</p>
+                        <p className="text-xs leading-5 text-ink-muted">{generation ? `Questions, relevant passages and selected account data go to ${provider}.` : 'AI generation is unavailable; verified portfolio snapshots remain available.'} Semantic retrieval uses Gemini. Answers use verified documents and tool data only. Up to four earlier exchanges are used for follow-up questions. Portfolio follow-ups fetch a fresh snapshot; earlier account figures are not reused. Chat stays on this page and clears when you leave or start a new chat. Never share passwords, OTPs or API keys. Quotes can be delayed. This assistant cannot place orders.</p>
                     </div>}
                     <div className="mt-2 flex items-end gap-2">
-                        <textarea ref={input} id="rag-question" style={{ maxHeight: 'min(120px, calc(var(--chat-viewport-height, 100dvh) * 0.18))' }} value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(); } }} maxLength={2000} rows={1} placeholder="Message Ask AI…" className="min-h-11 min-w-0 flex-1 resize-none overflow-y-auto overscroll-contain bg-transparent py-2 text-base leading-6 outline-none" />
+                        <textarea ref={input} id="rag-question" style={{ maxHeight: 'min(120px, calc(var(--chat-viewport-height, 100dvh) * 0.18))' }} value={question} onChange={e => setQuestion(e.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(); } }} maxLength={2000} rows={entries.length ? 1 : 3} placeholder="Ask about your portfolio or the market..." className="min-h-11 min-w-0 flex-1 resize-none overflow-y-auto overscroll-contain bg-transparent py-2 text-base leading-6 outline-none" />
                         <button type="submit" aria-label={busy ? 'Waiting for reply' : !ready ? 'Connecting' : 'Send message'} disabled={busy || !ready || !question.trim()} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-black disabled:opacity-40">{busy || !ready ? <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" /> : <ArrowUp className="h-5 w-5" />}</button>
                     </div>
                 </form>
@@ -198,7 +202,7 @@ function KnowledgeAssistant() {
 function Answer({ result }: { result: Result }) {
     return <>
                         <p className="mt-4 text-xs font-medium uppercase tracking-wide text-ink-muted">{result.mode === 'generated' ? 'AI answer' : result.mode === 'unavailable' || result.mode === 'retrieval' ? 'Unable to finish the answer' : 'Reply'}</p>
-                        <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6">{result.mode === 'retrieval' ? 'I couldn’t finish the answer. Please retry; your conversation is still here.' : withoutCitationMarkers(result.answer)}</p>
+                        <div className="mt-2 min-w-0 break-words text-sm leading-6 [&_p]:mb-3 [&_blockquote]:border-l-2 [&_blockquote]:border-line [&_blockquote]:pl-3 [&_blockquote]:text-xs [&_blockquote]:text-ink-muted [&_ul]:list-disc [&_ul]:pl-5 [&_table]:w-full [&_th]:border-b [&_th]:border-line [&_th]:p-2 [&_td]:border-b [&_td]:border-line [&_td]:p-2"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml components={{ table: ({ children }) => <div className="max-w-full overflow-x-auto"><table>{children}</table></div>, a: ({ children }) => <span>{children}</span> }}>{result.mode === 'retrieval' ? 'I could not finish the answer. Please retry; your conversation is still here.' : result.answer}</ReactMarkdown></div>
                         {result.mode === 'generated' && result.sources.length > 0 && <p className="mt-2 text-xs text-ink-muted">{result.retrieval === 'hybrid' ? 'Semantic + keyword retrieval' : 'Keyword retrieval'} · {result.sources.length} sources</p>}
                         {result.basis === 'general_education' && <p className="mt-2 text-xs leading-5 text-ink-muted">Includes general model knowledge, not verified live market research. Sources below support only the claims they address.</p>}
                         {result.portfolio && <RagPortfolioSnapshot snapshot={result.portfolio} />}

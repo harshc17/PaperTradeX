@@ -1,17 +1,158 @@
 [
-  {"id":"education-saving-investing","title":"Savings, investing, assets and liabilities — SEBI education booklet","scope":"education","referenceUrl":"https://investor.sebi.gov.in/pdf/downloadable-documents/Financial%20Education%20Booklet%20-%20English.pdf#page=5","content":"Original study note based on SEBI Financial Education Booklet, Chapter 2, reviewed 22 November 2026. Savings are income remaining after expenses. Investing commits money to assets with an expectation of returns and exposure to risk. Assets have economic value; liabilities are amounts owed. Liquidity concerns access to money when needed."},
-  {"id":"education-compounding","title":"Compound interest and inflation — SEBI education booklet","scope":"education","referenceUrl":"https://investor.sebi.gov.in/pdf/downloadable-documents/Financial%20Education%20Booklet%20-%20English.pdf#page=6","content":"Original study note based on SEBI Financial Education Booklet, Chapter 2, reviewed 22 November 2026. Simple interest applies to principal. Compound interest also builds on interest already earned when it is reinvested. Inflation reduces purchasing power, so nominal gains and real purchasing-power gains differ. Illustrative growth assumptions are not guaranteed investment returns."},
-  {"id":"education-cost-averaging","title":"Rupee cost averaging — SEBI education booklet","scope":"education","referenceUrl":"https://investor.sebi.gov.in/pdf/downloadable-documents/Financial%20Education%20Booklet%20-%20English.pdf#page=8","content":"Original study note based on SEBI Financial Education Booklet, Chapter 2, reviewed 22 November 2026. Investing equal amounts at regular intervals purchases more units at lower prices and fewer at higher prices. This changes average acquisition cost and reduces reliance on selecting a single entry date. It cannot ensure a profit."},
-  {"id":"education-diversification","title":"Diversification and concentration risk — education","scope":"education","referenceUrl":"https://investor.sebi.gov.in/investment_risk_managment.html","content":"Introductory education summary, reviewed 22 November 2026 against SEBI Investor: Diversification spreads exposure across different assets and securities rather than concentrating in one company or sector. It can reduce some risks but cannot remove market-wide volatility. Understanding an investment's risks and its fit with a person's time horizon matters. Diversification does not guarantee a profit or prevent every loss. This is general education, not a recommendation for a particular portfolio."},
-  {"id":"education-etfs","title":"What is an ETF? — education","scope":"education","referenceUrl":"https://investor.sebi.gov.in/exchange_traded_fund.html","content":"Introductory education summary, reviewed 22 November 2026 against SEBI Investor: An exchange-traded fund (ETF) holds a portfolio and may track an index such as Nifty or Sensex. ETF units trade on a stock exchange during trading hours, with market prices that change. The ETF is a traded fund, while its underlying index is a benchmark. Real investing can involve fund expenses, brokerage and demat charges. PaperTradeX simulated costs do not establish what a real broker charges."},
-  {"id":"education-market-risk","title":"Market, liquidity and volatility risks — education","scope":"education","referenceUrl":"https://investor.sebi.gov.in/securities-risks_trade_derivatives.html","content":"Introductory education summary, reviewed 22 November 2026 against SEBI Investor: Market risk concerns losses caused by broad financial-market or economic conditions. Liquidity risk means an investment may be difficult to buy or sell promptly. Volatility describes prices fluctuating over time. Business risk concerns adverse events affecting a company and its operations. Inflation can reduce purchasing power. These risks are distinct; a price chart alone does not measure all of them. This is educational material, not a personalised assessment of risk tolerance."},
-  {"id":"paper-trading","title":"Paper trading and virtual funds","url":"/about","content":"PaperTradeX is an educational paper-trading simulator for Indian stocks and ETFs. Balances, holdings and orders are virtual. Orders are not sent to NSE, BSE or a broker. New accounts start with 100000 INR in virtual funds. Virtual funds cannot be deposited, withdrawn or redeemed. Simulated performance is not a prediction of real returns."},
-  {"id":"orders","title":"Market and limit orders","url":"/orders","content":"A market buy or sell uses an accepted fresh quote on the backend during regular exchange trading hours. The backend validates available balance and held quantity. A buy reduces available balance and adds shares; a sell credits proceeds and reduces shares. A limit order remains open until its target can be filled during market hours with a fresh quote. Open and cancelled orders are not completed transactions. Check Orders before retrying an order whose confirmation was interrupted."},
-  {"id":"quotes","title":"Prices, daily change and market data","url":"/dashboard","content":"Stock and ETF daily change equals the current price minus the previous trading session close. Percentage change equals daily change divided by previous close times 100. NSE and BSE quotes keep separate exchange identities. Free data sources can be delayed or unavailable; one-second display refresh does not guarantee one-second exchange data. After the market closes, published official NSE closing prices are preferred over the last traded price. A closing price can differ from the last trade. Data keeps its source observation time."},
-  {"id":"portfolio-returns","title":"Holdings value and returns","url":"/holdings","content":"Current holdings value is the sum of each holding quantity times its current price. Invested value is the remaining recorded purchase cost of open positions. Total returns on Holdings and Dashboard equal current holdings value minus invested value; they exclude already realised profit from fully sold positions. One-day return uses previous close for overnight shares and execution price for shares bought during the trading session. It includes sales during that session. Missing quotes keep unavailable totals unavailable rather than treating prices as zero. Available balance is uninvested virtual cash."},
-  {"id":"pnl-report","title":"Download an Excel P&L report","url":"/transactions","content":"Use Download P&L report on Holdings or Transactions to download an all-time Excel .xlsx workbook. Its Summary, Completed sales and Holdings sheets separate realised P&L from unrealised P&L. Realised P&L is sale proceeds minus allocated weighted-average purchase cost. Partial-sale cost is allocated to paise; a full sale uses the remaining cost. The report excludes cash and pending or cancelled orders. No additional fees or taxes are assumed. This paper-trading report is not a tax statement. Missing valuations are marked unavailable, and quote times are included."},
-  {"id":"xirr","title":"XIRR and annualised returns","url":"/holdings","content":"XIRR is an annualised money-weighted return using dated purchases, sales and current holding value. Cash balance is excluded from portfolio XIRR. A short holding period can produce a very large annualised result even for a small absolute gain; this is not a forecast. Some cash-flow histories do not have a reliable XIRR solution and show unavailable instead. Read XIRR alongside actual rupee P&L and holding duration."},
-  {"id":"coach","title":"Completed-trade performance calculations","url":"/trading-coach","content":"Trading coach performance is calculated from completed transaction records using weighted-average purchase cost. Each completed sell execution counts as a completed sale. Win rate is winning sales divided by all completed sales, including break-even sales. Realised P&L excludes unrealised gains, cash and open orders. No completed sales means there is not yet a win rate. A small number of trades is not enough to establish a reliable strategy. Calculated statistics are separate from generated AI interpretation."},
-  {"id":"account","title":"Account verification and password recovery","url":"/forgot-password","content":"Signup uses email verification. Forgot password sends a reset code to the registered email when email delivery is configured. Use the newest code in the website and keep passwords and OTPs private. Do not put a password, OTP, API key or login token in assistant questions or uploaded documents. For account and privacy requests use the contact information on About, Privacy and Terms."},
-  {"id":"watchlist","title":"Watchlist and stock pages","url":"/watchlist","content":"Use Watchlist to search for securities, add entries or remove them. Watchlist membership is saved in the current browser. Watching a stock does not buy it. The watchlist and stock pages use shared current quotes and previous closes. A stock's one-day market change is different from the return on a holding bought today, because holding return starts at the actual execution cost for that purchase."}
+  {
+    "id": "education-saving-investing",
+    "title": "Savings, investing, assets and liabilities — SEBI education booklet",
+    "scope": "education",
+    "referenceUrl": "https://investor.sebi.gov.in/pdf/downloadable-documents/Financial%20Education%20Booklet%20-%20English.pdf#page=5",
+    "content": "Original study note based on SEBI Financial Education Booklet, Chapter 2, reviewed 22 November 2026. Savings are income remaining after expenses. Investing commits money to assets with an expectation of returns and exposure to risk. Assets have economic value; liabilities are amounts owed. Liquidity concerns access to money when needed.",
+    "effectiveDate": null,
+    "reviewedAt": "2026-11-22",
+    "section": "Chapter 2 study note",
+    "documentType": "education_summary"
+  },
+  {
+    "id": "education-compounding",
+    "title": "Compound interest and inflation — SEBI education booklet",
+    "scope": "education",
+    "referenceUrl": "https://investor.sebi.gov.in/pdf/downloadable-documents/Financial%20Education%20Booklet%20-%20English.pdf#page=6",
+    "content": "Original study note based on SEBI Financial Education Booklet, Chapter 2, reviewed 22 November 2026. Simple interest applies to principal. Compound interest also builds on interest already earned when it is reinvested. Inflation reduces purchasing power, so nominal gains and real purchasing-power gains differ. Illustrative growth assumptions are not guaranteed investment returns.",
+    "effectiveDate": null,
+    "reviewedAt": "2026-11-22",
+    "section": "Chapter 2 study note",
+    "documentType": "education_summary"
+  },
+  {
+    "id": "education-cost-averaging",
+    "title": "Rupee cost averaging — SEBI education booklet",
+    "scope": "education",
+    "referenceUrl": "https://investor.sebi.gov.in/pdf/downloadable-documents/Financial%20Education%20Booklet%20-%20English.pdf#page=8",
+    "content": "Original study note based on SEBI Financial Education Booklet, Chapter 2, reviewed 22 November 2026. Investing equal amounts at regular intervals purchases more units at lower prices and fewer at higher prices. This changes average acquisition cost and reduces reliance on selecting a single entry date. It cannot ensure a profit.",
+    "effectiveDate": null,
+    "reviewedAt": "2026-11-22",
+    "section": "Chapter 2 study note",
+    "documentType": "education_summary"
+  },
+  {
+    "id": "education-diversification",
+    "title": "Diversification and concentration risk — education",
+    "scope": "education",
+    "referenceUrl": "https://investor.sebi.gov.in/investment_risk_managment.html",
+    "content": "Introductory education summary, reviewed 22 November 2026 against SEBI Investor: Diversification spreads exposure across different assets and securities rather than concentrating in one company or sector. It can reduce some risks but cannot remove market-wide volatility. Understanding an investment's risks and its fit with a person's time horizon matters. Diversification does not guarantee a profit or prevent every loss. This is general education, not a recommendation for a particular portfolio.",
+    "effectiveDate": null,
+    "reviewedAt": "2026-11-22",
+    "section": "Summary",
+    "documentType": "education_summary"
+  },
+  {
+    "id": "education-etfs",
+    "title": "What is an ETF? — education",
+    "scope": "education",
+    "referenceUrl": "https://investor.sebi.gov.in/exchange_traded_fund.html",
+    "content": "Introductory education summary, reviewed 22 November 2026 against SEBI Investor: An exchange-traded fund (ETF) holds a portfolio and may track an index such as Nifty or Sensex. ETF units trade on a stock exchange during trading hours, with market prices that change. The ETF is a traded fund, while its underlying index is a benchmark. Real investing can involve fund expenses, brokerage and demat charges. PaperTradeX simulated costs do not establish what a real broker charges.",
+    "effectiveDate": null,
+    "reviewedAt": "2026-11-22",
+    "section": "Summary",
+    "documentType": "education_summary"
+  },
+  {
+    "id": "education-market-risk",
+    "title": "Market, liquidity and volatility risks — education",
+    "scope": "education",
+    "referenceUrl": "https://investor.sebi.gov.in/securities-risks_trade_derivatives.html",
+    "content": "Introductory education summary, reviewed 22 November 2026 against SEBI Investor: Market risk concerns losses caused by broad financial-market or economic conditions. Liquidity risk means an investment may be difficult to buy or sell promptly. Volatility describes prices fluctuating over time. Business risk concerns adverse events affecting a company and its operations. Inflation can reduce purchasing power. These risks are distinct; a price chart alone does not measure all of them. This is educational material, not a personalised assessment of risk tolerance.",
+    "effectiveDate": null,
+    "reviewedAt": "2026-11-22",
+    "section": "Summary",
+    "documentType": "education_summary"
+  },
+  {
+    "id": "paper-trading",
+    "title": "Paper trading and virtual funds",
+    "url": "/about",
+    "content": "PaperTradeX is an educational paper-trading simulator for Indian stocks and ETFs. Balances, holdings and orders are virtual. Orders are not sent to NSE, BSE or a broker. New accounts start with 100000 INR in virtual funds. Virtual funds cannot be deposited, withdrawn or redeemed. Simulated performance is not a prediction of real returns.",
+    "effectiveDate": null,
+    "reviewedAt": "2026-11-22",
+    "section": "Summary",
+    "documentType": "app_help"
+  },
+  {
+    "id": "orders",
+    "title": "Market and limit orders",
+    "url": "/orders",
+    "content": "A market buy or sell uses an accepted fresh quote on the backend during regular exchange trading hours. The backend validates available balance and held quantity. A buy reduces available balance and adds shares; a sell credits proceeds and reduces shares. A limit order remains open until its target can be filled during market hours with a fresh quote. Open and cancelled orders are not completed transactions. Check Orders before retrying an order whose confirmation was interrupted.",
+    "effectiveDate": null,
+    "reviewedAt": "2026-11-22",
+    "section": "Summary",
+    "documentType": "app_help"
+  },
+  {
+    "id": "quotes",
+    "title": "Prices, daily change and market data",
+    "url": "/dashboard",
+    "content": "Stock and ETF daily change equals the current price minus the previous trading session close. Percentage change equals daily change divided by previous close times 100. NSE and BSE quotes keep separate exchange identities. Free data sources can be delayed or unavailable; one-second display refresh does not guarantee one-second exchange data. After the market closes, published official NSE closing prices are preferred over the last traded price. A closing price can differ from the last trade. Data keeps its source observation time.",
+    "effectiveDate": null,
+    "reviewedAt": "2026-11-22",
+    "section": "Summary",
+    "documentType": "app_help"
+  },
+  {
+    "id": "portfolio-returns",
+    "title": "Holdings value and returns",
+    "url": "/holdings",
+    "content": "Current holdings value is the sum of each holding quantity times its current price. Invested value is the remaining recorded purchase cost of open positions. Total returns on Holdings and Dashboard equal current holdings value minus invested value; they exclude already realised profit from fully sold positions. One-day return uses previous close for overnight shares and execution price for shares bought during the trading session. It includes sales during that session. Missing quotes keep unavailable totals unavailable rather than treating prices as zero. Available balance is uninvested virtual cash.",
+    "effectiveDate": null,
+    "reviewedAt": "2026-11-22",
+    "section": "Summary",
+    "documentType": "app_help"
+  },
+  {
+    "id": "pnl-report",
+    "title": "Download an Excel P&L report",
+    "url": "/transactions",
+    "content": "Use Download P&L report on Holdings or Transactions to download an all-time Excel .xlsx workbook. Its Summary, Completed sales and Holdings sheets separate realised P&L from unrealised P&L. Realised P&L is sale proceeds minus allocated weighted-average purchase cost. Partial-sale cost is allocated to paise; a full sale uses the remaining cost. The report excludes cash and pending or cancelled orders. No additional fees or taxes are assumed. This paper-trading report is not a tax statement. Missing valuations are marked unavailable, and quote times are included.",
+    "effectiveDate": null,
+    "reviewedAt": "2026-11-22",
+    "section": "Summary",
+    "documentType": "app_help"
+  },
+  {
+    "id": "xirr",
+    "title": "XIRR and annualised returns",
+    "url": "/holdings",
+    "content": "XIRR is an annualised money-weighted return using dated purchases, sales and current holding value. Cash balance is excluded from portfolio XIRR. A short holding period can produce a very large annualised result even for a small absolute gain; this is not a forecast. Some cash-flow histories do not have a reliable XIRR solution and show unavailable instead. Read XIRR alongside actual rupee P&L and holding duration.",
+    "effectiveDate": null,
+    "reviewedAt": "2026-11-22",
+    "section": "Summary",
+    "documentType": "app_help"
+  },
+  {
+    "id": "coach",
+    "title": "Completed-trade performance calculations",
+    "url": "/trading-coach",
+    "content": "Trading coach performance is calculated from completed transaction records using weighted-average purchase cost. Each completed sell execution counts as a completed sale. Win rate is winning sales divided by all completed sales, including break-even sales. Realised P&L excludes unrealised gains, cash and open orders. No completed sales means there is not yet a win rate. A small number of trades is not enough to establish a reliable strategy. Calculated statistics are separate from generated AI interpretation.",
+    "effectiveDate": null,
+    "reviewedAt": "2026-11-22",
+    "section": "Summary",
+    "documentType": "app_help"
+  },
+  {
+    "id": "account",
+    "title": "Account verification and password recovery",
+    "url": "/forgot-password",
+    "content": "Signup uses email verification. Forgot password sends a reset code to the registered email when email delivery is configured. Use the newest code in the website and keep passwords and OTPs private. Do not put a password, OTP, API key or login token in assistant questions or uploaded documents. For account and privacy requests use the contact information on About, Privacy and Terms.",
+    "effectiveDate": null,
+    "reviewedAt": "2026-11-22",
+    "section": "Summary",
+    "documentType": "app_help"
+  },
+  {
+    "id": "watchlist",
+    "title": "Watchlist and stock pages",
+    "url": "/watchlist",
+    "content": "Use Watchlist to add or remove securities. Watchlist membership is synced to the signed-in PaperTradeX account and cached in that account’s browser storage. A sync warning means changes may not yet be available to Ask AI or an external assistant. Watching a stock does not buy it. Quotes use the same current feed as stock pages and portfolio valuation. Watchlist changes do not create orders.",
+    "effectiveDate": "2026-11-22",
+    "reviewedAt": "2026-11-22",
+    "section": "Summary",
+    "documentType": "app_help"
+  }
 ]

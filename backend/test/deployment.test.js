@@ -65,10 +65,11 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, market
                 } },
                 async connectDB() { if (fail) throw new Error('Database unavailable'); },
                 async seedAdmin() {},
-                User: { findById: async () => {
-                    if (authDBUnavailable) throw Error('Database temporarily unavailable');
-                    return { role: 'USER', tokenVersion: 0 };
-                } },
+                User: { findById: id => {
+                    state.watchlistReadUser = id;
+                    const load = async () => { if (authDBUnavailable) throw Error('Database temporarily unavailable'); return { role: 'USER', tokenVersion: 0, watchlistSymbols: state.watchlistSymbols }; };
+                    return { select() { return this; }, lean: load, then(resolve, reject) { return load().then(resolve, reject); } };
+                }, async updateOne(query, update) { state.watchlistWriteUser = query._id; state.watchlistSymbols = update.$set.watchlistSymbols; } },
             };
             if (name === './services/MarketData') return class {
                 cache = { RELIANCE: { price: 1300 }, ...indexQuotes };
@@ -82,7 +83,7 @@ async function boot(t, { fail = false, uri = 'mongodb://test', ready = 1, market
             if (name === './services/HistoricalClient') return { quoteDetail: async () => providerQuote };
             if (name === './services/ClosingQuote') return realRequire(name);
             if (name === './services/OfficialCashClose') return { quote: async () => null };
-            if (name === './services/RagSetup') return realRequire(name);
+            if (['./services/RagSetup', './services/GroundedTools', './services/ExchangeDisclosures'].includes(name)) return realRequire(name);
             if (name === './services/TradeEngine') return {
                 assertMarketOpen() {},
                 findTradeReplay: async () => null,
@@ -211,4 +212,22 @@ test('cached company details still return the shared price instead of the metada
         assert.equal(response.status, 200);
         assert.equal((await response.json()).regularMarketPrice, 1300);
     }
+});
+
+test('watchlist sync is authenticated, validates symbols and binds reads/writes to the signed-in account', async t => {
+    const app = await boot(t);
+    assert.equal((await fetch(app.url + '/api/watchlist')).status, 401);
+    const token = jwt.sign({ id: 'alice', role: 'USER' }, 'deployment-test-secret');
+    const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+    const initial = await fetch(app.url + '/api/watchlist', { headers });
+    assert.deepEqual(await initial.json(), { initialized: false, symbols: [] });
+    const saved = await fetch(app.url + '/api/watchlist', { method: 'PUT', headers, body: JSON.stringify({ userId: 'bob', symbols: ['RELIANCE.NS', 'RELIANCE.NS', '^NSEI'] }) });
+    assert.equal(saved.status, 200);
+    assert.equal(app.state.watchlistWriteUser, 'alice');
+    const current = await fetch(app.url + '/api/watchlist', { headers });
+    assert.deepEqual(await current.json(), { initialized: true, symbols: ['RELIANCE.NS', '^NSEI'] });
+    assert.equal(app.state.watchlistReadUser, 'alice');
+    const invalid = await fetch(app.url + '/api/watchlist', { method: 'PUT', headers, body: JSON.stringify({ symbols: ['bad symbol'] }) });
+    assert.equal(invalid.status, 400);
+    assert.deepEqual(Array.from(app.state.watchlistSymbols), ['RELIANCE.NS', '^NSEI']);
 });

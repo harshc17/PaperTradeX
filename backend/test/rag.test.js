@@ -75,10 +75,10 @@ test('generation runs only after submission and supports general education; outa
     const app = await boot(t, { configured: true });
     await app.call('/config'); await app.call('/sources'); assert.equal(app.state.generateCalls, 0);
     const general = await app.call('/ask', { method: 'POST', body: { question: 'convexity', includePortfolio: true } });
-    assert.equal(general.data.mode, 'generated'); assert.equal(general.data.basis, 'general_education'); assert.equal(app.state.accountQueries.length, 0);
-    assert.equal(app.state.generateCalls, 1);
+    assert.equal(general.data.mode, 'no_sources'); assert.match(general.data.answer, /do not have verified/); assert.equal(app.state.accountQueries.length, 0);
+    assert.equal(app.state.generateCalls, 0);
     assert.equal((await app.call('/ask', { method: 'POST', body: { question: 'virtual funds' } })).data.mode, 'generated');
-    assert.equal(app.state.generateCalls, 2);
+    assert.equal(app.state.generateCalls, 1);
     const offline = await boot(t, { configured: true, failGeneration: true });
     const fallback = await offline.call('/ask', { method: 'POST', body: { question: 'virtual funds' } });
     assert.equal(fallback.data.mode, 'unavailable'); assert.equal(fallback.data.retryable, true); assert.match(fallback.data.answer, /retry/i); assert.doesNotMatch(fallback.data.answer, /source passages/i); assert.ok(fallback.data.sources.length);

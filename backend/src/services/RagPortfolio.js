@@ -66,7 +66,8 @@ async function buildPortfolioSnapshot({ balance, holdings }, trades, { getQuote,
         totalReturnsPercent: money(invested > 0 ? totalReturns / invested * 100 : 0),
         todayReturns: daily.ready ? daily.value : null, todayReturnsPercent: daily.ready ? money(daily.percent) : null,
         quotesDelayedOrUnavailable: symbols.some(symbol => ['delayed', 'unavailable'].includes(quotes[symbol].status)),
-        holdings: rows,
+        positionCount: rows.length,
+        holdings: rows.map(row => ({ ...row, allocationPercent: Number.isFinite(currentValue) && currentValue > 0 && row.currentValue !== null ? money(row.currentValue / currentValue * 100) : null })),
         methodology: 'Point-in-time snapshot from the same account records and display quote feed as Dashboard and Holdings. Current value and total returns exclude available balance. Total returns are unrealised P&L on open holdings. 1D return includes this session’s sales, overnight shares at prior close, and purchases at execution cost. Missing quotes or incomplete daily references leave affected values null. Quotes may have different timestamps; this saved answer does not stream updates.' };
 }
 module.exports = { buildPortfolioSnapshot, calculateDailyReturn };

@@ -24,6 +24,14 @@ const RagDocument = mongoose.models.RagDocument || mongoose.model('RagDocument',
 const ragVectorSchema = new mongoose.Schema({ model: { type: String, required: true }, chunkId: { type: String, required: true }, values: { type: [Number], required: true } });
 ragVectorSchema.index({ model: 1, chunkId: 1 }, { unique: true });
 const RagVector = mongoose.models.RagVector || mongoose.model('RagVector', ragVectorSchema);
+const mcpConnectionSchema = new mongoose.Schema({
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    tokenIdHash: { type: String, required: true, unique: true },
+    label: { type: String, required: true, maxlength: 80 },
+    expiresAt: { type: Date, required: true }, revokedAt: { type: Date, default: null },
+}, { timestamps: true });
+mcpConnectionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+const McpConnection = mongoose.models.McpConnection || mongoose.model('McpConnection', mcpConnectionSchema);
 const bcrypt = require('bcrypt');
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/papertradex';
@@ -47,6 +55,7 @@ const userSchema = new mongoose.Schema({
     tokenVersion: { type: Number, default: 0 },
     role:          { type: String, enum: ['USER', 'ADMIN'], default: 'USER' },
     balance:       { type: Number, default: 100000 },
+    watchlistSymbols: { type: [String], default: undefined },
 }, { timestamps: true });
 userSchema.index({ googleId: 1 }, { name: 'google_identity_unique', unique: true,
     partialFilterExpression: { googleId: { $type: 'string' } } });
@@ -213,6 +222,7 @@ async function seedAdmin() {
 }
 
 module.exports = {
+    McpConnection,
     RagVector,
     RagDocument,
     PendingSignup,

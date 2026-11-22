@@ -2,7 +2,7 @@
 import { apiFetch as fetch } from '@/lib/backend';
 
 import CompanyLogo from '@/components/CompanyLogo';
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useRef, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import Header from '@/components/dashboard/Header';
@@ -39,20 +39,65 @@ function WatchlistContent() {
     useEffect(() => { const stop = watchlist.map(s => watchSymbol(s.symbol)); return () => stop.forEach(fn => fn()); }, [watchlist, watchSymbol]);
     const [addInput, setAddInput] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [syncError, setSyncError] = useState('');
+    const [watchlistReady, setWatchlistReady] = useState(false);
+    const syncQueue = useRef<Promise<void>>(Promise.resolve());
+    const activeUser = useRef('');
 
     useEffect(() => {
         if (!authLoading && !user) router.push('/login');
     }, [user, authLoading]);
 
     useEffect(() => {
-        const saved = localStorage.getItem('ptx_watchlist');
-        const list = saved ? JSON.parse(saved) : DEFAULT_WATCHLIST;
-        setWatchlist(list);
-    }, []);
+        setWatchlist([]);
+        setWatchlistReady(false); setSyncError('');
+        activeUser.current = String(user?.id || '');
+        if (!user?.id) return;
+        let cancelled = false;
+        const key = `ptx_watchlist_${user.id}`;
+        const token = localStorage.getItem('ptx_token') || localStorage.getItem('token');
+        let local = DEFAULT_WATCHLIST;
+        try {
+            const legacyOwner = localStorage.getItem('ptx_watchlist_owner');
+            const saved = localStorage.getItem(key) || (!legacyOwner || legacyOwner === String(user.id) ? localStorage.getItem('ptx_watchlist') : null);
+            const parsed = saved ? JSON.parse(saved) : null;
+            if (Array.isArray(parsed) && parsed.length <= 100 && parsed.every(row => typeof row.symbol === 'string' && /^[A-Z0-9^.&-]{1,30}$/.test(row.symbol))) local = parsed;
+        } catch { /* Invalid browser cache never replaces the account watchlist. */ }
+        async function load() {
+            try {
+                const response = await fetch(`${API_URL}/api/watchlist`, { cache: 'no-store', headers: { Authorization: `Bearer ${token}` } });
+                if (!response.ok) throw Error('Unable to load the synced watchlist.');
+                const data = await response.json();
+                if (cancelled) return;
+                const list = data.initialized ? data.symbols.map((symbol: string) => ({ symbol, name: local.find(row => row.symbol === symbol)?.name || symbol.replace(/\.(NS|BO)$/, '') })) : local;
+                if (!data.initialized) {
+                    const saved = await fetch(`${API_URL}/api/watchlist`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ symbols: list.map((row: { symbol: string }) => row.symbol) }) });
+                    if (!saved.ok) throw Error('Unable to sync the browser watchlist.');
+                }
+                if (cancelled) return;
+                setWatchlist(list); setSyncError('');
+                localStorage.setItem(key, JSON.stringify(list));
+                localStorage.setItem('ptx_watchlist_owner', String(user!.id));
+            } catch { if (!cancelled) { setWatchlist(local); setSyncError('Showing this browser’s watchlist. Account sync is unavailable; AI may not see these changes yet.'); } }
+            finally { if (!cancelled) setWatchlistReady(true); }
+        }
+        void load();
+        return () => { cancelled = true; };
+    }, [user?.id]);
 
     const saveWatchlist = (list: { symbol: string; name: string }[]) => {
+        if (!user?.id || !watchlistReady) return;
         setWatchlist(list);
-        localStorage.setItem('ptx_watchlist', JSON.stringify(list));
+        localStorage.setItem(`ptx_watchlist_${user.id}`, JSON.stringify(list));
+        const token = localStorage.getItem('ptx_token') || localStorage.getItem('token');
+        const owner = String(user.id);
+        syncQueue.current = syncQueue.current.then(async () => {
+            try {
+                const response = await fetch(`${API_URL}/api/watchlist`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ symbols: list.map(row => row.symbol) }) });
+                if (!response.ok) throw Error('Sync unavailable');
+                if (activeUser.current === owner) setSyncError('');
+            } catch { if (activeUser.current === owner) setSyncError('Saved in this browser. Account sync is unavailable; AI may not see these changes yet.'); }
+        });
     };
 
     const removeFromWatchlist = (symbol: string) => saveWatchlist(watchlist.filter(w => w.symbol !== symbol));
@@ -81,6 +126,7 @@ function WatchlistContent() {
         <div className="min-h-screen bg-transparent font-sans page-fade-in">
             <Header />
             <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {syncError && <p role="status" className="mb-4 text-sm text-ink-muted">{syncError}</p>}
                 <div className="flex items-center gap-2.5 mb-6">
                     <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
                         <Star className="w-4 h-4 text-primary" />
@@ -91,7 +137,7 @@ function WatchlistContent() {
                 {/* Add stock */}
                 <div className="terminal-card p-5 mb-5 relative">
                     <label className="block text-xs font-medium text-ink-faint mb-2">Add a stock</label>
-                    <input type="text" value={addInput} onChange={e => setAddInput(e.target.value)}
+                    <input type="text" value={addInput} disabled={!watchlistReady} onChange={e => setAddInput(e.target.value)}
                         placeholder="Search by name or symbol (e.g. HDFC, Infosys)"
                         className="w-full px-4 py-2.5 border border-line rounded-xl text-sm text-ink placeholder-[var(--text-faint)] bg-surface-2 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors" />
                     {searchResults.length > 0 && (

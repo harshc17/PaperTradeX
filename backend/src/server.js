@@ -13,7 +13,7 @@ const { OAuth2Client } = require('google-auth-library');
 const MarketDataService = require('./services/MarketData');
 const TradeEngine = require('./services/TradeEngine');
 const { assertTradable, isMarketIndex } = require('./services/MarketIndex');
-const { connectDB, User, PendingSignup, Order, TransactionHistory, WeeklyChallenge, WeeklyChallengeTrade, seedAdmin, RagVector } = require('./models');
+const { connectDB, User, PendingSignup, Order, TransactionHistory, WeeklyChallenge, WeeklyChallengeTrade, seedAdmin, RagVector, McpConnection } = require('./models');
 const NSEClient = require('./services/NSEClient');
 const HistoricalClient = require('./services/HistoricalClient');
 const closingQuote = require('./services/ClosingQuote');
@@ -68,7 +68,7 @@ app.use(cors({
     origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),
     credentials: true,
     methods: ['GET', 'POST', 'DELETE', 'PUT', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Idempotency-Key']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Idempotency-Key', 'MCP-Protocol-Version', 'MCP-Session-Id']
 }));
 app.use(express.json({ limit: '1mb' }));
 
@@ -872,7 +872,26 @@ app.get('/api/stock/:symbol/news', AIAvailability.requireAvailable, async (req, 
 const performanceRouter = require('./routes/tradingCoach')({ TransactionHistory, AIService, authenticateToken,
     aiEnabled: () => AIAvailability.enabled });
 app.use('/api/trade-performance', performanceRouter);
+const groundedTools = require('./services/GroundedTools')({ User, TransactionHistory, getPortfolioAccount: loadPortfolioAccount,
+    getQuote: displayQuote, catalogue: LOCAL_STOCK_INDEX,
+    getMarketContext: () => ({ marketOpen: NSEClient.constructor.isMarketHours(), sessionDate: require('./services/ReturnSession')(new Date(), NSEClient.constructor.HOLIDAYS) }),
+    getDisclosures: require('./services/ExchangeDisclosures')(NSEClient) });
+app.use('/api/assistant', require('./routes/assistantConnections')({ authenticateToken, User, McpConnection, tools: groundedTools,
+    secret: JWT_SECRET, publicUrl: process.env.MCP_PUBLIC_URL || 'https://papertradex-roib.onrender.com/api/assistant/mcp' }));
+app.get('/api/watchlist', authenticateToken, async (req, res) => {
+    res.set('Cache-Control', 'private, no-store');
+    try { const user = await User.findById(req.user.id).select('watchlistSymbols').lean(); if (!user) return res.status(401).json({ error: 'Sign in again.' }); res.json({ initialized: Array.isArray(user.watchlistSymbols), symbols: user.watchlistSymbols || [] }); }
+    catch { res.status(503).json({ error: 'Watchlist is temporarily unavailable.' }); }
+});
+app.put('/api/watchlist', authenticateToken, async (req, res) => {
+    res.set('Cache-Control', 'private, no-store');
+    const symbols = req.body?.symbols;
+    if (!Array.isArray(symbols) || symbols.length > 100 || symbols.some(s => typeof s !== 'string' || !/^[A-Z0-9^.&-]{1,30}$/.test(s))) return res.status(400).json({ error: 'Provide up to 100 valid watchlist symbols.' });
+    try { await User.updateOne({ _id: req.user.id }, { $set: { watchlistSymbols: [...new Set(symbols)] } }); res.json({ saved: true }); }
+    catch { res.status(503).json({ error: 'Unable to sync the watchlist.' }); }
+});
 app.use('/api/rag', require('./routes/rag')({ authenticateToken, RagVector, TransactionHistory,
+    grounding: groundedTools,
     getPortfolioAccount: loadPortfolioAccount, getQuote: displayQuote,
     getMarketContext: () => ({ marketOpen: NSEClient.constructor.isMarketHours(),
         sessionDate: require('./services/ReturnSession')(new Date(), NSEClient.constructor.HOLIDAYS) }) }));
