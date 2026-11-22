@@ -111,7 +111,7 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
                 try { answer = await generation.generate(question.trim(), sources, { history: context.history, accountQuestion }); }
                 catch (error) {
                     // Constant-only diagnostics: never log questions, account snapshots or provider response bodies.
-                    const known = ['AI provider unavailable', 'Incomplete AI answer', 'Unsupported AI citations', 'Missing account citation'];
+                    const known = ['AI provider unavailable', 'Incomplete AI answer', 'Unsupported AI citations', 'Missing account citation', 'Unsupported factual claim'];
                     console.warn('[RAG generation]', known.includes(error.message) ? error.message : 'Invalid or unavailable response', Number(error.status) || '');
                 }
             }
