@@ -33,7 +33,16 @@ async function generate(question, sources, { history = [], accountQuestion = por
             generationConfig: { maxOutputTokens: 1200, responseMimeType: 'application/json', responseJsonSchema: schema } };
     }
     // No cross-provider retry: account data goes only to the selected provider.
-    const response = await fetch(url, { method: 'POST', signal: AbortSignal.timeout(18000), headers, body: JSON.stringify(body) });
+    const signal = AbortSignal.timeout(18000);
+    const init = { method: 'POST', signal, headers, body: JSON.stringify(body) };
+    let response = await fetch(url, init);
+    if ([502, 503, 504].includes(response.status)) {
+        await response.body?.cancel();
+        await new Promise(resolve => setTimeout(resolve, 400));
+        signal.throwIfAborted();
+        // One transient-error retry, same provider and payload, inside the original deadline.
+        response = await fetch(url, init);
+    }
     if (!response.ok) {
         const error = Error('AI provider unavailable');
         error.status = response.status;

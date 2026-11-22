@@ -48,6 +48,18 @@ test('only Gemini and OpenAI are supported; disabled generation never calls a pr
     for (const invalid of [{ answer: 'Bad [S99]', citations: ['S99'], basis: 'sources' }, { answer: 'Uncited', citations: [], basis: 'sources' }, {}]) {
         content = invalid; await assert.rejects(generator.generate('funds', sources));
     }
+    content = { answer: 'Verified source [S1].', citations: ['S1'], basis: 'sources' };
+    const previousFetch = global.fetch;
+    let attempts = 0;
+    global.fetch = async (...args) => ++attempts === 1 ? { ok: false, status: 503 } : previousFetch(...args);
+    assert.ok(await generator.generate('funds', sources)); assert.equal(attempts, 2);
+    attempts = 0;
+    global.fetch = async () => { attempts++; return { ok: false, status: 503 }; };
+    await assert.rejects(generator.generate('funds', sources), /unavailable/); assert.equal(attempts, 2);
+    attempts = 0;
+    global.fetch = async () => { attempts++; return { ok: false, status: 429 }; };
+    await assert.rejects(generator.generate('funds', sources), /unavailable/); assert.equal(attempts, 1);
+    global.fetch = previousFetch;
     incomplete = true; await assert.rejects(generator.generate('funds', sources));
     global.fetch = async () => ({ ok: false }); await assert.rejects(generator.generate('funds', sources), /unavailable/);
     process.env.RAG_PROVIDER = 'groq'; assert.equal(generator.configured(), false);
