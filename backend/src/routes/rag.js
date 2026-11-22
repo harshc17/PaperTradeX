@@ -68,7 +68,12 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
                 url: source.url, referenceUrl: source.referenceUrl, scope: source.scope, text: source.text }));
             let answer = null;
             if (generation.configured()) {
-                try { answer = await generation.generate(question.trim(), sources, { history: context.history, accountQuestion }); } catch { /* Keep source retrieval usable during provider outages. */ }
+                try { answer = await generation.generate(question.trim(), sources, { history: context.history, accountQuestion }); }
+                catch (error) {
+                    // Constant-only diagnostics: never log questions, account snapshots or provider response bodies.
+                    const known = ['AI provider unavailable', 'Incomplete AI answer', 'Unsupported AI citations', 'Missing account citation'];
+                    console.warn('[RAG generation]', known.includes(error.message) ? error.message : 'Invalid or unavailable response', Number(error.status) || '');
+                }
             }
             res.json({ mode: answer ? 'generated' : sources.length ? 'retrieval' : 'no_sources', basis: answer?.basis || null, provider: answer?.provider || null,
                 answer: answer?.answer || (portfolio ? 'Here is your actual portfolio snapshot [S1]. These values are calculated by PaperTradeX; an AI explanation has not been generated.' : sources.length ? 'Here are the closest matching source passages. An AI answer has not been generated.' : 'No matching sources were found. Conversational finance answers need an enabled OpenAI or Gemini API key; the education library is managed by PaperTradeX.'),
