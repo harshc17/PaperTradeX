@@ -19,7 +19,7 @@ The shared index is maintained by the operator; the public Ask AI page has no kn
 
 Operators can alternatively set `RAG_BUILD_INDEX_ON_START=true` for a deployment to build up to four batches after database connection and before listening. Clear this flag after observing completion in the Render logs. This maintenance action is explicit, does not change user roles, and is not enabled during normal startup. Failure logs contain only a status code; the application still starts with keyword fallback.
 
-Without configured keys, the page still returns actual portfolio snapshots and ranked keyword passages; it does not pretend to generate an AI answer.
+When generation is unavailable, the chat shows a clear unavailable reply with Retry answer, rather than dumping source passages. Verified portfolio snapshots remain visible. A retry reuses its saved question, options and bounded context, replaces the same reply, and leaves draft text and later messages intact. Portfolio data is fetched again on every retry. New chat clears saved retry requests as well as visible messages.
 
 ## Retrieval and context
 

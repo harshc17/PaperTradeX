@@ -3,20 +3,21 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowUp, MessageCircle, Plus, Settings2, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowUp, MessageCircle, Plus, Settings2, Loader2, PenSquare, RotateCcw } from 'lucide-react';
 import { BrandIcon } from '@/components/BrandLogo';
 import ThemeToggle from '@/components/ThemeToggle';
 import RagPortfolioSnapshot, { type PortfolioSnapshot } from '@/components/RagPortfolioSnapshot';
 import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/backend';
 import { API_URL } from '@/lib/config';
+import { buildChatRequest, type ChatPayload } from '@/lib/ragChatRequest';
 
 type Source = { citation: string; id: string; title: string; url?: string; referenceUrl?: string; scope: string; text: string };
-type Result = { mode: 'generated' | 'retrieval' | 'no_sources'; answer: string; sources: Source[];
+type Result = { mode: 'generated' | 'retrieval' | 'no_sources' | 'unavailable'; retryable?: boolean; answer: string; sources: Source[];
     basis?: string; retrieval?: string;
     portfolio?: PortfolioSnapshot | null;
     performance: { completedSales: number; netRealisedPnl: number; winRate: number | null } | null };
-type Entry = { id: number; question: string; result?: Result; error?: string };
+type Entry = { id: number; question: string; payload: ChatPayload; result?: Result; error?: string; pending?: boolean; retrying?: boolean };
 async function request(path: string, init: RequestInit = {}) {
     const token = localStorage.getItem('ptx_token') || localStorage.getItem('token');
     if (!token) throw new Error('Please sign in again.');
@@ -36,6 +37,8 @@ export default function AskAIPage() {
 }
 
 function KnowledgeAssistant() {
+    const { user } = useAuth();
+    const firstName = user?.name?.trim().split(/\s+/)[0] || 'there';
     const [ready, setReady] = useState(false);
     const [generation, setGeneration] = useState(false);
     const [provider, setProvider] = useState('Gemini');
@@ -93,31 +96,27 @@ function KnowledgeAssistant() {
         if (!input.current) return;
         input.current.style.height = 'auto';
         input.current.style.height = `${Math.min(input.current.scrollHeight, 120)}px`;
-    }, [question]);
+    }, [question, entries.length === 0]);
     async function send(text = question.trim(), retryId?: number) {
         if (active.current || !ready || !text.trim()) return;
+        const original = retryId ? entries.find(entry => entry.id === retryId) : undefined;
+        if (retryId && !original) return;
         const id = retryId ?? ++sequence.current;
+        const payload = buildChatRequest(text, { includePerformance: performance, includePortfolio }, entries, original?.payload);
         const controller = new AbortController();
         followLatest.current = true;
         active.current = controller; setBusy(true); setError(''); setOptions(false);
         setEntries(previous => retryId
-            ? previous.map(entry => entry.id === id ? { id, question: text } : entry)
-            : [...previous, { id, question: text }]);
-        setQuestion('');
+            ? previous.map(entry => entry.id === id ? { ...entry, pending: true, retrying: true, error: undefined } : entry)
+            : [...previous, { id, question: text, payload, pending: true }]);
+        if (!retryId) setQuestion('');
         try {
             const result: Result = await request('/ask', { method: 'POST', signal: controller.signal,
-                body: JSON.stringify({ question: text, includePerformance: performance, includePortfolio,
-                    history: entries.slice(0, retryId ? entries.findIndex(entry => entry.id === retryId) : entries.length)
-                        .filter(entry => entry.result && !entry.error).slice(-4).flatMap(entry => [
-                            { role: 'user', content: entry.question.slice(0, 1000) },
-                            { role: 'assistant', content: entry.result?.portfolio || entry.result?.performance
-                                ? 'An account snapshot was shown; fetch current account facts again.'
-                                : withoutCitationMarkers(entry.result!.answer).slice(0, 1000) },
-                        ]) }) });
-            if (!controller.signal.aborted) setEntries(previous => previous.map(entry => entry.id === id ? { ...entry, result } : entry));
+                body: JSON.stringify(payload) });
+            if (!controller.signal.aborted) setEntries(previous => previous.map(entry => entry.id === id ? { ...entry, result, pending: false } : entry));
         } catch (e) {
             if (!controller.signal.aborted) setEntries(previous => previous.map(entry => entry.id === id
-                ? { ...entry, error: e instanceof Error ? e.message : 'Unable to answer. Please try again.' } : entry));
+                ? { ...entry, pending: false, result: undefined, error: e instanceof Error ? e.message : 'Unable to answer. Please try again.' } : entry));
         } finally {
             if (active.current === controller) { active.current = null; setBusy(false); }
         }
@@ -126,8 +125,15 @@ function KnowledgeAssistant() {
         active.current?.abort(); active.current = null; setBusy(false);
         setEntries([]); setQuestion(''); setError(''); input.current?.focus();
     }
-    return <div ref={shell} className="fixed inset-x-0 top-0 flex h-dvh min-h-0 flex-col overflow-hidden bg-page text-ink">
-        <header className="shrink-0 border-b border-line bg-page px-3 sm:px-6">
+    return <div ref={shell} className="fixed inset-x-0 top-0 flex h-dvh min-h-0 overflow-hidden bg-surface-2 text-ink">
+        <aside aria-label="Chat navigation" className="hidden w-[72px] shrink-0 flex-col items-center gap-4 py-5 md:flex">
+            <Link href="/dashboard" aria-label="Back to Explore" className="mb-5 inline-flex h-11 w-11 items-center justify-center"><BrandIcon className="h-9 w-9" /></Link>
+            <button type="button" onClick={newChat} aria-label="New chat" title="New chat" className="flex h-11 w-11 items-center justify-center rounded-xl text-ink-muted hover:bg-surface"><PenSquare className="h-5 w-5" /></button>
+            <button type="button" aria-label="Current conversation" title="Current conversation" onClick={() => { transcript.current?.scrollTo({ top: transcript.current.scrollHeight }); transcript.current?.focus(); }} className="flex h-11 w-11 items-center justify-center rounded-xl text-ink-muted hover:bg-surface"><MessageCircle className="h-5 w-5" /></button>
+            <div className="mt-auto flex flex-col items-center gap-3"><ThemeToggle /><span title={user?.name || 'Your account'} className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-black">{firstName.slice(0, 1).toUpperCase()}</span></div>
+        </aside>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-page md:my-3 md:mr-3 md:rounded-3xl">
+        <header className="shrink-0 border-b border-line bg-page px-3 sm:px-6 md:hidden">
             <div className="mx-auto flex min-h-16 max-w-4xl items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-3">
                     <Link href="/dashboard" aria-label="Back to Explore" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg hover:bg-surface-2"><ArrowLeft className="h-5 w-5" /></Link>
@@ -138,14 +144,12 @@ function KnowledgeAssistant() {
             </div>
         </header>
         <main className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col">
-            <div ref={transcript} role="region" aria-label="Conversation" tabIndex={0} onScroll={event => { const area = event.currentTarget; followLatest.current = area.scrollHeight - area.scrollTop - area.clientHeight < 60; }} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-5 sm:px-6 sm:py-8">
-                {!entries.length && <div className="mx-auto flex min-h-full max-w-xl flex-col justify-center py-6">
-                    <MessageCircle className="mb-4 h-9 w-9 text-primary" />
-                    <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">What’s on your mind?</h2>
-                    <p className="mt-3 text-sm leading-6 text-ink-muted">Understand your portfolio, explore the markets, or learn something new about investing.</p>
-                    <div className="mt-6 grid gap-2 sm:grid-cols-2">
-                        {['What is my current portfolio value, balance and returns?', 'Explain diversification in simple terms.', 'How do ETFs work?', 'What does a stock’s P/E ratio mean?'].map(text => <button key={text} type="button" disabled={!ready || busy} onClick={() => { if (text.includes('my current')) setIncludePortfolio(true); setQuestion(text); input.current?.focus(); }} className="min-h-14 rounded-xl border border-line bg-surface p-3 text-left text-sm leading-5 transition-colors hover:border-primary disabled:opacity-50">{text}</button>)}
-                    </div>
+            <div ref={transcript} role="region" aria-label="Conversation" tabIndex={0} onScroll={event => { const area = event.currentTarget; followLatest.current = area.scrollHeight - area.scrollTop - area.clientHeight < 60; }} className={`min-h-0 overflow-y-auto overscroll-contain px-3 sm:px-6 ${entries.length ? 'flex-1 py-5 sm:py-8' : 'shrink py-4 md:pt-[min(18vh,160px)]'}`}>
+                {!entries.length && <div className="mx-auto flex max-w-2xl flex-col items-center pt-7 text-center sm:pt-12 md:pt-6 [@media(max-height:500px)]:hidden">
+                    <BrandIcon className="mb-5 h-12 w-12 sm:h-14 sm:w-14" />
+                    <p className="text-lg font-medium text-ink-muted sm:text-2xl">Hey {firstName}</p>
+                    <h2 className="mt-3 text-2xl font-semibold leading-tight tracking-tight sm:text-4xl">Less noise. More understanding.</h2>
+                    <p className="mt-3 max-w-md text-sm leading-6 text-ink-muted">Your portfolio, the markets, and everything you want to understand.</p>
                 </div>}
                 <div className="space-y-6">
                     {entries.map(entry => <article key={entry.id} aria-label={`Question: ${entry.question}`} className="min-w-0 space-y-4">
@@ -154,15 +158,18 @@ function KnowledgeAssistant() {
                             <BrandIcon className="mt-1 h-7 w-7 shrink-0" />
                             <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm border border-line bg-surface px-3 py-3 sm:px-5 sm:py-4">
                                 <p className="text-xs font-semibold text-primary">PaperTradeX AI</p>
-                                {entry.result ? <Answer result={entry.result} /> : entry.error ? <div role="alert"><p className="mt-2 break-words text-sm leading-6 text-down">{entry.error}</p><button type="button" disabled={busy} onClick={() => void send(entry.question, entry.id)} className="mt-2 min-h-11 text-sm text-primary disabled:opacity-50">Try again</button></div> : <p className="mt-3 flex items-center gap-2 text-sm text-ink-muted"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />Thinking…</p>}
+                                {entry.pending ? <p role="status" className="mt-3 flex items-center gap-2 text-sm text-ink-muted"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{entry.retrying ? 'Retrying…' : 'Thinking…'}</p>
+                                    : entry.error ? <div role="alert"><p className="mt-3 break-words text-sm leading-6 text-ink-muted">{entry.error}</p><RetryButton busy={busy} onRetry={() => void send(entry.question, entry.id)} /></div>
+                                    : entry.result ? <><Answer result={entry.result} />{(entry.result.mode === 'unavailable' || entry.result.mode === 'retrieval') && <RetryButton busy={busy} onRetry={() => void send(entry.question, entry.id)} />}</> : null}
+
                             </div>
                         </div>
                     </article>)}
                 </div>
             </div>
-            <div className="shrink-0 border-t border-line bg-page px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 sm:px-6">
+            <div className={`shrink-0 bg-page px-3 pb-[max(12px,env(safe-area-inset-bottom))] sm:px-6 ${entries.length ? 'border-t border-line pt-3' : 'mt-5 sm:mt-8'}`}>
                 {error && <p role="alert" className="mb-2 break-words text-sm text-down">{error}</p>}
-                <form onSubmit={event => { event.preventDefault(); void send(); }} className="rounded-2xl border border-line bg-surface p-3 focus-within:border-primary">
+                <form onSubmit={event => { event.preventDefault(); void send(); }} className={`rounded-2xl border bg-surface p-3 transition-shadow sm:p-4 ${entries.length ? 'border-line focus-within:border-primary' : 'border-primary/60 shadow-[0_0_48px_-20px_var(--primary)] focus-within:border-primary'}`}>
                     <div className="flex items-center justify-between gap-2">
                         <label htmlFor="rag-question" className="text-xs font-medium text-ink-muted">Ask question</label>
                         <button type="button" aria-label="Answer options and privacy" aria-expanded={options} aria-controls="chat-options" onClick={() => setOptions(!options)} className="-my-2 inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink-muted hover:bg-surface-2"><Settings2 className="h-4 w-4" /></button>
@@ -179,16 +186,20 @@ function KnowledgeAssistant() {
                 </form>
                 <p className="mt-2 text-center text-[11px] leading-4 text-ink-muted">AI can make mistakes. Verify figures and references. <span className="hidden sm:inline">Enter to send · Shift + Enter for a new line.</span></p>
             </div>
+            {!entries.length && <div className="mt-4 flex shrink-0 flex-wrap justify-center gap-2 px-3 pb-4 [@media(max-height:600px)]:hidden">
+                {['My portfolio', 'How ETFs work', 'Market risk'].map((label, i) => <button key={label} type="button" disabled={!ready} onClick={() => { setQuestion(['What is my current portfolio value, balance and returns?', 'How do ETFs work?', 'Explain market risk in simple terms.'][i]); if (!i) setIncludePortfolio(true); input.current?.focus(); }} className="min-h-10 rounded-full border border-line px-3 text-xs text-ink-muted hover:border-primary">{label}</button>)}
+            </div>}
             <p role="status" className="sr-only">{busy ? 'AI is thinking' : entries.length ? 'Reply ready' : ready ? 'Ready for your question' : 'Connecting'}</p>
         </main>
+        </div>
     </div>;
 }
 
 function Answer({ result }: { result: Result }) {
     return <>
-                        <p className="mt-4 text-xs font-medium uppercase tracking-wide text-ink-muted">{result.mode === 'generated' ? 'AI answer' : result.mode === 'no_sources' ? 'No supporting sources' : 'Source passages'}</p>
-                        <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6">{withoutCitationMarkers(result.answer)}</p>
-                        {result.sources.length > 0 && <p className="mt-2 text-xs text-ink-muted">{result.retrieval === 'hybrid' ? 'Semantic + keyword retrieval' : 'Keyword retrieval'} · {result.sources.length} sources</p>}
+                        <p className="mt-4 text-xs font-medium uppercase tracking-wide text-ink-muted">{result.mode === 'generated' ? 'AI answer' : result.mode === 'unavailable' || result.mode === 'retrieval' ? 'Unable to finish the answer' : 'Reply'}</p>
+                        <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6">{result.mode === 'retrieval' ? 'I couldn’t finish the answer. Please retry; your conversation is still here.' : withoutCitationMarkers(result.answer)}</p>
+                        {result.mode === 'generated' && result.sources.length > 0 && <p className="mt-2 text-xs text-ink-muted">{result.retrieval === 'hybrid' ? 'Semantic + keyword retrieval' : 'Keyword retrieval'} · {result.sources.length} sources</p>}
                         {result.basis === 'general_education' && <p className="mt-2 text-xs leading-5 text-ink-muted">Includes general model knowledge, not verified live market research. Sources below support only the claims they address.</p>}
                         {result.portfolio && <RagPortfolioSnapshot snapshot={result.portfolio} />}
                         {result.performance && <dl className="mt-4 grid grid-cols-1 gap-3 rounded-lg bg-surface-2 p-3 text-sm sm:grid-cols-3">
@@ -196,13 +207,17 @@ function Answer({ result }: { result: Result }) {
                             <div><dt className="text-xs text-ink-muted">Realised P&L</dt><dd className="mt-1 break-words">₹{result.performance.netRealisedPnl.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</dd></div>
                             <div><dt className="text-xs text-ink-muted">Win rate</dt><dd className="mt-1">{result.performance.winRate === null ? 'Unavailable' : `${result.performance.winRate}%`}</dd></div>
                         </dl>}
-                        {result.sources.length > 0 && <details className="mt-3 min-w-0" open={result.mode === 'retrieval'}><summary className="min-h-11 cursor-pointer py-3 text-xs font-medium text-ink-muted">Sources ({result.sources.length})</summary><div className="space-y-2">{result.sources.map(source => <details key={source.citation} className="min-w-0 rounded-lg border border-line p-3" open={result.mode === 'retrieval'}>
+                        {result.mode === 'generated' && result.sources.length > 0 && <details className="mt-3 min-w-0"><summary className="min-h-11 cursor-pointer py-3 text-xs font-medium text-ink-muted">Sources ({result.sources.length})</summary><div className="space-y-2">{result.sources.map(source => <details key={source.citation} className="min-w-0 rounded-lg border border-line p-3">
                             <summary className="cursor-pointer break-words text-sm font-medium leading-6">{source.title} <span className="text-xs font-normal text-ink-muted">· {source.scope === 'public' ? 'App help' : source.scope === 'education' ? 'Education' : source.scope === 'account' ? 'Your statistics' : 'Private document'}</span></summary>
                             <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-6 text-ink-muted">{source.text}</p>
                             {source.url?.startsWith('/') && !source.url.startsWith('//') && <Link href={source.url} className="mt-2 inline-flex min-h-9 items-center text-xs text-primary">Open related page →</Link>}
                             {source.referenceUrl?.startsWith('https://investor.sebi.gov.in/') && <a href={source.referenceUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex min-h-9 items-center text-xs text-primary">Read SEBI Investor reference ↗</a>}
                         </details>)}</div></details>}
     </>;
+}
+
+function RetryButton({ busy, onRetry }: { busy: boolean; onRetry: () => void }) {
+    return <button type="button" disabled={busy} onClick={onRetry} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl border border-line px-4 text-sm font-medium text-primary hover:bg-surface-2 disabled:opacity-50"><RotateCcw className="h-4 w-4" />Retry answer</button>;
 }
 
 function withoutCitationMarkers(answer: string) {

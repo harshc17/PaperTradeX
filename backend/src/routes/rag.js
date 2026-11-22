@@ -75,8 +75,8 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
                     console.warn('[RAG generation]', known.includes(error.message) ? error.message : 'Invalid or unavailable response', Number(error.status) || '');
                 }
             }
-            res.json({ mode: answer ? 'generated' : sources.length ? 'retrieval' : 'no_sources', basis: answer?.basis || null, provider: answer?.provider || null,
-                answer: answer?.answer || (portfolio ? 'Here is your actual portfolio snapshot [S1]. These values are calculated by PaperTradeX; an AI explanation has not been generated.' : sources.length ? 'Here are the closest matching source passages. An AI answer has not been generated.' : 'No matching sources were found. Conversational finance answers need an enabled OpenAI or Gemini API key; the education library is managed by PaperTradeX.'),
+            res.json({ mode: answer ? 'generated' : 'unavailable', retryable: !answer, basis: answer?.basis || null, provider: answer?.provider || null,
+                answer: answer?.answer || (portfolio ? 'I couldn’t finish the AI explanation. Your verified portfolio snapshot is available below. Retry the answer to continue this conversation.' : 'I couldn’t generate an answer right now. Please retry; your question and conversation context are saved in this chat.'),
                 sources, performance, portfolio, retrieval: retrieval.method, generatedAt: new Date().toISOString() });
         } catch { res.status(503).json({ error: usePortfolio ? 'Unable to load a reliable portfolio snapshot. Refresh and try again, or ask a general education question.' : 'Unable to search your sources. Please try again.' }); }
     });

@@ -81,7 +81,7 @@ test('generation runs only after submission and supports general education; outa
     assert.equal(app.state.generateCalls, 2);
     const offline = await boot(t, { configured: true, failGeneration: true });
     const fallback = await offline.call('/ask', { method: 'POST', body: { question: 'virtual funds' } });
-    assert.equal(fallback.data.mode, 'retrieval'); assert.match(fallback.data.answer, /not been generated/); assert.ok(fallback.data.sources.length);
+    assert.equal(fallback.data.mode, 'unavailable'); assert.equal(fallback.data.retryable, true); assert.match(fallback.data.answer, /retry/i); assert.doesNotMatch(fallback.data.answer, /source passages/i); assert.ok(fallback.data.sources.length);
 });
 
 test('performance is opt-in and calculated from user-filtered executed history', async t => {
@@ -120,7 +120,7 @@ test('portfolio RAG uses only the signed-in account and server prices; documents
 test('portfolio retrieval works without AI; missing or inconsistent accounts do not produce a generated answer', async t => {
     const { call, state } = await boot(t, { accounts: { alice: { balance: 100000, holdings: [] } } });
     const empty = await call('/ask', { method: 'POST', body: { question: 'what is my balance', includePortfolio: true } });
-    assert.equal(empty.data.mode, 'retrieval'); assert.equal(empty.data.portfolio.balance, 100000); assert.deepEqual(empty.data.portfolio.holdings, []); assert.equal(state.generateCalls, 0);
+    assert.equal(empty.data.mode, 'unavailable'); assert.equal(empty.data.retryable, true); assert.equal(empty.data.portfolio.balance, 100000); assert.deepEqual(empty.data.portfolio.holdings, []); assert.equal(state.generateCalls, 0);
     const inconsistent = await boot(t, { configured: true, accounts: { alice: { balance: 90000, holdings: [{ symbol: 'ITC', quantity: 1, averagePrice: 100 }] } } });
     const failed = await inconsistent.call('/ask', { method: 'POST', body: { question: 'my portfolio', includePortfolio: true } });
     assert.equal(failed.status, 503); assert.match(failed.data.error, /reliable portfolio/); assert.equal(inconsistent.state.generateCalls, 0);
