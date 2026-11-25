@@ -21,10 +21,11 @@ test('retry retains its original follow-up context and options after later messa
 
 test('new requests exclude failed answers, bound context and omit previous account figures; new chat has none', () => {
     const entries = Array.from({ length: 6 }, (_, i) => ({ question: `Question ${i}`, result: { mode: 'generated', answer: 'Answer' } }));
-    entries.push({ question: 'My balance?', result: { mode: 'generated', answer: 'Balance 999999', portfolio: {} } });
+    entries.push({ question: 'My balnce?', result: { mode: 'generated', interpretedQuestion: 'My balance?', answer: 'Balance 999999', portfolio: {} } });
     entries.push({ question: 'Failed', result: { mode: 'unavailable', answer: 'Retry' } });
     const payload = buildChatRequest('Why?', options, entries);
     assert.equal(payload.history.length, 8); assert.ok(!JSON.stringify(payload).includes('999999'));
     assert.ok(!JSON.stringify(payload.history).includes('Failed'));
+    assert.equal(payload.history.at(-2).content, 'My balance?');
     assert.equal(buildChatRequest('Why?', options, []).history.length, 0);
 });

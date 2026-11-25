@@ -16,7 +16,7 @@ import dynamic from 'next/dynamic';
 const AnswerMarkdown = dynamic(() => import('@/components/AnswerMarkdown'));
 const AssistantConnections = dynamic(() => import('@/components/AssistantConnections'));
 
-type Result = { mode: 'generated' | 'portfolio_report' | 'retrieval' | 'no_sources' | 'unavailable'; retryable?: boolean; answer: string;
+type Result = { mode: 'generated' | 'portfolio_report' | 'retrieval' | 'no_sources' | 'unavailable'; retryable?: boolean; answer: string; interpretedQuestion?: string;
     portfolio?: PortfolioSnapshot | null;
     performance: { completedSales: number; netRealisedPnl: number; winRate: number | null } | null };
 type Entry = { id: number; question: string; payload: ChatPayload; result?: Result; error?: string; pending?: boolean; retrying?: boolean };
@@ -228,6 +228,7 @@ function KnowledgeAssistant() {
 
 function Answer({ result }: { result: Result }) {
     return <>
+        {result.interpretedQuestion && <p className="mt-2 break-words text-xs text-ink-muted">Interpreted as: {result.interpretedQuestion}</p>}
         {(result.mode === 'unavailable' || result.mode === 'retrieval') && <p className="mt-3 text-sm font-semibold text-ink-muted">Unable to finish the answer</p>}
         <div className="mt-2 min-w-0 break-words text-base leading-7 [&_p]:mb-3 [&_h1]:my-3 [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:my-3 [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:my-3 [&_h3]:font-semibold [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6 [&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-6 [&_table]:w-full [&_th]:border-b [&_th]:border-line [&_th]:p-2 [&_td]:border-b [&_td]:border-line [&_td]:p-2">
             <AnswerMarkdown text={result.mode === 'retrieval' ? 'I could not finish the answer. Please retry; your conversation is still here.' : result.answer} />

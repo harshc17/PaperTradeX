@@ -27,7 +27,7 @@ test('chunking is bounded, overlapping and stable; retrieval ranks relevant sour
     assert.deepEqual(tokens('realized stock prices'), tokens('realised stock price'));
 });
 
-async function boot(t, { configured = false, failGeneration = false, trades = [], accounts = {}, quotes = {} } = {}) {
+async function boot(t, { configured = false, failGeneration = false, unsupportedQuestion, interpretQuestion, trades = [], accounts = {}, quotes = {} } = {}) {
     const state = { documents: [], metricQueries: [], calls: [], nextId: 1, generateCalls: 0, accountQueries: [], quoteQueries: [], lastSources: [], lastContext: null, lastQuestion: null };
     const chain = rows => ({ select() { return this; }, sort() { return this; }, limit(n) { rows = rows.slice(0, n); return this; }, async lean() { return rows; } });
     const models = {
@@ -44,7 +44,7 @@ async function boot(t, { configured = false, failGeneration = false, trades = []
         async getPortfolioAccount(user) { state.accountQueries.push(user); if (!accounts[user]) throw Error('No account'); return accounts[user]; },
         async getQuote(symbol) { state.quoteQueries.push(symbol); return quotes[symbol] || null; },
         getMarketContext: () => ({ marketOpen: true, sessionDate: '2026-11-20' }),
-        generation: { configured: () => configured, async generate(question, sources, context) { state.generateCalls++; state.lastContext = context; state.lastQuestion = question; state.lastSources = sources; if (failGeneration) throw Error('offline'); return sources.length ? { answer: `Verified response [${sources[0].citation}]`, citations: [sources[0].citation], basis: 'sources' } : { answer: 'General finance education.', citations: [], basis: 'general_education' }; } },
+        generation: { configured: () => configured, interpretQuestion, async generate(question, sources, context) { state.generateCalls++; state.lastContext = context; state.lastQuestion = question; state.lastSources = sources; if (failGeneration) throw Error('offline'); if (question === unsupportedQuestion) return { basis: 'unsupported' }; return sources.length ? { answer: `Verified response [${sources[0].citation}]`, citations: [sources[0].citation], basis: 'sources' } : { answer: 'General finance education.', citations: [], basis: 'general_education' }; } },
     }));
     const server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve));
     t.after(() => { server.closeAllConnections(); server.close(); });
@@ -173,4 +173,39 @@ test('portfolio status returns an account report without calling a model', async
     assert.equal(result.data.portfolio.holdings[0].totalReturns, 20);
     assert.equal(result.data.portfolio.holdings[0].allocationPercent, 100);
     assert.equal(state.generateCalls, 0);
+});
+
+
+test('Gemini interpretations retry retrieval once and preserve consent and advice checks', async t => {
+    const calls = [];
+    const rewrites = new Map([
+        ['etffff', { outcome: 'rewrite', question: 'What are ETFs?' }],
+        ['diversification frk', { outcome: 'rewrite', question: 'How does diversification work?' }],
+        ['my portflio statuz', { outcome: 'rewrite', question: 'What is my portfolio status?' }],
+        ['wich fnd shud byy', { outcome: 'rewrite', question: 'Which fund should I buy?' }],
+        ['xyzzz', { outcome: 'clarify' }],
+        ['snerff', { outcome: 'rewrite', question: 'unverifiablezz' }],
+    ]);
+    const { call, state } = await boot(t, { configured: true, unsupportedQuestion: 'diversification frk',
+        interpretQuestion: async (question, options) => { calls.push({ question, options }); return rewrites.get(question); },
+        accounts: { alice: { balance: 500, holdings: [] } },
+    });
+    const ask = (question, fields = {}) => call('/ask', { method: 'POST', body: { question, ...fields } });
+    const missing = await ask('etffff');
+    assert.equal(missing.data.mode, 'generated');
+    assert.equal(missing.data.interpretedQuestion, 'What are ETFs?');
+    const unsupported = await ask('diversification frk');
+    assert.equal(unsupported.data.interpretedQuestion, 'How does diversification work?');
+    assert.equal(state.lastQuestion, unsupported.data.interpretedQuestion);
+    assert.match((await ask('my portflio statuz')).data.answer, /Enable account context/);
+    assert.equal(state.accountQueries.length, 0);
+    const portfolio = await ask('my portflio statuz', { includePortfolio: true });
+    assert.equal(portfolio.data.mode, 'portfolio_report');
+    assert.equal(portfolio.data.portfolio.balance, 500);
+    assert.match((await ask('wich fnd shud byy')).data.answer, /cannot recommend/);
+    assert.match((await ask('xyzzz')).data.answer, /Could you rephrase/);
+    assert.match((await ask('snerff')).data.answer, /do not have verified information/);
+    assert.equal(calls.length, 7);
+    assert.equal(calls.some(call => call.question === 'unverifiablezz'), false);
+    assert.ok(calls.every(call => Object.keys(call.options).sort().join(',') === 'previousQuestions,signal'));
 });

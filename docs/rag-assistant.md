@@ -23,6 +23,8 @@ When generation is unavailable, the chat shows a clear unavailable reply with Re
 
 ## Retrieval and context
 
+With Gemini selected for generation, an unanswered question can get one interpretation attempt. Gemini sees the question and, when resolving a follow-up, up to two earlier user questions. A clear correction goes back through the same retrieval, permissions, and factual checks. The chat shows the interpretation and uses it for follow-ups. Ambiguous wording gets a clarification prompt; missing verified facts stay unavailable. Interpretation and the second answer share the original request deadline.
+
 Managed knowledge: original app help, finance lessons linked to SEBI Investor, and short original study notes linked to the SEBI Financial Education Booklet (Chapter 2, reviewed 22 November 2026). The copyrighted booklet itself is not copied into the database. No full copyrighted books are included. Add only licensed, public-domain or original material to `backend/src/knowledge/papertradex.json`; retain source URL, title and review date. References are not fetched at question time. PDF ingestion and web crawling are not included.
 
 Text is split into stable overlapping 1,100-character chunks. Gemini Embedding 2 produces 768-dimensional vectors stored in MongoDB by model/version and chunk hash. Exact cosine search over the small curated index is combined with BM25 using reciprocal ranks; up to four passages, at most two from one document, enter the prompt. This is real embedding-based vector retrieval, without requiring an Atlas Vector Search index. It is suitable for this bounded corpus; use indexed database vector search if the library becomes large.

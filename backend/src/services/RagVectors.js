@@ -7,10 +7,11 @@ function cosine(a, b) {
     for (let i = 0; i < a.length; i++) { dot += a[i] * b[i]; x += a[i] ** 2; y += b[i] ** 2; }
     return x && y ? dot / Math.sqrt(x * y) : -1;
 }
-async function embed(texts, query = false) {
+async function embed(texts, query = false, signal) {
     if (!configured()) throw Error('Vector search not configured');
+    const timeout = AbortSignal.timeout(10000);
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:batchEmbedContents`, {
-        method: 'POST', signal: AbortSignal.timeout(10000), headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY, 'Content-Type': 'application/json' },
+        method: 'POST', signal: signal ? AbortSignal.any([signal, timeout]) : timeout, headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY, 'Content-Type': 'application/json' },
         body: JSON.stringify({ requests: texts.map(text => ({ model: `models/${MODEL}`, outputDimensionality: 768,
             content: { parts: [{ text: query ? `task: search result | query: ${text}` : text }] } })) }),
     });
@@ -32,7 +33,7 @@ async function index(knowledge, store, embeddings = embed) {
     }
     return { indexed: known.size + batch.length, total: chunks.length, remaining: missing.length - batch.length };
 }
-async function search(question, knowledge, store, embeddings = embed) {
+async function search(question, knowledge, store, embeddings = embed, signal) {
     const lexical = retrieve(question, knowledge, 5);
     if (!configured() || !store) return { passages: lexical.slice(0, 4), method: 'keyword' };
     try {
@@ -40,7 +41,7 @@ async function search(question, knowledge, store, embeddings = embed) {
         const chunks = knowledge.flatMap(chunkDocument), current = new Map(chunks.map(c => [c.id, c]));
         const rows = await store.find({ model: TAG, chunkId: { $in: [...current.keys()] } }).select('chunkId values').limit(2000).lean();
         if (!rows.length) return { passages: lexical.slice(0, 4), method: 'keyword' };
-        const [query] = await embeddings([question], true);
+        const [query] = await embeddings([question], true, signal);
         const semantic = rows.map(r => ({ ...current.get(r.chunkId), similarity: cosine(query, r.values) })).filter(r => r.id && r.similarity > .25).sort((a, b) => b.similarity - a.similarity);
         const scores = new Map();
         for (const list of [lexical, semantic]) list.slice(0, 12).forEach((c, i) => { const found = scores.get(c.id) || { ...c, rank: 0 }; found.rank += 1 / (60 + i); scores.set(c.id, found); });

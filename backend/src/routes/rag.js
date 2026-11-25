@@ -36,12 +36,35 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
         const { question, includePerformance = false, includePortfolio = false, history = [] } = req.body || {};
         if (typeof question !== 'string' || !question.trim() || question.length > 2000 || typeof includePerformance !== 'boolean' || typeof includePortfolio !== 'boolean') return res.status(400).json({ error: 'Enter a question up to 2,000 characters and valid account options.' });
         if (!validateHistory(history)) return res.status(400).json({ error: 'Chat context must contain up to four user/assistant pairs, each up to 1,000 characters.' });
+        const signal = AbortSignal.timeout(26000);
+        return answerQuestion(question.trim(), { req, res, includePerformance, includePortfolio, history, signal });
+    });
+
+    async function answerQuestion(question, options, interpreted = false) {
+        const { req, res, includePerformance, includePortfolio, history, signal } = options;
         const context = conversationContext(question, history);
         const { accountQuestion, retrievalQuestion } = context;
         if (policy.adviceQuestion(question)) return res.json({ mode: 'no_sources', answer: 'I cannot recommend buying, selling, holding or switching a specific investment. I can provide verified factual data, objective comparisons and documented regulatory rules.', sources: [], performance: null, portfolio: null });
         if (context.needsClarification) return res.json({ mode: 'no_sources', answer: 'What topic or example are you referring to? This is a new chat, so please tell me what you would like to continue discussing.', sources: [], performance: null, portfolio: null });
         if (accountQuestion && !includePortfolio) return res.json({ mode: 'no_sources', answer: 'Enable account context in Answer options to answer from your actual holdings, available balance and returns.', sources: [], performance: null, portfolio: null });
         const usePortfolio = includePortfolio && accountQuestion;
+        const interpretation = interpreted ? { interpretedQuestion: question } : {};
+        async function recover(fallback) {
+            if (interpreted || signal.aborted || !generation.interpretQuestion) return res.json(fallback);
+            let result;
+            try {
+                const previousQuestions = context.retrievalQuestion === question ? [] : history.slice(-4)
+                    .filter(message => message.role === 'user').map(message => message.content);
+                result = await generation.interpretQuestion(question, { previousQuestions, signal });
+            } catch { /* Recovery is optional; keep the verified fallback. */ }
+            if (result?.outcome === 'rewrite' && !signal.aborted) {
+                const corrected = conversationContext(result.question, history);
+                if (!accountQuestion || corrected.accountQuestion) return answerQuestion(result.question, options, true);
+            }
+            if (result?.outcome === 'clarify') return res.json({ ...fallback,
+                answer: 'Could you rephrase that or tell me which financial term, stock, or portfolio detail you mean?' });
+            return res.json(fallback);
+        }
         try {
             let performance = null;
             let portfolio = null;
@@ -72,10 +95,10 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
             }
             const overviewQuestion = /\b(?:portfolio (?:status|overview|summary|breakdown|report)|(?:show|summarize|summarise) (?:me )?my (?:current )?portfolio|how is my portfolio doing|(?:what|how) (?:is|are) my (?:current )?portfolio(?=\s*(?:[?.!]|$)))\b/i;
             if (portfolio && overviewQuestion.test(question)) {
-                return res.json({ mode: 'portfolio_report', answer: 'Here’s your paper portfolio breakdown.', sources: [], portfolio, performance });
+                return res.json({ mode: 'portfolio_report', answer: 'Here’s your paper portfolio breakdown.', sources: [], portfolio, performance, ...interpretation });
             }
             // Account facts are direct structured retrieval; don't pay for an unnecessary query embedding.
-            const retrieval = accountQuestion ? { passages: retrieve(retrievalQuestion, knowledge, 2), method: 'account+keyword' } : await vectors.search(retrievalQuestion, knowledge, RagVector);
+            const retrieval = accountQuestion ? { passages: retrieve(retrievalQuestion, knowledge, 2), method: 'account+keyword' } : await vectors.search(retrievalQuestion, knowledge, RagVector, undefined, signal);
             const selected = policy.currentVersions(retrieval.passages);
             const symbols = grounding?.resolveSymbols(retrievalQuestion) || [];
             const asksNews = /\b(news|sentiment|filings?|announcements?|quarterly results|earnings)\b/i.test(question);
@@ -105,20 +128,22 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
                 url: source.url, referenceUrl: source.referenceUrl, scope: source.scope, text: source.text,
                 section: source.section, effectiveDate: source.effectiveDate || null, reviewedAt: source.reviewedAt || null,
                 observedAt: source.observedAt || null, documentType: source.documentType }));
-            if (!sources.length) return res.json({ mode: 'no_sources', answer: policy.UNVERIFIED, sources: [], performance, portfolio });
+            const unverified = { mode: 'no_sources', answer: policy.UNVERIFIED, sources: [], performance, portfolio };
+            if (!sources.length) return recover(unverified);
             let answer = null;
             if (generation.configured()) {
-                try { answer = await generation.generate(question.trim(), sources, { history: context.history, accountQuestion }); }
+                try { answer = await generation.generate(question.trim(), sources, { history: context.history, accountQuestion, signal }); }
                 catch (error) {
                     // Constant-only diagnostics: never log questions, account snapshots or provider response bodies.
                     const known = ['AI provider unavailable', 'Incomplete AI answer', 'Unsupported AI citations', 'Missing account citation', 'Unsupported numerical claim', 'Missing sentence citation'];
                     console.warn('[RAG generation]', known.includes(error.message) ? error.message : 'Invalid or unavailable response', Number(error.status) || '');
                 }
             }
-            res.json({ mode: answer ? 'generated' : 'unavailable', retryable: !answer, basis: answer?.basis || null, provider: answer?.provider || null,
+            if (answer?.basis === 'unsupported') return recover(unverified);
+            res.json({ ...(answer ? interpretation : {}), mode: answer ? 'generated' : 'unavailable', retryable: !answer, basis: answer?.basis || null, provider: answer?.provider || null,
                 answer: answer ? policy.cleanChatAnswer(answer.answer) : (portfolio ? 'I couldn’t finish the AI explanation. Your verified portfolio snapshot is available below. Retry the answer to continue this conversation.' : 'I couldn’t generate an answer right now. Please retry; your question and conversation context are saved in this chat.'),
                 sources, performance, portfolio, retrieval: retrieval.method, generatedAt: new Date().toISOString() });
         } catch { res.status(503).json({ error: usePortfolio ? 'Unable to load a reliable portfolio snapshot. Refresh and try again, or ask a general education question.' : 'Unable to search your sources. Please try again.' }); }
-    });
+    }
     return router;
 };

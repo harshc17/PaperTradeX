@@ -50,6 +50,20 @@ test('only Gemini and OpenAI are supported; disabled generation never calls a pr
         content = invalid; await assert.rejects(generator.generate('funds', sources));
     }
     content = { answer: 'Verified source [S1].', citations: ['S1'], basis: 'sources' };
+    process.env.RAG_PROVIDER = 'gemini';
+    content = { outcome: 'rewrite', question: 'What is an ETF?' };
+    assert.deepEqual(await generator.interpretQuestion('Wht is an etfff?'), content);
+    assert.deepEqual(JSON.parse(request.contents[0].parts[0].text), { question: 'Wht is an etfff?', previousQuestions: [] });
+    content = { outcome: 'rewrite', question: 'CAGR from 1,000 to 1,210 in 2 years?' };
+    assert.ok(await generator.interpretQuestion('cagrr from 1000 to 1210 in 2 yers'));
+    assert.equal(await generator.interpretQuestion('cagrr from 1000 to 1210 in 3 yers'), null);
+    content = { outcome: 'clarify', question: '' };
+    assert.deepEqual(await generator.interpretQuestion('IDK'), { outcome: 'clarify' });
+    process.env.RAG_PROVIDER = 'openai';
+    const beforeInterpretation = calls;
+    assert.equal(await generator.interpretQuestion('etffff'), null);
+    assert.equal(calls, beforeInterpretation);
+    content = { answer: 'Verified source [S1].', citations: ['S1'], basis: 'sources' };
     const previousFetch = global.fetch;
     let attempts = 0;
     global.fetch = async (...args) => ++attempts === 1 ? { ok: false, status: 503 } : previousFetch(...args);
