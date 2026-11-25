@@ -70,6 +70,10 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
                     }
                 }
             }
+            const overviewQuestion = /\b(?:portfolio (?:status|overview|summary|breakdown|report)|(?:show|summarize|summarise) (?:me )?my (?:current )?portfolio|how is my portfolio doing|(?:what|how) (?:is|are) my (?:current )?portfolio(?=\s*(?:[?.!]|$)))\b/i;
+            if (portfolio && overviewQuestion.test(question)) {
+                return res.json({ mode: 'portfolio_report', answer: 'Here’s your paper portfolio breakdown.', sources: [], portfolio, performance });
+            }
             // Account facts are direct structured retrieval; don't pay for an unnecessary query embedding.
             const retrieval = accountQuestion ? { passages: retrieve(retrievalQuestion, knowledge, 2), method: 'account+keyword' } : await vectors.search(retrievalQuestion, knowledge, RagVector);
             const selected = policy.currentVersions(retrieval.passages);

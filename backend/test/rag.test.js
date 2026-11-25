@@ -161,3 +161,16 @@ test('malformed or oversized history is rejected before reading an account or ca
     }
     assert.equal(state.generateCalls, 0); assert.equal(state.accountQueries.length, 0);
 });
+
+
+test('portfolio status returns an account report without calling a model', async t => {
+    const trades = [{ type: 'BUY', symbol: 'ITC', quantity: 2, price: 100, totalAmount: 200, createdAt: '2026-11-19T09:20:00Z' }];
+    const accounts = { alice: { balance: 99800, holdings: [{ symbol: 'ITC', quantity: 2, averagePrice: 100 }] } };
+    const { call, state } = await boot(t, { configured: true, trades, accounts, quotes: { ITC: { price: 110, prevClose: 105, timestamp: new Date().toISOString() } } });
+    const result = await call('/ask', { method: 'POST', body: { question: 'So my current portfolio status?', includePortfolio: true } });
+    assert.equal(result.data.mode, 'portfolio_report');
+    assert.equal(result.data.portfolio.currentValue, 220);
+    assert.equal(result.data.portfolio.holdings[0].totalReturns, 20);
+    assert.equal(result.data.portfolio.holdings[0].allocationPercent, 100);
+    assert.equal(state.generateCalls, 0);
+});

@@ -16,7 +16,7 @@ import dynamic from 'next/dynamic';
 const AnswerMarkdown = dynamic(() => import('@/components/AnswerMarkdown'));
 const AssistantConnections = dynamic(() => import('@/components/AssistantConnections'));
 
-type Result = { mode: 'generated' | 'retrieval' | 'no_sources' | 'unavailable'; retryable?: boolean; answer: string;
+type Result = { mode: 'generated' | 'portfolio_report' | 'retrieval' | 'no_sources' | 'unavailable'; retryable?: boolean; answer: string;
     portfolio?: PortfolioSnapshot | null;
     performance: { completedSales: number; netRealisedPnl: number; winRate: number | null } | null };
 type Entry = { id: number; question: string; payload: ChatPayload; result?: Result; error?: string; pending?: boolean; retrying?: boolean };
@@ -218,7 +218,7 @@ function KnowledgeAssistant() {
                 <p className="mt-2 hidden text-center text-[11px] leading-4 text-ink-muted sm:block">Enter to send · Shift + Enter for a new line.</p>
             </div>
             {!entries.length && <div className="mt-4 flex shrink-0 flex-wrap justify-center gap-2 px-3 pb-4 [@media(max-height:600px)]:hidden">
-                {['My portfolio', 'How ETFs work', 'Market risk'].map((label, i) => <button key={label} type="button" disabled={!ready} onClick={() => { setQuestion(['What is my current portfolio value, balance and returns?', 'How do ETFs work?', 'Explain market risk in simple terms.'][i]); if (!i) setIncludePortfolio(true); input.current?.focus(); }} className="min-h-10 rounded-full border border-line px-3 text-xs text-ink-muted hover:border-primary">{label}</button>)}
+                {['My portfolio', 'How ETFs work', 'Market risk'].map((label, i) => <button key={label} type="button" disabled={!ready} onClick={() => { setQuestion(['What is my current portfolio status?', 'How do ETFs work?', 'Explain market risk in simple terms.'][i]); if (!i) setIncludePortfolio(true); input.current?.focus(); }} className="min-h-10 rounded-full border border-line px-3 text-xs text-ink-muted hover:border-primary">{label}</button>)}
             </div>}
             <p role="status" className="sr-only">{busy ? 'AI is thinking' : entries.length ? 'Reply ready' : ready ? 'Ready for your question' : 'Connecting'}</p>
         </main>
@@ -232,7 +232,7 @@ function Answer({ result }: { result: Result }) {
         <div className="mt-2 min-w-0 break-words text-base leading-7 [&_p]:mb-3 [&_h1]:my-3 [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:my-3 [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:my-3 [&_h3]:font-semibold [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-6 [&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-6 [&_table]:w-full [&_th]:border-b [&_th]:border-line [&_th]:p-2 [&_td]:border-b [&_td]:border-line [&_td]:p-2">
             <AnswerMarkdown text={result.mode === 'retrieval' ? 'I could not finish the answer. Please retry; your conversation is still here.' : result.answer} />
         </div>
-                        {result.portfolio && <RagPortfolioSnapshot snapshot={result.portfolio} />}
+                        {result.portfolio && <RagPortfolioSnapshot snapshot={result.portfolio} detailed={result.mode === 'portfolio_report'} />}
                         {result.performance && <dl className="mt-4 grid grid-cols-1 gap-3 rounded-lg bg-surface-2 p-3 text-sm sm:grid-cols-3">
                             <div><dt className="text-xs text-ink-muted">Completed sales</dt><dd className="mt-1">{result.performance.completedSales}</dd></div>
                             <div><dt className="text-xs text-ink-muted">Realised P&L</dt><dd className="mt-1 break-words">₹{result.performance.netRealisedPnl.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</dd></div>
