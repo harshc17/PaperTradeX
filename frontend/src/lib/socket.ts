@@ -1,22 +1,28 @@
-import { io, Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 import { checkBackend, getBackend, onBackendChange } from './backend';
 
 type Handler = (...args: any[]) => void;
 // A stable handle keeps every screen's listeners when the physical connection switches hosts.
 export class MarketSocket {
     private socket: Socket | null = null;
+    private connectionVersion = 0;
     private handlers = new Map<string, Set<Handler>>();
     private symbols = new Set<string>();
     constructor() {
-        this.connect(getBackend());
-        onBackendChange(url => this.connect(url));
+        void this.connect(getBackend());
+        onBackendChange(url => { void this.connect(url); });
         void checkBackend();
     }
     get connected() { return !!this.socket?.connected; }
     private dispatch(event: string, ...args: any[]) {
         this.handlers.get(event)?.forEach(handler => handler(...args));
     }
-    private connect(url: string) {
+    private async connect(url: string) {
+        const version = ++this.connectionVersion;
+        let io: typeof import('socket.io-client').io;
+        try { ({ io } = await import('socket.io-client')); }
+        catch { return; /* Existing HTTP quote refresh stays active. */ }
+        if (version !== this.connectionVersion) return;
         const previous = this.socket;
         this.socket = null;
         previous?.removeAllListeners();

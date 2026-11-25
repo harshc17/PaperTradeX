@@ -319,7 +319,6 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         setTransactionsLoaded(false);
         if (user) {
             refreshPortfolio();
-            refreshOrders();
             refreshTransactions();
             const timer = setInterval(() => {
                 refreshPortfolio();
@@ -334,7 +333,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
             setLivePrices({});
             setLivePreviousClose({});
         }
-    }, [refreshPortfolio, refreshOrders, refreshTransactions, user]);
+    }, [refreshPortfolio, refreshTransactions, user]);
 
     const refreshMarketStatus = useCallback(async () => {
         try {
@@ -395,7 +394,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     const waitingXirr: XirrResult = { rate: null, days: 0, reason: 'Waiting for complete transaction history' };
     const xirrReady = holdingsLoaded && transactionsLoaded;
     const portfolioXirr = xirrReady ? xirr.portfolio : waitingXirr;
-    const dailyReturn = calculateDailyReturn(holdings, transactions, livePrices, livePreviousClose, marketStatus?.returnSessionDate);
+    const returnSessionDate = marketStatus?.returnSessionDate;
+    const dailyReturn = useMemo(() => calculateDailyReturn(holdings, transactions, livePrices, livePreviousClose, returnSessionDate),
+        [holdings, transactions, livePrices, livePreviousClose, returnSessionDate]);
     const todayReturnsReady = holdingsLoaded && transactionsLoaded && dailyReturn.ready;
     // Compute derived values with live prices
     const enrichedHoldings = holdings.map(h => {

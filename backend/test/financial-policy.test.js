@@ -9,7 +9,6 @@ test('strict financial policy prioritises effective dates and never substitutes 
         { title: 'Undated circular', topicKey: 'rule', section: '4', reviewedAt: '2026-11-22' },
     ];
     assert.deepEqual(policy.currentVersions(rows).map(s => s.title), ['New circular']);
-    assert.match(policy.sourceLabel({ title: 'Study note', reviewedAt: '2026-11-22' }), /Effective date not supplied; reviewed/);
     assert.equal(policy.adviceQuestion('Which fund should I buy?'), true);
     assert.equal(policy.adviceQuestion('How do I buy a stock in PaperTradeX?'), false);
     assert.equal(policy.hasUnsupportedNumbers('Return 12%', [{ text: '{"return":10}' }]), true);
@@ -17,7 +16,9 @@ test('strict financial policy prioritises effective dates and never substitutes 
     assert.equal(policy.hasUnsupportedNumbers('1. Market risk [S1]\n2. Tracking risk [S1]', [{ text: 'Market risk and tracking risk' }]), false);
     assert.equal(policy.hasUnsupportedNumbers('1. Return 17% [S1]', [{ text: 'No return specified' }]), true);
     assert.equal(policy.missingSentenceCitations('ETFs carry market risk. They trade on exchanges [S1].'), true);
-    assert.equal(policy.withDisclaimer('Answer').split(policy.DISCLAIMER).length, 2);
+    assert.equal(policy.hasUnsupportedNumbers('As of 20 November 2026 [S1]', [{ text: '2026-11-20T10:00:00Z' }]), false);
+    assert.equal(policy.hasUnsupportedNumbers('Return 12%', [{ text: 'Return -12%' }]), true);
+    assert.equal(policy.cleanChatAnswer('Answer [S1].\n\n> *Disclaimer: Footer.*'), 'Answer.');
 });
 test('financial arithmetic is deterministic, bounded and uses explicit inputs', () => {
     assert.equal(executeFinancialMath({ operation: 'percentage_change', initial: 100, final: 110 }).value, 10);

@@ -38,9 +38,9 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
         if (!validateHistory(history)) return res.status(400).json({ error: 'Chat context must contain up to four user/assistant pairs, each up to 1,000 characters.' });
         const context = conversationContext(question, history);
         const { accountQuestion, retrievalQuestion } = context;
-        if (policy.adviceQuestion(question)) return res.json({ mode: 'no_sources', answer: policy.withDisclaimer('I cannot recommend buying, selling, holding or switching a specific investment. I can provide verified factual data, objective comparisons and documented regulatory rules.'), sources: [], performance: null, portfolio: null });
+        if (policy.adviceQuestion(question)) return res.json({ mode: 'no_sources', answer: 'I cannot recommend buying, selling, holding or switching a specific investment. I can provide verified factual data, objective comparisons and documented regulatory rules.', sources: [], performance: null, portfolio: null });
         if (context.needsClarification) return res.json({ mode: 'no_sources', answer: 'What topic or example are you referring to? This is a new chat, so please tell me what you would like to continue discussing.', sources: [], performance: null, portfolio: null });
-        if (accountQuestion && !includePortfolio) return res.json({ mode: 'no_sources', answer: policy.withDisclaimer('Enable account context in Answer options to answer from your actual holdings, available balance and returns.'), sources: [], performance: null, portfolio: null });
+        if (accountQuestion && !includePortfolio) return res.json({ mode: 'no_sources', answer: 'Enable account context in Answer options to answer from your actual holdings, available balance and returns.', sources: [], performance: null, portfolio: null });
         const usePortfolio = includePortfolio && accountQuestion;
         try {
             let performance = null;
@@ -76,20 +76,16 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
             const symbols = grounding?.resolveSymbols(retrievalQuestion) || [];
             const asksNews = /\b(news|sentiment|filings?|announcements?|quarterly results|earnings)\b/i.test(question);
             const asksRegulatory = /\b(tax (rate|slab|rules?)|capital gains tax|sebi circular|rbi circular|current.*expense ratio)\b/i.test(question);
-            if (asksRegulatory && !selected.some(s => s.documentType === 'regulatory' && s.effectiveDate)) return res.json({ mode: 'no_sources', answer: policy.withDisclaimer(policy.UNVERIFIED), sources: [], performance, portfolio });
-            if (grounding && symbols.length && /\b(price|quote|current|today|market|compare|change|index|indices)\b/i.test(question)) {
-                const market = await grounding.fetchLiveMarketData(symbols);
-                selected.unshift({ id: 'live-market', title: 'Verified market quote tool', scope: 'market', text: JSON.stringify(market), observedAt: market.quotes.map(q => q.observedAt).filter(Boolean).sort()[0] || market.capturedAt });
-            }
+            if (asksRegulatory && !selected.some(s => s.documentType === 'regulatory' && s.effectiveDate)) return res.json({ mode: 'no_sources', answer: policy.UNVERIFIED, sources: [], performance, portfolio });
             if (grounding && /\b(my|our)\b.*\bwatchlist\b/i.test(retrievalQuestion)) {
-                if (!includePortfolio) return res.json({ mode: 'no_sources', answer: policy.withDisclaimer('Enable account context to answer from your synced watchlist.'), sources: [], portfolio: null, performance: null });
-                const watchlist = await grounding.fetchUserWatchlist(req.user.id);
+                if (!includePortfolio) return res.json({ mode: 'no_sources', answer: 'Enable account context to answer from your synced watchlist.', sources: [], portfolio: null, performance: null });
+                const watchlist = await grounding.fetchUserWatchlist(req.user.id, { includeQuotes: false });
                 selected.unshift({ id: 'account-watchlist', title: 'Verified account watchlist', scope: 'account', text: JSON.stringify(watchlist), observedAt: new Date().toISOString() });
             }
             if (asksNews) {
                 const disclosures = grounding ? await Promise.all(symbols.slice(0, 2).map(symbol => grounding.fetchCompanyDisclosures(symbol))) : [];
                 const available = disclosures.filter(d => d.available);
-                if (!available.length) return res.json({ mode: 'no_sources', answer: policy.withDisclaimer(policy.UNVERIFIED), sources: [], performance, portfolio });
+                if (!available.length) return res.json({ mode: 'no_sources', answer: policy.UNVERIFIED, sources: [], performance, portfolio });
                 available.forEach(d => selected.unshift({ id: 'exchange-disclosures', title: 'NSE corporate announcement titles', scope: 'market', observedAt: d.fetchedAt, text: JSON.stringify(d) }));
             }
             const calculation = parseCalculation(question);
@@ -105,7 +101,7 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
                 url: source.url, referenceUrl: source.referenceUrl, scope: source.scope, text: source.text,
                 section: source.section, effectiveDate: source.effectiveDate || null, reviewedAt: source.reviewedAt || null,
                 observedAt: source.observedAt || null, documentType: source.documentType }));
-            if (!sources.length) return res.json({ mode: 'no_sources', answer: policy.withDisclaimer(policy.UNVERIFIED), sources: [], performance, portfolio });
+            if (!sources.length) return res.json({ mode: 'no_sources', answer: policy.UNVERIFIED, sources: [], performance, portfolio });
             let answer = null;
             if (generation.configured()) {
                 try { answer = await generation.generate(question.trim(), sources, { history: context.history, accountQuestion }); }
@@ -116,7 +112,7 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
                 }
             }
             res.json({ mode: answer ? 'generated' : 'unavailable', retryable: !answer, basis: answer?.basis || null, provider: answer?.provider || null,
-                answer: policy.withDisclaimer(answer ? policy.expandCitations(answer.answer, sources) : (portfolio ? 'I couldn’t finish the AI explanation. Your verified portfolio snapshot is available below. Retry the answer to continue this conversation.' : 'I couldn’t generate an answer right now. Please retry; your question and conversation context are saved in this chat.')),
+                answer: answer ? policy.cleanChatAnswer(answer.answer) : (portfolio ? 'I couldn’t finish the AI explanation. Your verified portfolio snapshot is available below. Retry the answer to continue this conversation.' : 'I couldn’t generate an answer right now. Please retry; your question and conversation context are saved in this chat.'),
                 sources, performance, portfolio, retrieval: retrieval.method, generatedAt: new Date().toISOString() });
         } catch { res.status(503).json({ error: usePortfolio ? 'Unable to load a reliable portfolio snapshot. Refresh and try again, or ask a general education question.' : 'Unable to search your sources. Please try again.' }); }
     });

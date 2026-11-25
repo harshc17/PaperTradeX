@@ -11,13 +11,12 @@ import { useAuth } from '@/context/AuthContext';
 import { apiFetch } from '@/lib/backend';
 import { API_URL } from '@/lib/config';
 import { buildChatRequest, type ChatPayload } from '@/lib/ragChatRequest';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import AssistantConnections from '@/components/AssistantConnections';
+import dynamic from 'next/dynamic';
 
-type Source = { citation: string; id: string; title: string; url?: string; referenceUrl?: string; scope: string; text: string };
-type Result = { mode: 'generated' | 'retrieval' | 'no_sources' | 'unavailable'; retryable?: boolean; answer: string; sources: Source[];
-    basis?: string; retrieval?: string;
+const AnswerMarkdown = dynamic(() => import('@/components/AnswerMarkdown'));
+const AssistantConnections = dynamic(() => import('@/components/AssistantConnections'));
+
+type Result = { mode: 'generated' | 'retrieval' | 'no_sources' | 'unavailable'; retryable?: boolean; answer: string;
     portfolio?: PortfolioSnapshot | null;
     performance: { completedSales: number; netRealisedPnl: number; winRate: number | null } | null };
 type Entry = { id: number; question: string; payload: ChatPayload; result?: Result; error?: string; pending?: boolean; retrying?: boolean };
@@ -172,7 +171,7 @@ function KnowledgeAssistant() {
             </div>
             <div className={`shrink-0 bg-[var(--bg)] px-3 pb-[max(12px,env(safe-area-inset-bottom))] sm:px-6 ${entries.length ? 'border-t border-line pt-3' : 'mt-5 sm:mt-8'}`}>
                 {error && <p role="alert" className="mb-2 break-words text-sm text-down">{error}</p>}
-                <form onSubmit={event => { event.preventDefault(); void send(); }} className={`rounded-2xl border bg-surface p-3 transition-shadow sm:p-4 ${entries.length ? 'border-line focus-within:border-primary' : 'border-primary/60 shadow-[0_0_48px_-20px_var(--primary)] focus-within:border-primary'}`}>
+                <form onSubmit={event => { event.preventDefault(); void send(); }} className="rounded-2xl border border-line bg-surface p-3 transition-colors focus-within:border-[var(--text-faint)] sm:p-4">
                     <div className="flex items-center justify-between gap-2">
                         <label htmlFor="rag-question" className="text-xs font-medium text-ink-muted">Ask question</label>
                         <button type="button" aria-label="Answer options and privacy" aria-expanded={options} aria-controls="chat-options" onClick={() => setOptions(!options)} className="-my-2 inline-flex h-11 w-11 items-center justify-center rounded-lg text-ink-muted hover:bg-surface-2"><Settings2 className="h-4 w-4" /></button>
@@ -202,28 +201,16 @@ function KnowledgeAssistant() {
 function Answer({ result }: { result: Result }) {
     return <>
                         <p className="mt-4 text-xs font-medium uppercase tracking-wide text-ink-muted">{result.mode === 'generated' ? 'AI answer' : result.mode === 'unavailable' || result.mode === 'retrieval' ? 'Unable to finish the answer' : 'Reply'}</p>
-                        <div className="mt-2 min-w-0 break-words text-sm leading-6 [&_p]:mb-3 [&_blockquote]:border-l-2 [&_blockquote]:border-line [&_blockquote]:pl-3 [&_blockquote]:text-xs [&_blockquote]:text-ink-muted [&_ul]:list-disc [&_ul]:pl-5 [&_table]:w-full [&_th]:border-b [&_th]:border-line [&_th]:p-2 [&_td]:border-b [&_td]:border-line [&_td]:p-2"><ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml components={{ table: ({ children }) => <div className="max-w-full overflow-x-auto"><table>{children}</table></div>, a: ({ children }) => <span>{children}</span> }}>{result.mode === 'retrieval' ? 'I could not finish the answer. Please retry; your conversation is still here.' : result.answer}</ReactMarkdown></div>
-                        {result.mode === 'generated' && result.sources.length > 0 && <p className="mt-2 text-xs text-ink-muted">{result.retrieval === 'hybrid' ? 'Semantic + keyword retrieval' : 'Keyword retrieval'} · {result.sources.length} sources</p>}
-                        {result.basis === 'general_education' && <p className="mt-2 text-xs leading-5 text-ink-muted">Includes general model knowledge, not verified live market research. Sources below support only the claims they address.</p>}
+                        <div className="mt-2 min-w-0 break-words text-sm leading-6 [&_p]:mb-3 [&_blockquote]:border-l-2 [&_blockquote]:border-line [&_blockquote]:pl-3 [&_blockquote]:text-xs [&_blockquote]:text-ink-muted [&_ul]:list-disc [&_ul]:pl-5 [&_table]:w-full [&_th]:border-b [&_th]:border-line [&_th]:p-2 [&_td]:border-b [&_td]:border-line [&_td]:p-2"><AnswerMarkdown text={result.mode === 'retrieval' ? 'I could not finish the answer. Please retry; your conversation is still here.' : result.answer} /></div>
                         {result.portfolio && <RagPortfolioSnapshot snapshot={result.portfolio} />}
                         {result.performance && <dl className="mt-4 grid grid-cols-1 gap-3 rounded-lg bg-surface-2 p-3 text-sm sm:grid-cols-3">
                             <div><dt className="text-xs text-ink-muted">Completed sales</dt><dd className="mt-1">{result.performance.completedSales}</dd></div>
                             <div><dt className="text-xs text-ink-muted">Realised P&L</dt><dd className="mt-1 break-words">₹{result.performance.netRealisedPnl.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</dd></div>
                             <div><dt className="text-xs text-ink-muted">Win rate</dt><dd className="mt-1">{result.performance.winRate === null ? 'Unavailable' : `${result.performance.winRate}%`}</dd></div>
                         </dl>}
-                        {result.mode === 'generated' && result.sources.length > 0 && <details className="mt-3 min-w-0"><summary className="min-h-11 cursor-pointer py-3 text-xs font-medium text-ink-muted">Sources ({result.sources.length})</summary><div className="space-y-2">{result.sources.map(source => <details key={source.citation} className="min-w-0 rounded-lg border border-line p-3">
-                            <summary className="cursor-pointer break-words text-sm font-medium leading-6">{source.title} <span className="text-xs font-normal text-ink-muted">· {source.scope === 'public' ? 'App help' : source.scope === 'education' ? 'Education' : source.scope === 'account' ? 'Your statistics' : 'Private document'}</span></summary>
-                            <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-6 text-ink-muted">{source.text}</p>
-                            {source.url?.startsWith('/') && !source.url.startsWith('//') && <Link href={source.url} className="mt-2 inline-flex min-h-9 items-center text-xs text-primary">Open related page →</Link>}
-                            {source.referenceUrl?.startsWith('https://investor.sebi.gov.in/') && <a href={source.referenceUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex min-h-9 items-center text-xs text-primary">Read SEBI Investor reference ↗</a>}
-                        </details>)}</div></details>}
     </>;
 }
 
 function RetryButton({ busy, onRetry }: { busy: boolean; onRetry: () => void }) {
     return <button type="button" disabled={busy} onClick={onRetry} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl border border-line px-4 text-sm font-medium text-primary hover:bg-surface-2 disabled:opacity-50"><RotateCcw className="h-4 w-4" />Retry answer</button>;
-}
-
-function withoutCitationMarkers(answer: string) {
-    return answer.replace(/[ \t]*\[S\d+(?:\s*[,;]\s*S?\d+)*\]/gi, '');
 }

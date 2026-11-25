@@ -69,6 +69,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   outline: 2px solid var(--primary);
   outline-offset: 3px;
 }
+/* The chat composer supplies the focus indicator, without a second inner box. */
+#rag-question:focus-visible { outline: none; box-shadow: none; }
 .lucide { stroke-width: 1.5; flex-shrink: 0; }
 :root[data-theme="dark"] nav[aria-label="Main navigation"] [aria-current="page"] { color: #f5f6f7; }
 :root[data-theme="dark"] nav[aria-label="Main navigation"] a[aria-current="page"] > span { background-color: #f5f6f7; }

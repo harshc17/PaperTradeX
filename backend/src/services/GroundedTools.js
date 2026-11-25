@@ -42,11 +42,11 @@ module.exports = function createTools({ TransactionHistory, getPortfolioAccount,
         }));
         return { capturedAt: new Date().toISOString(), ...market, quotes };
     }
-    async function fetchUserWatchlist(userId) {
+    async function fetchUserWatchlist(userId, { includeQuotes = true } = {}) {
         const user = User ? await User.findById(userId).select('watchlistSymbols').lean() : null;
         const symbols = user?.watchlistSymbols;
         if (!Array.isArray(symbols)) return { available: false, reason: 'No account-synced watchlist is available.' };
-        return { available: true, symbols, quotesLimitedTo: 20, quotesTruncated: symbols.length > 20, marketData: symbols.length ? await fetchLiveMarketData(symbols.slice(0, 20)) : null };
+        return { available: true, symbols, quotesLimitedTo: 20, quotesTruncated: includeQuotes && symbols.length > 20, marketData: includeQuotes && symbols.length ? await fetchLiveMarketData(symbols.slice(0, 20)) : null };
     }
     async function fetchCompanyDisclosures(symbol) {
         if (typeof symbol !== 'string' || !/^[A-Z0-9&-]{1,25}(\.NS)?$/.test(symbol) || !getDisclosures) return { available: false, reason: 'Verified exchange disclosures are unavailable for this instrument.' };

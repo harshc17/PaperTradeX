@@ -77,7 +77,9 @@ test('generation runs only after submission and supports general education; outa
     const general = await app.call('/ask', { method: 'POST', body: { question: 'convexity', includePortfolio: true } });
     assert.equal(general.data.mode, 'no_sources'); assert.match(general.data.answer, /do not have verified/); assert.equal(app.state.accountQueries.length, 0);
     assert.equal(app.state.generateCalls, 0);
-    assert.equal((await app.call('/ask', { method: 'POST', body: { question: 'virtual funds' } })).data.mode, 'generated');
+    const reply = await app.call('/ask', { method: 'POST', body: { question: 'virtual funds' } });
+    assert.equal(reply.data.mode, 'generated');
+    assert.equal(reply.data.answer, 'Verified response');
     assert.equal(app.state.generateCalls, 1);
     const offline = await boot(t, { configured: true, failGeneration: true });
     const fallback = await offline.call('/ask', { method: 'POST', body: { question: 'virtual funds' } });
