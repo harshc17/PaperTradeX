@@ -235,6 +235,10 @@ test('the full Groww reading list is available and individual books can be retri
     assert.equal(books.length, 26);
     assert.equal(new Set(books.map(book => book.id)).size, 26);
     for (const book of books) assert.ok(response.data.answer.includes(`**${book.title}**`), book.title);
+    const author = await call('/ask', { method: 'POST', body: { question: 'Who wrote The Warren Buffett Way?' } });
+    assert.match(author.data.answer, /Robert G\. Hagstrom/);
+    const topic = await call('/ask', { method: 'POST', body: { question: 'What is Coffee Can Investing about?' } });
+    assert.match(topic.data.answer, /examples from Indian equities/);
     assert.equal(state.generateCalls, 0);
     assert.equal(state.accountQueries.length, 0);
     assert.equal(retrieve('Who wrote The Warren Buffett Way?', knowledge)[0].documentId, 'reading-warren-buffett-way');

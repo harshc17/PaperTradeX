@@ -51,6 +51,19 @@ const documents = sections.flatMap(({ title: section, books }) => books.map(([id
 
 function readingListAnswer(question) {
     const text = question.trim().replace(/[?!.]+$/, '').toLowerCase();
+    const authorQuestion = /^who (?:wrote|is the author of) (?:the book )?(.+)$/.exec(text);
+    const topicQuestion = /^what is (?:the book )?(.+) about$/.exec(text);
+    const title = (authorQuestion || topicQuestion)?.[1];
+    if (title) {
+        const normalize = value => value.replace(/[’‘]/g, "'").replace(/^["“]|["”]$/g, '').trim().toLowerCase();
+        const name = normalize(title);
+        const matches = sections.flatMap(section => section.books).filter(([, book]) =>
+            name === normalize(book) || name === normalize(book.split(':')[0]));
+        if (matches.length === 1) {
+            const [, book, author, topic] = matches[0];
+            return `**${book}** — ${author}.${topicQuestion ? `\n\n${topic}` : ''}`;
+        }
+    }
     const genericList = /^(?:please )?(?:(?:show|list|display|give)(?: me)? (?:a |the )?(?:list of )?(?:all )?(?:the )?(?:available )?(?:(?:investing|investment|trading|stock market|finance|financial) )?books(?: (?:in (?:the )?(?:library|knowledge base|available information)|from groww|on groww))?|(?:what|which) (?:(?:investing|investment|trading|stock market|finance|financial) )?books (?:are available|do you have)|(?:show |list )?(?:the )?(?:groww )?(?:reading|book) list)$/;
     if (!genericList.test(text)) return null;
     return [
