@@ -3,7 +3,7 @@ const { calculateTradePerformance } = require('./TradingCoach');
 const { buildPortfolioSnapshot } = require('./RagPortfolio');
 const { executeFinancialMath } = require('./FinancialMath');
 const { retrieve } = require('./RagRetrieval');
-const knowledge = require('../knowledge/papertradex.json');
+const { documents: knowledge } = require('../knowledge');
 const indices = [
     { symbol: '^NSEI', shortname: 'NIFTY 50' }, { symbol: '^BSESN', shortname: 'SENSEX' },
     { symbol: '^NSEBANK', shortname: 'BANKNIFTY' }, { symbol: '^MIDCPNIFTY', shortname: 'MIDCPNIFTY' },

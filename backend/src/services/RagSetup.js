@@ -1,5 +1,5 @@
 const vectors = require('./RagVectors');
-const knowledge = require('../knowledge/papertradex.json');
+const { documents: knowledge } = require('../knowledge');
 
 // Explicit operator-controlled maintenance only; never grants an HTTP caller admin access.
 async function buildConfiguredIndex(store, { enabled = process.env.RAG_BUILD_INDEX_ON_START === 'true',

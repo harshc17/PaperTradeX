@@ -22,6 +22,18 @@
     "documentType": "education_summary"
   },
   {
+    "id": "education-cagr",
+    "title": "CAGR (compound annual growth rate)",
+    "scope": "education",
+    "referenceUrl": "https://nsearchives.nseindia.com/corporate/SSKL_12052026201458_Q4IP_.pdf#page=4",
+    "content": "**CAGR** stands for **compound annual growth rate**. It describes the constant annual rate that would take a starting value to its ending value over a given number of years.\n\n**Formula:** (ending value ÷ starting value) raised to the power of (1 ÷ years), minus 1. Multiply by 100 to express the result as a percentage.\n\nCAGR smooths out fluctuations. It does not show the returns earned in each individual year or predict future performance.",
+    "glossaryTerms": ["cagr", "cacgr", "cagrr", "compound annual growth rate", "compounded annual growth rate"],
+    "effectiveDate": null,
+    "reviewedAt": "2026-11-25",
+    "section": "Abbreviations and formula",
+    "documentType": "education_summary"
+  },
+  {
     "id": "education-cost-averaging",
     "title": "Rupee cost averaging — SEBI education booklet",
     "scope": "education",

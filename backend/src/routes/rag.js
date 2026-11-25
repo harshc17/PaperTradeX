@@ -1,6 +1,6 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
-const knowledge = require('../knowledge/papertradex.json');
+const { documents: knowledge, readingListAnswer } = require('../knowledge');
 const vectors = require('../services/RagVectors');
 const { retrieve } = require('../services/RagRetrieval');
 const generator = require('../services/RagGenerator');
@@ -9,6 +9,8 @@ const { buildPortfolioSnapshot } = require('../services/RagPortfolio');
 const { validateHistory, conversationContext } = require('../services/RagConversation');
 const policy = require('../services/FinancialPolicy');
 const { parseCalculation } = require('../services/FinancialMath');
+
+const glossary = new Map(knowledge.flatMap(note => (note.glossaryTerms || []).map(term => [term, note])));
 
 module.exports = function ragRouter({ authenticateToken, RagVector, TransactionHistory, getPortfolioAccount, getQuote, getMarketContext, grounding, generation = generator,
     enabled = () => process.env.RAG_ENABLED !== 'false' }) {
@@ -42,6 +44,19 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
 
     async function answerQuestion(question, options, interpreted = false) {
         const { req, res, includePerformance, includePortfolio, history, signal } = options;
+        const readingList = readingListAnswer(question);
+        if (readingList) return res.json({ mode: 'reading_list', answer: readingList, sources: [], performance: null, portfolio: null });
+        // Resolve taught terms and known misspellings only in a definition question.
+        const term = question.toLowerCase().trim().replace(/[?.!]+$/, '').trim()
+            .replace(/^(?:what is|what['’]s|define|explain)\s+/, '')
+            .replace(/^what does\s+(.+)\s+(?:mean|stand for)$/, '$1');
+        const note = glossary.get(term);
+        if (note) {
+            const canonical = note.glossaryTerms[0];
+            const correctedAlias = term !== canonical && !term.includes(' ');
+            const interpretedQuestion = interpreted ? question : correctedAlias ? `What is ${canonical.toUpperCase()}?` : undefined;
+            return res.json({ mode: 'definition', answer: note.content, sources: [], performance: null, portfolio: null, interpretedQuestion });
+        }
         const context = conversationContext(question, history);
         const { accountQuestion, retrievalQuestion } = context;
         if (policy.adviceQuestion(question)) return res.json({ mode: 'no_sources', answer: 'I cannot recommend buying, selling, holding or switching a specific investment. I can provide verified factual data, objective comparisons and documented regulatory rules.', sources: [], performance: null, portfolio: null });

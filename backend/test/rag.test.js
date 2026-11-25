@@ -4,7 +4,7 @@ const express = require('express');
 const router = require('../src/routes/rag');
 const { retrieve, chunkDocument, tokens } = require('../src/services/RagRetrieval');
 const generator = require('../src/services/RagGenerator');
-const knowledge = require('../src/knowledge/papertradex.json');
+const { documents: knowledge } = require('../src/knowledge');
 
 test('chunking is bounded, overlapping and stable; retrieval ranks relevant sources', () => {
     const document = { id: 'long', title: 'Notes', content: 'risk management diversification '.repeat(200) };
@@ -208,4 +208,34 @@ test('Gemini interpretations retry retrieval once and preserve consent and advic
     assert.equal(calls.length, 7);
     assert.equal(calls.some(call => call.question === 'unverifiablezz'), false);
     assert.ok(calls.every(call => Object.keys(call.options).sort().join(',') === 'previousQuestions,signal'));
+});
+
+
+test('answers the reported CAGR typo from the glossary without Gemini or account access', async t => {
+    const { call, state } = await boot(t, { configured: true, failGeneration: true });
+    const ask = question => call('/ask', { method: 'POST', body: { question, includePortfolio: true } });
+    const typo = (await ask('what is cacgr')).data;
+    assert.equal(typo.mode, 'definition');
+    assert.equal(typo.interpretedQuestion, 'What is CAGR?');
+    assert.match(typo.answer, /compound annual growth rate/);
+    const clear = (await ask('What does CAGR stand for?')).data;
+    assert.equal(clear.answer, typo.answer);
+    assert.equal(clear.interpretedQuestion, undefined);
+    assert.equal(state.generateCalls, 0);
+    assert.equal(state.accountQueries.length, 0);
+    assert.equal(retrieve('compound annual growth rate', knowledge)[0].documentId, 'education-cagr');
+});
+
+
+test('the full Groww reading list is available and individual books can be retrieved', async t => {
+    const { call, state } = await boot(t, { configured: true, failGeneration: true });
+    const response = await call('/ask', { method: 'POST', body: { question: 'Show all books in available information', includePortfolio: true } });
+    const books = knowledge.filter(doc => doc.documentType === 'reading_note');
+    assert.equal(response.data.mode, 'reading_list');
+    assert.equal(books.length, 26);
+    assert.equal(new Set(books.map(book => book.id)).size, 26);
+    for (const book of books) assert.ok(response.data.answer.includes(`**${book.title}**`), book.title);
+    assert.equal(state.generateCalls, 0);
+    assert.equal(state.accountQueries.length, 0);
+    assert.equal(retrieve('Who wrote The Warren Buffett Way?', knowledge)[0].documentId, 'reading-warren-buffett-way');
 });

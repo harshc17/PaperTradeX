@@ -16,7 +16,7 @@ import dynamic from 'next/dynamic';
 const AnswerMarkdown = dynamic(() => import('@/components/AnswerMarkdown'));
 const AssistantConnections = dynamic(() => import('@/components/AssistantConnections'));
 
-type Result = { mode: 'generated' | 'portfolio_report' | 'retrieval' | 'no_sources' | 'unavailable'; retryable?: boolean; answer: string; interpretedQuestion?: string;
+type Result = { mode: 'generated' | 'definition' | 'reading_list' | 'portfolio_report' | 'retrieval' | 'no_sources' | 'unavailable'; retryable?: boolean; answer: string; interpretedQuestion?: string;
     portfolio?: PortfolioSnapshot | null;
     performance: { completedSales: number; netRealisedPnl: number; winRate: number | null } | null };
 type Entry = { id: number; question: string; payload: ChatPayload; result?: Result; error?: string; pending?: boolean; retrying?: boolean };
@@ -218,7 +218,7 @@ function KnowledgeAssistant() {
                 <p className="mt-2 hidden text-center text-[11px] leading-4 text-ink-muted sm:block">Enter to send · Shift + Enter for a new line.</p>
             </div>
             {!entries.length && <div className="mt-4 flex shrink-0 flex-wrap justify-center gap-2 px-3 pb-4 [@media(max-height:600px)]:hidden">
-                {['My portfolio', 'How ETFs work', 'Market risk'].map((label, i) => <button key={label} type="button" disabled={!ready} onClick={() => { setQuestion(['What is my current portfolio status?', 'How do ETFs work?', 'Explain market risk in simple terms.'][i]); if (!i) setIncludePortfolio(true); input.current?.focus(); }} className="min-h-10 rounded-full border border-line px-3 text-xs text-ink-muted hover:border-primary">{label}</button>)}
+                {['My portfolio', 'How ETFs work', 'Market risk', 'Reading list'].map((label, i) => <button key={label} type="button" disabled={!ready} onClick={() => { setQuestion(['What is my current portfolio status?', 'How do ETFs work?', 'Explain market risk in simple terms.', 'Show the reading list.'][i]); if (!i) setIncludePortfolio(true); input.current?.focus(); }} className="min-h-10 rounded-full border border-line px-3 text-xs text-ink-muted hover:border-primary">{label}</button>)}
             </div>}
             <p role="status" className="sr-only">{busy ? 'AI is thinking' : entries.length ? 'Reply ready' : ready ? 'Ready for your question' : 'Connecting'}</p>
         </main>
