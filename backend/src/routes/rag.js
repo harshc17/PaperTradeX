@@ -75,12 +75,23 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
         const interpretation = interpreted ? { interpretedQuestion: question } : {};
         const reply = (answer, mode = 'no_sources') => res.json({ mode, answer, sources: [], performance: null, portfolio: null, ...interpretation });
         if (!accountQuestion && (asksAdvice || /\b(?:p\s*\/\s*e|pe ratio|price[- ]to[- ]earnings)\b/i.test(question))) {
-            const result = await grounding?.fetchStockValuation?.(retrievalQuestion).catch(() => null);
+            const result = await grounding?.fetchStockValuation?.(question, { signal }).catch(() => null);
             if (result) {
-                const { name, symbol, valuation } = result;
+                const { name, symbol, valuation, quoteType, market } = result;
                 const label = `**${name} (${symbol.replace(/\.NS$/, '')})**`;
+                if (quoteType === 'ETF') {
+                    const explanation = /\b(?:silver|gold|liquid|bond|gilt|treasury)\b/i.test(name)
+                        ? 'A company P/E does not apply to this ETF because its underlying assets do not have corporate earnings per share.'
+                        : 'An ETF has no company-style P/E. An equity ETF may publish a portfolio P/E based on the stocks it holds. I don’t have that verified figure for this fund.';
+                    const price = market?.price != null ? `\n\nLatest available unit price **₹${quotePrice.format(market.price)}** at ${quoteDate.format(new Date(market.observedAt))} IST.` : '';
+                    const context = asksAdvice ? '\n\nFor an ETF, compare what it tracks, its expense ratio, tracking difference and liquidity.' : '';
+                    return reply(`${label} is an ETF. ${explanation}${price}${context}`, market?.price != null ? 'market_quote' : 'definition');
+                }
+                if (valuation?.multiple === null) {
+                    return reply(`${label} reported trailing diluted earnings of ₹${quotePrice.format(valuation.eps)} per share for the 12 months ended ${valuation.periodEnd}. P/E is generally left blank when earnings are zero or negative.`, 'definition');
+                }
                 const details = valuation?.eps
-                    ? `Based on a share price of ₹${quotePrice.format(valuation.price)} at ${quoteDate.format(new Date(valuation.observedAt))} IST and consolidated diluted earnings of ₹${quotePrice.format(valuation.eps)} per share for the 12 months ended 30 Sep 2026, calculated from Reliance's published results.`
+                    ? `Based on a share price of ₹${quotePrice.format(valuation.price)} at ${quoteDate.format(new Date(valuation.observedAt))} IST and diluted earnings of ₹${quotePrice.format(valuation.eps)} per share for the 12 months ended ${valuation.periodEnd}, from ${valuation.source}.`
                     : 'This is the trailing ratio reported by Yahoo Finance.';
                 const answer = valuation
                     ? `${label} has a trailing P/E of **${quotePrice.format(valuation.multiple)}×**. ${details}\n\nTrailing P/E shows how much the market pays per rupee of earnings over the past year.`
@@ -129,7 +140,9 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
                 return reply(configured ? 'The MCX silver futures quote is temporarily unavailable. Check MCX Market Watch for the latest trade.' : 'PaperTradeX is awaiting a licensed MCX futures feed. You can check the nearest SILVER contract and its last traded price on MCX Market Watch.');
             }
             if (instrument && grounding) {
-                const symbols = grounding.resolveSymbols(instrument);
+                const resolved = grounding.resolveSymbols(instrument);
+                const exact = !resolved.length || /\.(?:NS|BO)$/i.test(instrument) ? await grounding.findListedInstrument?.(instrument) : null;
+                const symbols = exact ? [exact.symbol] : /\.(?:NS|BO)$/i.test(instrument) ? [] : resolved;
                 if (symbols.length) {
                     const { quotes } = await grounding.fetchLiveMarketData(symbols.slice(0, 4));
                     return reply(quotes.map(quote => {

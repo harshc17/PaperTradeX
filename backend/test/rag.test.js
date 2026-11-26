@@ -28,7 +28,7 @@ test('chunking is bounded, overlapping and stable; retrieval ranks relevant sour
     assert.deepEqual(tokens('realized stock prices'), tokens('realised stock price'));
 });
 
-async function boot(t, { configured = false, failGeneration = false, unsupportedQuestion, interpretQuestion, trades = [], accounts = {}, quotes = {}, catalogue = [], silverQuotes, getFundamentals } = {}) {
+async function boot(t, { configured = false, failGeneration = false, unsupportedQuestion, interpretQuestion, trades = [], accounts = {}, quotes = {}, catalogue = [], silverQuotes, getFundamentals, getEarnings, searchInstruments } = {}) {
     const state = { documents: [], metricQueries: [], calls: [], nextId: 1, generateCalls: 0, accountQueries: [], quoteQueries: [], lastSources: [], lastContext: null, lastQuestion: null };
     const chain = rows => ({ select() { return this; }, sort() { return this; }, limit(n) { rows = rows.slice(0, n); return this; }, async lean() { return rows; } });
     const models = {
@@ -46,7 +46,7 @@ async function boot(t, { configured = false, failGeneration = false, unsupported
         TransactionHistory: { find(query) { state.metricQueries.push(query); return chain(trades); } },
         async getPortfolioAccount(user) { state.accountQueries.push(user); if (!accounts[user]) throw Error('No account'); return accounts[user]; },
         getQuote, getMarketContext, silverQuotes,
-        ...(catalogue.length ? { grounding: createTools({ catalogue, getQuote, getMarketContext, getFundamentals }) } : {}),
+        ...(catalogue.length ? { grounding: createTools({ catalogue, getQuote, getMarketContext, getFundamentals, getEarnings, searchInstruments }) } : {}),
         generation: { configured: () => configured, interpretQuestion, async generate(question, sources, context) { state.generateCalls++; state.lastContext = context; state.lastQuestion = question; state.lastSources = sources; if (failGeneration) throw Error('offline'); if (question === unsupportedQuestion) return { basis: 'unsupported' }; return sources.length ? { answer: `Verified response [${sources[0].citation}]`, citations: [sources[0].citation], basis: 'sources' } : { answer: 'General finance education.', citations: [], basis: 'general_education' }; } },
     }));
     const server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve));
@@ -61,7 +61,7 @@ async function boot(t, { configured = false, failGeneration = false, unsupported
 
 test('mutual fund definitions and current price requests use appropriate verified sources', async t => {
     const { call, state } = await boot(t, {
-        catalogue: [{ symbol: 'SILVERBEES.NS', shortname: 'Nippon India Silver BeES ETF' }, { symbol: 'MARUTI.NS', shortname: 'Maruti Suzuki' },
+        catalogue: [{ symbol: 'SILVERBEES.NS', shortname: 'Nippon India Silver BeES ETF', quoteType: 'ETF' }, { symbol: 'MARUTI.NS', shortname: 'Maruti Suzuki' },
             { symbol: 'RELIANCE.NS', shortname: 'Reliance Industries', quoteType: 'EQUITY' }],
         quotes: { 'SILVERBEES.NS': { price: 125.5, timestamp: new Date().toISOString() }, 'RELIANCE.NS': { price: 1400, timestamp: new Date().toISOString() } },
         getFundamentals: async symbol => symbol === 'RELIANCE.NS' ? { trailingPE: 23.05 } : null,
@@ -88,8 +88,26 @@ test('mutual fund definitions and current price requests use appropriate verifie
     const valuation = await ask('what is relaince p/e ratio should i invest');
     assert.match(valuation.answer, /Reliance Industries.*23\.05×/);
     assert.match(valuation.answer, /decision to invest is yours.*earnings growth, debt and cash flow/);
+    const etfValuation = await ask('What is SILVERBEES P/E ratio?');
+    assert.match(etfValuation.answer, /company P\/E does not apply/);
+    assert.match(etfValuation.answer, /unit price.*₹125\.50/);
     assert.equal(state.generateCalls, 0);
     assert.equal(state.accountQueries.length, 0);
+});
+
+test('valuation can use exact exchange matches outside the local catalogue', async t => {
+    const { call, state } = await boot(t, {
+        catalogue: [{ symbol: 'HAL.NS', shortname: 'Hindustan Aeronautics', quoteType: 'EQUITY' }],
+        searchInstruments: async term => term.toUpperCase() === 'MOTILALOFS' ? [
+            { symbol: 'MOTILALOFS.NS', shortname: 'Motilal Oswal Financial Services', quoteType: 'EQUITY' },
+        ] : [],
+        getEarnings: async symbol => symbol === 'MOTILALOFS.NS' ? { eps: 43.98, periodEnd: '2026-09-30', source: 'Yahoo Finance' } : null,
+        quotes: { 'MOTILALOFS.NS': { price: 879.6, timestamp: new Date().toISOString() } },
+    });
+    const response = await call('/ask', { method: 'POST', body: { question: 'What is the trailing P/E of MOTILALOFS?' } });
+    assert.equal(response.data.mode, 'market_quote');
+    assert.match(response.data.answer, /20\.00×.*43\.98.*2026-09-30/);
+    assert.deepEqual(state.quoteQueries, ['MOTILALOFS.NS']);
 });
 
 test('all knowledge endpoints require auth; invalid input never queries storage or AI', async t => {

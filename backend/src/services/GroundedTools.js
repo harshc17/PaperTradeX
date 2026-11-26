@@ -10,20 +10,45 @@ const indices = [
     { symbol: '^NSEBANK', shortname: 'BANKNIFTY' }, { symbol: '^MIDCPNIFTY', shortname: 'MIDCPNIFTY' },
     { symbol: '^FINNIFTY', shortname: 'FINNIFTY' }, { symbol: '^BANKEX', shortname: 'BANKEX' },
 ];
-module.exports = function createTools({ TransactionHistory, getPortfolioAccount, getQuote, getMarketContext, User, catalogue = [], getDisclosures, getFundamentals = async () => null }) {
+module.exports = function createTools({ TransactionHistory, getPortfolioAccount, getQuote, getMarketContext, User, catalogue = [], getDisclosures, getFundamentals = async () => null, getEarnings, searchInstruments = async () => [] }) {
     const instruments = [...catalogue, ...indices];
     function resolveSymbols(question) {
         const text = question.toUpperCase();
         return instruments.filter(item => [item.symbol, item.symbol.replace(/\.NS$/, ''), item.shortname].some(value =>
             value && new RegExp(`(^|[^A-Z0-9])${value.toUpperCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^A-Z0-9]|$)`).test(text))).map(item => item.symbol).slice(0, 8);
     }
-    async function fetchStockValuation(question) {
+    async function findListedInstrument(subject) {
+        const key = subject.trim().toUpperCase();
+        if (!/^[A-Z0-9][ A-Z0-9&.'’-]{0,69}$/.test(key)) return null;
+        const local = catalogue.filter(item => [item.symbol, item.symbol.replace(/\.NS$/, ''), item.shortname?.toUpperCase()].includes(key));
+        if (local.length === 1) return local[0];
+        if (local.length > 1) return null;
+        const results = await searchInstruments(subject).catch(() => []);
+        const matches = results.filter(item => /^[A-Z0-9&.-]{1,30}\.(NS|BO)$/.test(item.symbol || '') &&
+            ['EQUITY', 'ETF'].includes(item.quoteType) &&
+            [item.symbol, item.symbol.replace(/\.(NS|BO)$/, ''), item.shortname?.toUpperCase(), item.longname?.toUpperCase()].includes(key));
+        return matches.length === 1 ? matches[0] : matches.find(item => item.symbol === `${key}.NS`) || null;
+    }
+    async function fetchStockValuation(question, { signal } = {}) {
         const normalized = question.replace(/\brelaince\b/gi, 'Reliance');
-        const symbols = resolveSymbols(normalized).filter(symbol => catalogue.some(item => item.symbol === symbol && item.quoteType === 'EQUITY'));
-        if (symbols.length !== 1) return null;
-        const symbol = symbols[0];
-        const company = catalogue.find(item => item.symbol === symbol);
-        return { symbol, name: company.shortname, valuation: await trailingPE(symbol, { getQuote, getFundamentals }) };
+        const subject = normalized.replace(/[?!.]+$/, '').trim()
+            .replace(/\s*(?:[?,.]|\band\b)?\s*should (?:i|we)\b.*$/i, '')
+            .replace(/^(?:what (?:is|are)|what['’]s|show(?: me)?|give me|tell me|check)\s+(?:the\s+)?/i, '');
+        const term = '(?:trailing\\s+)?(?:p\\s*\\/\\s*e(?:\\s+ratio)?|pe\\s+ratio|price[- ]to[- ]earnings(?:\\s+ratio)?)';
+        const name = subject.match(new RegExp(`^${term}\\s+(?:of|for)\\s+(.+)$`, 'i'))?.[1] ||
+            subject.match(new RegExp(`^(.+?)\\s+${term}$`, 'i'))?.[1];
+        const candidate = name && await findListedInstrument(name.replace(/['’]s$/i, ''));
+        const symbols = candidate ? [candidate.symbol] : resolveSymbols(normalized);
+        const company = symbols.length === 1 && (candidate || catalogue.find(item => item.symbol === symbols[0]));
+        if (!company || !['EQUITY', 'ETF'].includes(company.quoteType)) return null;
+        const { symbol, quoteType } = company;
+        const label = company.shortname || company.longname || symbol;
+        if (quoteType === 'ETF') {
+            return { symbol, name: label, quoteType, market: (await fetchLiveMarketData([symbol])).quotes[0] };
+        }
+        return { symbol, name: label, quoteType, valuation: await trailingPE(symbol, {
+            getQuote, getFundamentals, getEarnings: getEarnings && (ticker => getEarnings(ticker, signal)),
+        }) };
     }
     async function fetchUserPortfolio(userId) {
         const trades = await TransactionHistory.find({ user: userId }).select('type symbol quantity price totalAmount createdAt').sort({ createdAt: 1, _id: 1 }).limit(20001).lean();
@@ -62,6 +87,6 @@ module.exports = function createTools({ TransactionHistory, getPortfolioAccount,
         try { return await getDisclosures(symbol.replace(/\.NS$/, '')); }
         catch { return { available: false, reason: 'Exchange disclosure feed is unavailable. No news or sentiment is inferred.' }; }
     }
-    return { resolveSymbols, fetchStockValuation, fetchUserPortfolio, fetchLiveMarketData, fetchUserWatchlist, fetchCompanyDisclosures,
+    return { resolveSymbols, findListedInstrument, fetchStockValuation, fetchUserPortfolio, fetchLiveMarketData, fetchUserWatchlist, fetchCompanyDisclosures,
         executeFinancialMath, retrieveDocuments: question => retrieve(question, knowledge, 4) };
 };
