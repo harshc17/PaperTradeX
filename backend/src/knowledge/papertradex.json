@@ -34,6 +34,18 @@
     "documentType": "education_summary"
   },
   {
+    "id": "education-mutual-funds",
+    "title": "Mutual funds and net asset value",
+    "scope": "education",
+    "referenceUrl": "https://www.amfiindia.com/investor/knowledge-center-info?zoneName=IntroductionMutualFunds",
+    "content": "A **mutual fund** pools money from many investors. A fund manager invests that pool in assets such as stocks or bonds according to the scheme’s stated objective. Each investor owns units representing a share of the fund.\n\n**Net asset value (NAV)** is the fund’s net assets divided by the number of units. The NAV can rise or fall as the fund’s investments change in value. Fund expenses reduce investors’ returns.",
+    "glossaryTerms": ["mutual fund", "mutual funds", "a mutual fund"],
+    "effectiveDate": null,
+    "reviewedAt": "2026-11-26",
+    "section": "What are mutual funds? and How a mutual fund works",
+    "documentType": "education_summary"
+  },
+  {
     "id": "education-cost-averaging",
     "title": "Rupee cost averaging — SEBI education booklet",
     "scope": "education",

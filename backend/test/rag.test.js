@@ -5,6 +5,7 @@ const router = require('../src/routes/rag');
 const { retrieve, chunkDocument, tokens } = require('../src/services/RagRetrieval');
 const generator = require('../src/services/RagGenerator');
 const { documents: knowledge } = require('../src/knowledge');
+const createTools = require('../src/services/GroundedTools');
 
 test('chunking is bounded, overlapping and stable; retrieval ranks relevant sources', () => {
     const document = { id: 'long', title: 'Notes', content: 'risk management diversification '.repeat(200) };
@@ -27,7 +28,7 @@ test('chunking is bounded, overlapping and stable; retrieval ranks relevant sour
     assert.deepEqual(tokens('realized stock prices'), tokens('realised stock price'));
 });
 
-async function boot(t, { configured = false, failGeneration = false, unsupportedQuestion, interpretQuestion, trades = [], accounts = {}, quotes = {} } = {}) {
+async function boot(t, { configured = false, failGeneration = false, unsupportedQuestion, interpretQuestion, trades = [], accounts = {}, quotes = {}, catalogue = [] } = {}) {
     const state = { documents: [], metricQueries: [], calls: [], nextId: 1, generateCalls: 0, accountQueries: [], quoteQueries: [], lastSources: [], lastContext: null, lastQuestion: null };
     const chain = rows => ({ select() { return this; }, sort() { return this; }, limit(n) { rows = rows.slice(0, n); return this; }, async lean() { return rows; } });
     const models = {
@@ -37,13 +38,15 @@ async function boot(t, { configured = false, failGeneration = false, unsupported
         async findOneAndDelete(query) { state.calls.push(query); const index = state.documents.findIndex(d => d._id === query._id && d.owner === query.owner); return index < 0 ? null : state.documents.splice(index, 1)[0]; },
     };
     const app = express(); app.use(express.json());
+    async function getQuote(symbol) { state.quoteQueries.push(symbol); return quotes[symbol] || null; }
+    const getMarketContext = () => ({ marketOpen: true, sessionDate: '2026-11-20' });
     app.use('/api/rag', router({
         authenticateToken(req, res, next) { const id = req.headers['x-test-user']; if (!id) return res.status(401).json({ error: 'Sign in' }); req.user = { id }; next(); },
         RagDocument: models,
         TransactionHistory: { find(query) { state.metricQueries.push(query); return chain(trades); } },
         async getPortfolioAccount(user) { state.accountQueries.push(user); if (!accounts[user]) throw Error('No account'); return accounts[user]; },
-        async getQuote(symbol) { state.quoteQueries.push(symbol); return quotes[symbol] || null; },
-        getMarketContext: () => ({ marketOpen: true, sessionDate: '2026-11-20' }),
+        getQuote, getMarketContext,
+        ...(catalogue.length ? { grounding: createTools({ catalogue, getQuote, getMarketContext }) } : {}),
         generation: { configured: () => configured, interpretQuestion, async generate(question, sources, context) { state.generateCalls++; state.lastContext = context; state.lastQuestion = question; state.lastSources = sources; if (failGeneration) throw Error('offline'); if (question === unsupportedQuestion) return { basis: 'unsupported' }; return sources.length ? { answer: `Verified response [${sources[0].citation}]`, citations: [sources[0].citation], basis: 'sources' } : { answer: 'General finance education.', citations: [], basis: 'general_education' }; } },
     }));
     const server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve));
@@ -55,6 +58,31 @@ async function boot(t, { configured = false, failGeneration = false, unsupported
     }
     return { call, state };
 }
+
+test('mutual fund definitions and current price requests use appropriate verified sources', async t => {
+    const { call, state } = await boot(t, {
+        catalogue: [{ symbol: 'SILVERBEES.NS', shortname: 'Nippon India Silver BeES ETF' }, { symbol: 'MARUTI.NS', shortname: 'Maruti Suzuki' }],
+        quotes: { 'SILVERBEES.NS': { price: 125.5, timestamp: new Date().toISOString() } },
+    });
+    const ask = async question => (await call('/ask', { method: 'POST', body: { question } })).data;
+    for (const question of ['what is mutual funds ?', 'What are mutual funds?', 'Define a mutual fund']) {
+        const definition = await ask(question);
+        assert.equal(definition.mode, 'definition');
+        assert.match(definition.answer, /pools money from many investors/);
+    }
+    assert.equal(retrieve('how do mutual funds work', knowledge)[0].documentId, 'education-mutual-funds');
+    const silver = await ask('what is silver rate right now ?');
+    assert.match(silver.answer, /physical silver.*MCX silver futures.*silver ETF/);
+    assert.match((await ask('What is the current MCX silver price?')).answer, /separate commodity feed/);
+    assert.deepEqual(state.quoteQueries, []);
+    const quote = await ask('What is the current price of SILVERBEES?');
+    assert.equal(quote.mode, 'market_quote');
+    assert.match(quote.answer, /SILVERBEES.*₹125\.50.*IST/);
+    assert.match((await ask('MARUTI price now')).answer, /temporarily unavailable/);
+    assert.deepEqual(state.quoteQueries, ['SILVERBEES.NS', 'MARUTI.NS']);
+    assert.equal(state.generateCalls, 0);
+    assert.equal(state.accountQueries.length, 0);
+});
 
 test('all knowledge endpoints require auth; invalid input never queries storage or AI', async t => {
     const { call, state } = await boot(t);

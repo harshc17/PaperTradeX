@@ -16,7 +16,7 @@ import dynamic from 'next/dynamic';
 const AnswerMarkdown = dynamic(() => import('@/components/AnswerMarkdown'));
 const AssistantConnections = dynamic(() => import('@/components/AssistantConnections'));
 
-type Result = { mode: 'generated' | 'definition' | 'reading_list' | 'portfolio_report' | 'retrieval' | 'no_sources' | 'unavailable'; retryable?: boolean; answer: string; interpretedQuestion?: string;
+type Result = { mode: 'generated' | 'definition' | 'reading_list' | 'portfolio_report' | 'market_quote' | 'retrieval' | 'no_sources' | 'unavailable'; retryable?: boolean; answer: string; interpretedQuestion?: string;
     portfolio?: PortfolioSnapshot | null;
     performance: { completedSales: number; netRealisedPnl: number; winRate: number | null } | null };
 type Entry = { id: number; question: string; payload: ChatPayload; result?: Result; error?: string; pending?: boolean; retrying?: boolean };

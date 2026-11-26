@@ -11,6 +11,15 @@ const policy = require('../services/FinancialPolicy');
 const { parseCalculation } = require('../services/FinancialMath');
 
 const glossary = new Map(knowledge.flatMap(note => (note.glossaryTerms || []).map(term => [term, note])));
+function requestedQuote(question) {
+    const text = question.replace(/[?.!\s]+$/, '')
+        .replace(/\s+(?:right now|now|today)$/i, '')
+        .replace(/^(?:(?:what (?:is|are)|what['’]s|show(?: me)?|give me|check)\s+)?(?:the\s+)?(?:current\s+|latest\s+|live\s+)?/i, '');
+    return text.match(/^(?:stock\s+)?(?:price|rate|quote)s?\s+(?:of|for)\s+(.+)$/i)?.[1]
+        || text.match(/^(.+?)\s+(?:stock\s+)?(?:price|rate|quote)s?$/i)?.[1];
+}
+const quotePrice = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const quoteDate = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
 
 module.exports = function ragRouter({ authenticateToken, RagVector, TransactionHistory, getPortfolioAccount, getQuote, getMarketContext, grounding, generation = generator,
     enabled = () => process.env.RAG_ENABLED !== 'false' }) {
@@ -48,7 +57,7 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
         if (readingList) return res.json({ mode: 'reading_list', answer: readingList, sources: [], performance: null, portfolio: null });
         // Resolve taught terms and known misspellings only in a definition question.
         const term = question.toLowerCase().trim().replace(/[?.!]+$/, '').trim()
-            .replace(/^(?:what is|what['’]s|define|explain)\s+/, '')
+            .replace(/^(?:what is|what are|what['’]s|define|explain)\s+/, '')
             .replace(/^what does\s+(.+)\s+(?:mean|stand for)$/, '$1');
         const note = glossary.get(term);
         if (note) {
@@ -81,6 +90,27 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
             return res.json(fallback);
         }
         try {
+            const instrument = !accountQuestion && requestedQuote(question);
+            if (instrument && grounding) {
+                const reply = (answer, mode = 'no_sources') => res.json({ mode, answer, sources: [], performance: null, portfolio: null, ...interpretation });
+                if (/^(?:silver|silver in india)$/i.test(instrument)) {
+                    return reply('Which silver price do you mean: **physical silver** in your city, **MCX silver futures**, or a **silver ETF** such as SILVERBEES? I can look up ETFs tracked by PaperTradeX.');
+                }
+                if (/\b(?:mcx.*silver|silver.*(?:futures|mcx)|(?:physical|spot) silver|silver (?:spot|bullion))\b/i.test(instrument)) {
+                    return reply('PaperTradeX has verified stock, ETF and index quotes. A current physical silver or MCX futures rate requires a separate commodity feed. I can look up a tracked silver ETF such as SILVERBEES.');
+                }
+                const symbols = grounding.resolveSymbols(instrument);
+                if (symbols.length) {
+                    const { quotes } = await grounding.fetchLiveMarketData(symbols.slice(0, 4));
+                    return reply(quotes.map(quote => {
+                        const label = quote.symbol.replace(/^\^/, '');
+                        if (quote.price === null) return `**${label}** — The quote is temporarily unavailable.`;
+                        const price = `${quote.symbol.startsWith('^') ? '' : '₹'}${quotePrice.format(quote.price)}${quote.symbol.startsWith('^') ? ' points' : ''}`;
+                        const freshness = quote.status === 'latest_available' ? '' : quote.status === 'market_closed' ? ' · Market closed' : ' · Delayed';
+                        return `**${label}** — ${price} · ${quoteDate.format(new Date(quote.observedAt))} IST${freshness}`;
+                    }).join('\n\n'), 'market_quote');
+                }
+            }
             let performance = null;
             let portfolio = null;
             let portfolioCalculation = null;
