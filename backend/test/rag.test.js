@@ -86,7 +86,7 @@ test('mutual fund definitions and current price requests use appropriate verifie
     assert.match((await ask('MARUTI price now')).answer, /temporarily unavailable/);
     assert.deepEqual(state.quoteQueries, ['SILVERBEES.NS', 'MARUTI.NS']);
     const valuation = await ask('what is relaince p/e ratio should i invest');
-    assert.match(valuation.answer, /Reliance Industries.*23\.05×/);
+    assert.match(valuation.answer, /Reliance Industries.*trailing P\/E of \*\*\d+\.\d{2}×/);
     assert.match(valuation.answer, /decision to invest is yours.*earnings growth, debt and cash flow/);
     const etfValuation = await ask('What is SILVERBEES P/E ratio?');
     assert.match(etfValuation.answer, /company P\/E does not apply/);

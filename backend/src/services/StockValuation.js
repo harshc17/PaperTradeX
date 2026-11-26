@@ -1,13 +1,20 @@
 const { quoteTime } = require('./QuoteIdentity');
 const PublicReadCache = require('./PublicReadCache');
+// Dated INR trailing diluted EPS from Yahoo Finance's earnings series, checked 26 November 2026.
+const publishedEarnings = require('../knowledge/stock-earnings.json');
 const earningsCache = new PublicReadCache();
 const metric = 'trailingDilutedEPS';
 
 // Consolidated diluted EPS from company filings for the half year ended 30 September 2026.
 const filings = {
-    'RELIANCE.NS': { year: 59.69, previousHalf: 33.37, latestHalf: 34.36, source: "Reliance's published results" },
-    'HAL.NS': { year: 136.30, previousHalf: 45.65, latestHalf: 52.71, source: 'HAL’s consolidated exchange filing' },
-    'TCS.NS': { year: 145.99, previousHalf: 68.64, latestHalf: 75.27, source: 'TCS’s consolidated financial statements' },
+    'ADANIENT.NS': { base: 76.83, overlap: 34.58, latestHalf: 2.50, source: 'Adani Enterprises’ consolidated exchange filing' },
+    'RELIANCE.NS': { base: 59.69, overlap: 33.37, latestHalf: 34.36, source: "Reliance's published results" },
+    'HAL.NS': { base: 136.30, overlap: 45.65, latestHalf: 52.71, source: 'HAL’s consolidated exchange filing' },
+    'HDFCBANK.NS': { base: 49.28, overlap: 23.27, latestHalf: 25.87, source: 'HDFC Bank’s consolidated exchange filings' },
+    'INFY.NS': { base: 71.46, overlap: 34.41, latestHalf: 38.46, source: 'Infosys’s consolidated financial statements' },
+    // Siemens changed its fiscal year. Remove the overlapping 12 months from its 18-month audited base.
+    'SIEMENS.NS': { base: 77.34, overlap: 59.13, latestHalf: 74.34, source: 'Siemens’s consolidated financial statements' },
+    'TCS.NS': { base: 145.99, overlap: 68.64, latestHalf: 75.27, source: 'TCS’s consolidated financial statements' },
 };
 const filingPeriodEnd = '2026-09-30';
 
@@ -63,16 +70,24 @@ async function trailingPE(symbol, { getQuote, getFundamentals, getEarnings = asy
     const exchangePE = await getExchangePE(symbol);
     if (exchangePE) return exchangePE;
     let earnings = await getEarnings(symbol);
-    if (!earnings) {
+    const currentTime = now ?? Date.now();
+    const filing = filings[symbol];
+    const currentFiling = filing && currentTime - Date.parse(filingPeriodEnd) <= 135 * 86400000;
+    if (!earnings && !currentFiling) {
         const latest = await getFundamentals(symbol).catch(() => null);
         if (Number.isFinite(latest?.trailingPE) && latest.trailingPE > 0) {
             return { multiple: latest.trailingPE, source: 'Yahoo Finance', observedAt: now ?? Date.now() };
         }
-        const filing = filings[symbol];
-        if (!filing || (now ?? Date.now()) - Date.parse(filingPeriodEnd) > 135 * 86400000) return null;
-        const eps = Math.round((filing.year - filing.previousHalf + filing.latestHalf) * 100) / 100;
+        const [periodEnd, eps] = publishedEarnings[symbol] || [];
+        if (periodEnd && currentTime - Date.parse(periodEnd) <= 135 * 86400000) {
+            earnings = { eps, periodEnd, source: 'Yahoo Finance’s published earnings snapshot' };
+        }
+    }
+    if (currentFiling && (!earnings || earnings.periodEnd <= filingPeriodEnd)) {
+        const eps = Math.round((filing.base - filing.overlap + filing.latestHalf) * 100) / 100;
         earnings = { eps, periodEnd: filingPeriodEnd, source: filing.source };
     }
+    if (!earnings) return null;
     if (earnings.eps <= 0) return { ...earnings, multiple: null };
     const quote = await getQuote(symbol).catch(() => null);
     const observedAt = quoteTime(quote?.timestamp);

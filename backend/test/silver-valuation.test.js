@@ -45,7 +45,7 @@ test('stock P/E accepts dated, exchange-specific Yahoo EPS and preserves reporte
     const getFundamentals = async () => assert.fail('Do not call the quote fundamentals fallback when EPS is known');
     const result = await trailingPE('HAL.NS', { getQuote, getFundamentals, getEarnings: async () => earnings, now });
     assert.equal(result.multiple.toFixed(2), '34.32');
-    const loss = await trailingPE('HAL.NS', { getQuote, getFundamentals, getEarnings: async () => ({ ...earnings, eps: -5 }), now });
+    const loss = await trailingPE('SWIGGY.NS', { getQuote, getFundamentals, getEarnings: async () => ({ ...earnings, eps: -5 }), now });
     assert.equal(loss.multiple, null);
 });
 
@@ -58,4 +58,13 @@ test('exchange P/E is used directly when available and HAL can recover from the 
         getQuote: async () => ({ price: 4920, timestamp: '2026-11-26T07:00:00Z' }) });
     assert.equal(fallback.eps, 143.36);
     assert.equal(fallback.multiple.toFixed(2), '34.32');
+});
+
+test('dated earnings snapshots recover P/E during payload outages and expire', async () => {
+    const input = { getFundamentals: async () => null,
+        getQuote: async () => ({ price: 879.6, timestamp: '2026-11-26T07:00:00Z' }) };
+    const result = await trailingPE('MOTILALOFS.NS', { ...input, now: Date.parse('2026-11-26T07:01:00Z') });
+    assert.equal(result.eps, 43.98);
+    assert.equal(result.multiple.toFixed(2), '20.00');
+    assert.equal(await trailingPE('MOTILALOFS.NS', { ...input, now: Date.parse('2027-04-05') }), null);
 });
