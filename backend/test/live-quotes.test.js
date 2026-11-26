@@ -8,14 +8,17 @@ const defaultQuote = async () => [
     { symbol: '^NSEI', regularMarketPrice: 25000, regularMarketTime: new Date() },
 ];
 let quoteImpl = defaultQuote, combineImpl = async () => undefined;
+let chartImpl = async () => ({ quotes: [{ close: 105, date: new Date() }], meta: { chartPreviousClose: 90 } });
 class Yahoo {
     async quote(symbols) { calls++; seen = symbols; return quoteImpl(symbols); }
     async quoteCombine(...args) { return combineImpl(...args); }
-    async chart() { return { quotes: [{ close: 105, date: new Date() }], meta: { chartPreviousClose: 90 } }; }
+    async chart(...args) { return chartImpl(...args); }
 }
 require.cache[require.resolve('yahoo-finance2')] = { exports: { default: Yahoo } };
 require.cache[require.resolve('../src/services/TradeEngine')] = { exports: { processMarketTick: async () => {} } };
 const history = require('../src/services/HistoricalClient');
+const cashReport = require('../src/services/OfficialCashClose');
+cashReport.quote = async () => null;
 
 test('batched live reads coalesce viewers and preserve exact NSE/BSE identities', async () => {
     const [a, b] = await Promise.all([
@@ -116,4 +119,29 @@ test('live batch and stock details correct stale changes using the exact prior-s
         assert.equal(detail.regularMarketChange, -1.9);
         assert.equal(detail.regularMarketPreviousClose, 301);
     } finally { quoteImpl = saved.quoteImpl; combineImpl = saved.combineImpl; history.historical = saved.historical; }
+});
+
+test('chart quote recovery uses the official close when the prior daily candle is missing', async () => {
+    const saved = { chartImpl, combineImpl, historical: history.historical, quote: cashReport.quote };
+    const observedAt = new Date('2026-11-26T06:09:23Z');
+    try {
+        combineImpl = async () => { throw Error('status 429'); };
+        history.historical = async () => ({ data: [{ date: '2026-11-23T03:45:00Z', close: 103.05 }] });
+        chartImpl = async symbol => ({ meta: {
+            symbol, regularMarketPrice: 101.35, regularMarketTime: observedAt, chartPreviousClose: 99.96,
+        } });
+        cashReport.quote = async (symbol, session) => {
+            assert.equal(symbol, 'GOLDBEES.NS');
+            assert.equal(session, '2026-11-25');
+            return { price: 100.11, asOf: '2026-11-25' };
+        };
+        const quote = await history.quoteDetail('GOLDBEES');
+        assert.equal(quote.regularMarketPrice, 101.35);
+        assert.equal(quote.regularMarketPreviousClose, 100.11);
+        assert.equal(quote.regularMarketChange, 1.24);
+        assert.equal(+quote.regularMarketTime, +observedAt);
+    } finally {
+        chartImpl = saved.chartImpl; combineImpl = saved.combineImpl;
+        history.historical = saved.historical; cashReport.quote = saved.quote;
+    }
 });

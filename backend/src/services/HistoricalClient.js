@@ -25,6 +25,7 @@ const returnSessionDate = require('./ReturnSession');
 const OfficialIndexHistory = require('./OfficialIndexHistory');
 const IndexIntraday = require('./IndexIntraday');
 const OfficialIndexSnapshot = require('./OfficialIndexSnapshot');
+const OfficialCashClose = require('./OfficialCashClose');
 const BankexHistory = require('./BankexHistory');
 const BseIntraday = require('./BseIntraday');
 const { validateCandles, withinDailyRanges, withLatestSession } = require('./ChartIntegrity');
@@ -97,10 +98,15 @@ function indexPreviousClose(quote, meta, quotes, official, dailyBars = []) {
 async function dailyReference(symbol, day) {
     if (symbol.toUpperCase() === 'BSE-BANK.BO') symbol = '^BANKEX';
     const priorDay = returnSessionDate(new Date(`${day}T00:00:00+05:30`), NSEClient.constructor.HOLIDAYS);
-    return readCache.load(`previous-session:${symbol}:${priorDay}`, 3600000, async () => {
-        const daily = await module.exports.historical(symbol, '1mo');
-        const prior = daily.data?.findLast(bar => new Date(Date.parse(bar.date) + 330 * 60000).toISOString().slice(0, 10) === priorDay);
-        return prior?.close > 0 ? { asOf: priorDay, price: Math.round(prior.close * 100) / 100 } : null;
+    const providerKey = getYahooCandidates(symbol)[0];
+    return readCache.load(`previous-session:${providerKey}:${priorDay}`, 3600000, async () => {
+        const daily = await module.exports.historical(symbol, '1mo').catch(() => null);
+        const prior = daily?.data?.findLast(bar => new Date(Date.parse(bar.date) + 330 * 60000).toISOString().slice(0, 10) === priorDay);
+        if (prior?.close > 0) return { asOf: priorDay, price: Math.round(prior.close * 100) / 100 };
+        // Yahoo can omit a completed session even while its latest intraday quote is usable.
+        // The cash report supplies only the prior close, never the current trade price.
+        const official = await OfficialCashClose.quote(providerKey, priorDay).catch(() => null);
+        return official?.asOf === priorDay && official.price > 0 ? { asOf: priorDay, price: official.price } : null;
     }, value => value?.price > 0);
 }
 
@@ -290,9 +296,7 @@ module.exports = {
             if (sessionDay) {
                 try { dailyBars = (await this.historical(symbol, '1mo')).data || []; }
                 catch { /* use the validated intraday reference below */ }
-                const priorDay = returnSessionDate(new Date(`${sessionDay}T00:00:00+05:30`), NSEClient.constructor.HOLIDAYS);
-                const prior = dailyBars.findLast(bar => bar.date.slice(0, 10) === priorDay);
-                if (!official && prior?.close > 0) official = { asOf: priorDay, price: Math.round(prior.close * 100) / 100 };
+                if (!official) official = await dailyReference(symbol, sessionDay).catch(() => null);
             }
             prevClose = indexPreviousClose(quote, meta, points, official);
             const finalBar = dailyBars.at(-1);
