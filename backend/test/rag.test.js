@@ -28,7 +28,7 @@ test('chunking is bounded, overlapping and stable; retrieval ranks relevant sour
     assert.deepEqual(tokens('realized stock prices'), tokens('realised stock price'));
 });
 
-async function boot(t, { configured = false, failGeneration = false, unsupportedQuestion, interpretQuestion, trades = [], accounts = {}, quotes = {}, catalogue = [] } = {}) {
+async function boot(t, { configured = false, failGeneration = false, unsupportedQuestion, interpretQuestion, trades = [], accounts = {}, quotes = {}, catalogue = [], silverQuotes, getFundamentals } = {}) {
     const state = { documents: [], metricQueries: [], calls: [], nextId: 1, generateCalls: 0, accountQueries: [], quoteQueries: [], lastSources: [], lastContext: null, lastQuestion: null };
     const chain = rows => ({ select() { return this; }, sort() { return this; }, limit(n) { rows = rows.slice(0, n); return this; }, async lean() { return rows; } });
     const models = {
@@ -45,8 +45,8 @@ async function boot(t, { configured = false, failGeneration = false, unsupported
         RagDocument: models,
         TransactionHistory: { find(query) { state.metricQueries.push(query); return chain(trades); } },
         async getPortfolioAccount(user) { state.accountQueries.push(user); if (!accounts[user]) throw Error('No account'); return accounts[user]; },
-        getQuote, getMarketContext,
-        ...(catalogue.length ? { grounding: createTools({ catalogue, getQuote, getMarketContext }) } : {}),
+        getQuote, getMarketContext, silverQuotes,
+        ...(catalogue.length ? { grounding: createTools({ catalogue, getQuote, getMarketContext, getFundamentals }) } : {}),
         generation: { configured: () => configured, interpretQuestion, async generate(question, sources, context) { state.generateCalls++; state.lastContext = context; state.lastQuestion = question; state.lastSources = sources; if (failGeneration) throw Error('offline'); if (question === unsupportedQuestion) return { basis: 'unsupported' }; return sources.length ? { answer: `Verified response [${sources[0].citation}]`, citations: [sources[0].citation], basis: 'sources' } : { answer: 'General finance education.', citations: [], basis: 'general_education' }; } },
     }));
     const server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve));
@@ -61,8 +61,12 @@ async function boot(t, { configured = false, failGeneration = false, unsupported
 
 test('mutual fund definitions and current price requests use appropriate verified sources', async t => {
     const { call, state } = await boot(t, {
-        catalogue: [{ symbol: 'SILVERBEES.NS', shortname: 'Nippon India Silver BeES ETF' }, { symbol: 'MARUTI.NS', shortname: 'Maruti Suzuki' }],
-        quotes: { 'SILVERBEES.NS': { price: 125.5, timestamp: new Date().toISOString() } },
+        catalogue: [{ symbol: 'SILVERBEES.NS', shortname: 'Nippon India Silver BeES ETF' }, { symbol: 'MARUTI.NS', shortname: 'Maruti Suzuki' },
+            { symbol: 'RELIANCE.NS', shortname: 'Reliance Industries', quoteType: 'EQUITY' }],
+        quotes: { 'SILVERBEES.NS': { price: 125.5, timestamp: new Date().toISOString() }, 'RELIANCE.NS': { price: 1400, timestamp: new Date().toISOString() } },
+        getFundamentals: async symbol => symbol === 'RELIANCE.NS' ? { trailingPE: 23.05 } : null,
+        silverQuotes: { physical: async () => ({ price: 146933, session: 'AM', checkedAt: '2026-11-26T07:00:00Z' }),
+            futures: async symbol => symbol === 'SILVER' ? { configured: false } : { configured: true, quote: { price: 145748, expiry: '2026-12-04', tradedAt: '2026-11-26T07:00:00Z' } } },
     });
     const ask = async question => (await call('/ask', { method: 'POST', body: { question } })).data;
     for (const question of ['what is mutual funds ?', 'What are mutual funds?', 'Define a mutual fund']) {
@@ -72,14 +76,18 @@ test('mutual fund definitions and current price requests use appropriate verifie
     }
     assert.equal(retrieve('how do mutual funds work', knowledge)[0].documentId, 'education-mutual-funds');
     const silver = await ask('what is silver rate right now ?');
-    assert.match(silver.answer, /physical silver.*MCX silver futures.*silver ETF/);
-    assert.match((await ask('What is the current MCX silver price?')).answer, /separate commodity feed/);
+    assert.match(silver.answer, /IBJA Silver 999.*₹1,46,933\.00 per kg.*AM benchmark/);
+    assert.match((await ask('What is the current MCX silver price?')).answer, /licensed MCX futures feed/);
+    assert.match((await ask('MCX silver mini futures price')).answer, /SILVERM.*2026-12-04.*₹1,45,748\.00 per kg/);
     assert.deepEqual(state.quoteQueries, []);
     const quote = await ask('What is the current price of SILVERBEES?');
     assert.equal(quote.mode, 'market_quote');
     assert.match(quote.answer, /SILVERBEES.*₹125\.50.*IST/);
     assert.match((await ask('MARUTI price now')).answer, /temporarily unavailable/);
     assert.deepEqual(state.quoteQueries, ['SILVERBEES.NS', 'MARUTI.NS']);
+    const valuation = await ask('what is relaince p/e ratio should i invest');
+    assert.match(valuation.answer, /Reliance Industries.*23\.05×/);
+    assert.match(valuation.answer, /decision to invest is yours.*earnings growth, debt and cash flow/);
     assert.equal(state.generateCalls, 0);
     assert.equal(state.accountQueries.length, 0);
 });

@@ -874,6 +874,7 @@ const performanceRouter = require('./routes/tradingCoach')({ TransactionHistory,
 app.use('/api/trade-performance', performanceRouter);
 const groundedTools = require('./services/GroundedTools')({ User, TransactionHistory, getPortfolioAccount: loadPortfolioAccount,
     getQuote: displayQuote, catalogue: LOCAL_STOCK_INDEX,
+    getFundamentals: symbol => HistoricalClient.quoteDetail(symbol),
     getMarketContext: () => ({ marketOpen: NSEClient.constructor.isMarketHours(), sessionDate: require('./services/ReturnSession')(new Date(), NSEClient.constructor.HOLIDAYS) }),
     getDisclosures: require('./services/ExchangeDisclosures')(NSEClient) });
 app.use('/api/assistant', require('./routes/assistantConnections')({ authenticateToken, User, McpConnection, tools: groundedTools,

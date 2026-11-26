@@ -34,6 +34,18 @@
     "documentType": "education_summary"
   },
   {
+    "id": "education-pe",
+    "title": "Price-to-earnings ratio (P/E)",
+    "scope": "education",
+    "referenceUrl": "https://betanseapi.nseindia.com/static/products-services/indices-price-earnings-ratio",
+    "content": "**P/E** stands for **price-to-earnings ratio**. For a company, divide its share price by its earnings per share. A trailing P/E uses earnings from the previous 12 months. Compare it with companies in the same industry and with the company’s past ratios. Differences in growth and risk affect what investors pay for each rupee of earnings.",
+    "glossaryTerms": ["p/e ratio", "pe ratio", "p/e", "price-to-earnings ratio"],
+    "effectiveDate": null,
+    "reviewedAt": "2026-11-26",
+    "section": "Price Earnings Ratio",
+    "documentType": "education_summary"
+  },
+  {
     "id": "education-mutual-funds",
     "title": "Mutual funds and net asset value",
     "scope": "education",

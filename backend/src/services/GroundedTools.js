@@ -4,17 +4,26 @@ const { buildPortfolioSnapshot } = require('./RagPortfolio');
 const { executeFinancialMath } = require('./FinancialMath');
 const { retrieve } = require('./RagRetrieval');
 const { documents: knowledge } = require('../knowledge');
+const { trailingPE } = require('./StockValuation');
 const indices = [
     { symbol: '^NSEI', shortname: 'NIFTY 50' }, { symbol: '^BSESN', shortname: 'SENSEX' },
     { symbol: '^NSEBANK', shortname: 'BANKNIFTY' }, { symbol: '^MIDCPNIFTY', shortname: 'MIDCPNIFTY' },
     { symbol: '^FINNIFTY', shortname: 'FINNIFTY' }, { symbol: '^BANKEX', shortname: 'BANKEX' },
 ];
-module.exports = function createTools({ TransactionHistory, getPortfolioAccount, getQuote, getMarketContext, User, catalogue = [], getDisclosures }) {
+module.exports = function createTools({ TransactionHistory, getPortfolioAccount, getQuote, getMarketContext, User, catalogue = [], getDisclosures, getFundamentals = async () => null }) {
     const instruments = [...catalogue, ...indices];
     function resolveSymbols(question) {
         const text = question.toUpperCase();
         return instruments.filter(item => [item.symbol, item.symbol.replace(/\.NS$/, ''), item.shortname].some(value =>
             value && new RegExp(`(^|[^A-Z0-9])${value.toUpperCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^A-Z0-9]|$)`).test(text))).map(item => item.symbol).slice(0, 8);
+    }
+    async function fetchStockValuation(question) {
+        const normalized = question.replace(/\brelaince\b/gi, 'Reliance');
+        const symbols = resolveSymbols(normalized).filter(symbol => catalogue.some(item => item.symbol === symbol && item.quoteType === 'EQUITY'));
+        if (symbols.length !== 1) return null;
+        const symbol = symbols[0];
+        const company = catalogue.find(item => item.symbol === symbol);
+        return { symbol, name: company.shortname, valuation: await trailingPE(symbol, { getQuote, getFundamentals }) };
     }
     async function fetchUserPortfolio(userId) {
         const trades = await TransactionHistory.find({ user: userId }).select('type symbol quantity price totalAmount createdAt').sort({ createdAt: 1, _id: 1 }).limit(20001).lean();
@@ -53,6 +62,6 @@ module.exports = function createTools({ TransactionHistory, getPortfolioAccount,
         try { return await getDisclosures(symbol.replace(/\.NS$/, '')); }
         catch { return { available: false, reason: 'Exchange disclosure feed is unavailable. No news or sentiment is inferred.' }; }
     }
-    return { resolveSymbols, fetchUserPortfolio, fetchLiveMarketData, fetchUserWatchlist, fetchCompanyDisclosures,
+    return { resolveSymbols, fetchStockValuation, fetchUserPortfolio, fetchLiveMarketData, fetchUserWatchlist, fetchCompanyDisclosures,
         executeFinancialMath, retrieveDocuments: question => retrieve(question, knowledge, 4) };
 };

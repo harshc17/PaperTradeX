@@ -9,10 +9,12 @@ const { buildPortfolioSnapshot } = require('../services/RagPortfolio');
 const { validateHistory, conversationContext } = require('../services/RagConversation');
 const policy = require('../services/FinancialPolicy');
 const { parseCalculation } = require('../services/FinancialMath');
+const silver = require('../services/SilverQuotes');
 
 const glossary = new Map(knowledge.flatMap(note => (note.glossaryTerms || []).map(term => [term, note])));
 function requestedQuote(question) {
     const text = question.replace(/[?.!\s]+$/, '')
+        .replace(/\s+(?:in india|per (?:kg|kilogram))$/i, '')
         .replace(/\s+(?:right now|now|today)$/i, '')
         .replace(/^(?:(?:what (?:is|are)|what['’]s|show(?: me)?|give me|check)\s+)?(?:the\s+)?(?:current\s+|latest\s+|live\s+)?/i, '');
     return text.match(/^(?:stock\s+)?(?:price|rate|quote)s?\s+(?:of|for)\s+(.+)$/i)?.[1]
@@ -22,7 +24,7 @@ const quotePrice = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, ma
 const quoteDate = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
 
 module.exports = function ragRouter({ authenticateToken, RagVector, TransactionHistory, getPortfolioAccount, getQuote, getMarketContext, grounding, generation = generator,
-    enabled = () => process.env.RAG_ENABLED !== 'false' }) {
+    silverQuotes = silver, enabled = () => process.env.RAG_ENABLED !== 'false' }) {
     const router = express.Router();
     router.use(authenticateToken);
     router.use((req, res, next) => {
@@ -68,11 +70,28 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
         }
         const context = conversationContext(question, history);
         const { accountQuestion, retrievalQuestion } = context;
-        if (policy.adviceQuestion(question)) return res.json({ mode: 'no_sources', answer: 'I cannot recommend buying, selling, holding or switching a specific investment. I can provide verified factual data, objective comparisons and documented regulatory rules.', sources: [], performance: null, portfolio: null });
+        const asksAdvice = policy.adviceQuestion(question);
+        const adviceBoundary = 'I can help you evaluate the company, but the decision to invest is yours. Compare its trailing P/E with similar companies and its own history, then look at earnings growth, debt and cash flow.';
+        const interpretation = interpreted ? { interpretedQuestion: question } : {};
+        const reply = (answer, mode = 'no_sources') => res.json({ mode, answer, sources: [], performance: null, portfolio: null, ...interpretation });
+        if (!accountQuestion && (asksAdvice || /\b(?:p\s*\/\s*e|pe ratio|price[- ]to[- ]earnings)\b/i.test(question))) {
+            const result = await grounding?.fetchStockValuation?.(retrievalQuestion).catch(() => null);
+            if (result) {
+                const { name, symbol, valuation } = result;
+                const label = `**${name} (${symbol.replace(/\.NS$/, '')})**`;
+                const details = valuation?.eps
+                    ? `Based on a share price of ₹${quotePrice.format(valuation.price)} at ${quoteDate.format(new Date(valuation.observedAt))} IST and consolidated diluted earnings of ₹${quotePrice.format(valuation.eps)} per share for the 12 months ended 30 Sep 2026, calculated from Reliance's published results.`
+                    : 'This is the trailing ratio reported by Yahoo Finance.';
+                const answer = valuation
+                    ? `${label} has a trailing P/E of **${quotePrice.format(valuation.multiple)}×**. ${details}\n\nTrailing P/E shows how much the market pays per rupee of earnings over the past year.`
+                    : `I don’t have a verified trailing P/E for ${label} right now.`;
+                return reply(answer + (asksAdvice ? `\n\n${adviceBoundary}` : ''), valuation ? 'market_quote' : 'no_sources');
+            }
+        }
+        if (asksAdvice) return reply('I cannot recommend buying, selling, holding or switching a specific investment. I can provide verified figures, explain the risks and compare investments objectively.');
         if (context.needsClarification) return res.json({ mode: 'no_sources', answer: 'What topic or example are you referring to? This is a new chat, so please tell me what you would like to continue discussing.', sources: [], performance: null, portfolio: null });
         if (accountQuestion && !includePortfolio) return res.json({ mode: 'no_sources', answer: 'Enable account context in Answer options to answer from your actual holdings, available balance and returns.', sources: [], performance: null, portfolio: null });
         const usePortfolio = includePortfolio && accountQuestion;
-        const interpretation = interpreted ? { interpretedQuestion: question } : {};
         async function recover(fallback) {
             if (interpreted || signal.aborted || !generation.interpretQuestion) return res.json(fallback);
             let result;
@@ -91,14 +110,25 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
         }
         try {
             const instrument = !accountQuestion && requestedQuote(question);
+            const silverFollowUp = !accountQuestion && history.length && /\bsilver\b/i.test(history.at(-2).content) &&
+                /^(?:physical|spot|mcx(?: silver)?(?: futures)?|silver(?: mini| micro)? futures)[?.!]*$/i.test(question);
+            const silverSubject = (instrument || (silverFollowUp && question) || '').trim();
+            if (/^(?:silver(?: 999| bullion| in india)?|(?:physical|spot|ibja)(?: silver)?|silver spot)$/i.test(silverSubject)) {
+                const quote = await silverQuotes.physical(signal);
+                if (quote) {
+                    return reply(`**Physical silver (IBJA Silver 999): ₹${quotePrice.format(quote.price)} per kg.** This is IBJA’s latest published ${quote.session} benchmark, checked ${quoteDate.format(new Date(quote.checkedAt))} IST. It excludes GST and making charges. Local dealer prices can differ.`, 'market_quote');
+                }
+                return reply('The IBJA Silver 999 benchmark is temporarily unavailable. Check the latest AM or PM silver rate on IBJA Rates.');
+            }
+            if (/^(?:mcx(?: silver(?: (?:mini|micro))?(?: futures?)?)?|silver(?: mini| micro)? (?:futures?|mcx)|silverm|silvermic)[?.!]*$/i.test(silverSubject)) {
+                const symbol = /\b(?:silvermic|micro)\b/i.test(silverSubject) ? 'SILVERMIC' : /\b(?:silverm|mini)\b/i.test(silverSubject) ? 'SILVERM' : 'SILVER';
+                const { configured, quote } = await silverQuotes.futures(symbol, signal);
+                if (quote) {
+                    return reply(`**MCX ${symbol} (${quote.expiry} expiry): ₹${quotePrice.format(quote.price)} per kg.** Nearest unexpired contract with a qualifying trade. Last trade ${quoteDate.format(new Date(quote.tradedAt))} IST. Exchange data may be delayed.`, 'market_quote');
+                }
+                return reply(configured ? 'The MCX silver futures quote is temporarily unavailable. Check MCX Market Watch for the latest trade.' : 'PaperTradeX is awaiting a licensed MCX futures feed. You can check the nearest SILVER contract and its last traded price on MCX Market Watch.');
+            }
             if (instrument && grounding) {
-                const reply = (answer, mode = 'no_sources') => res.json({ mode, answer, sources: [], performance: null, portfolio: null, ...interpretation });
-                if (/^(?:silver|silver in india)$/i.test(instrument)) {
-                    return reply('Which silver price do you mean: **physical silver** in your city, **MCX silver futures**, or a **silver ETF** such as SILVERBEES? I can look up ETFs tracked by PaperTradeX.');
-                }
-                if (/\b(?:mcx.*silver|silver.*(?:futures|mcx)|(?:physical|spot) silver|silver (?:spot|bullion))\b/i.test(instrument)) {
-                    return reply('PaperTradeX has verified stock, ETF and index quotes. A current physical silver or MCX futures rate requires a separate commodity feed. I can look up a tracked silver ETF such as SILVERBEES.');
-                }
                 const symbols = grounding.resolveSymbols(instrument);
                 if (symbols.length) {
                     const { quotes } = await grounding.fetchLiveMarketData(symbols.slice(0, 4));
