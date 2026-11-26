@@ -92,7 +92,7 @@ module.exports = function ragRouter({ authenticateToken, RagVector, TransactionH
                 }
                 const details = valuation?.eps
                     ? `Based on a share price of ₹${quotePrice.format(valuation.price)} at ${quoteDate.format(new Date(valuation.observedAt))} IST and diluted earnings of ₹${quotePrice.format(valuation.eps)} per share for the 12 months ended ${valuation.periodEnd}, from ${valuation.source}.`
-                    : 'This is the trailing ratio reported by Yahoo Finance.';
+                    : `This is the trailing ratio reported by ${valuation?.source || 'the quote provider'}.`;
                 const answer = valuation
                     ? `${label} has a trailing P/E of **${quotePrice.format(valuation.multiple)}×**. ${details}\n\nTrailing P/E shows how much the market pays per rupee of earnings over the past year.`
                     : `I don’t have a verified trailing P/E for ${label} right now.`;

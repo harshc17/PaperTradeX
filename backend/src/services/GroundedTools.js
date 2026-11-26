@@ -10,7 +10,7 @@ const indices = [
     { symbol: '^NSEBANK', shortname: 'BANKNIFTY' }, { symbol: '^MIDCPNIFTY', shortname: 'MIDCPNIFTY' },
     { symbol: '^FINNIFTY', shortname: 'FINNIFTY' }, { symbol: '^BANKEX', shortname: 'BANKEX' },
 ];
-module.exports = function createTools({ TransactionHistory, getPortfolioAccount, getQuote, getMarketContext, User, catalogue = [], getDisclosures, getFundamentals = async () => null, getEarnings, searchInstruments = async () => [] }) {
+module.exports = function createTools({ TransactionHistory, getPortfolioAccount, getQuote, getMarketContext, User, catalogue = [], getDisclosures, getFundamentals = async () => null, getEarnings, getExchangePE, searchInstruments = async () => [] }) {
     const instruments = [...catalogue, ...indices];
     function resolveSymbols(question) {
         const text = question.toUpperCase();
@@ -48,6 +48,7 @@ module.exports = function createTools({ TransactionHistory, getPortfolioAccount,
         }
         return { symbol, name: label, quoteType, valuation: await trailingPE(symbol, {
             getQuote, getFundamentals, getEarnings: getEarnings && (ticker => getEarnings(ticker, signal)),
+            getExchangePE: getExchangePE && (ticker => getExchangePE(ticker, signal)),
         }) };
     }
     async function fetchUserPortfolio(userId) {

@@ -876,6 +876,7 @@ const groundedTools = require('./services/GroundedTools')({ User, TransactionHis
     getQuote: displayQuote, catalogue: LOCAL_STOCK_INDEX,
     getFundamentals: symbol => HistoricalClient.quoteDetail(symbol),
     getEarnings: require('./services/StockValuation').fetchEarnings,
+    getExchangePE: require('./services/StockValuation').fetchExchangePE,
     searchInstruments: query => HistoricalClient.search(query),
     getMarketContext: () => ({ marketOpen: NSEClient.constructor.isMarketHours(), sessionDate: require('./services/ReturnSession')(new Date(), NSEClient.constructor.HOLIDAYS) }),
     getDisclosures: require('./services/ExchangeDisclosures')(NSEClient) });

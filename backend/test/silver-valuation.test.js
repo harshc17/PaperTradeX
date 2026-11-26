@@ -48,3 +48,14 @@ test('stock P/E accepts dated, exchange-specific Yahoo EPS and preserves reporte
     const loss = await trailingPE('HAL.NS', { getQuote, getFundamentals, getEarnings: async () => ({ ...earnings, eps: -5 }), now });
     assert.equal(loss.multiple, null);
 });
+
+test('exchange P/E is used directly when available and HAL can recover from the published filing', async () => {
+    const verified = { multiple: 34.43, source: 'NSE India' };
+    const result = await trailingPE('HAL.NS', { getExchangePE: async () => verified });
+    assert.equal(result, verified);
+    const now = Date.parse('2026-11-26T07:01:00Z');
+    const fallback = await trailingPE('HAL.NS', { now, getFundamentals: async () => null,
+        getQuote: async () => ({ price: 4920, timestamp: '2026-11-26T07:00:00Z' }) });
+    assert.equal(fallback.eps, 143.36);
+    assert.equal(fallback.multiple.toFixed(2), '34.32');
+});
